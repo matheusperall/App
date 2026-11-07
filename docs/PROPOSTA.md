@@ -133,9 +133,14 @@ A cada etapa você recebe um link para testar.
 - Registrar o domínio, quando decidir colocar no ar.
 - Textos da empresa: nome oficial, CNPJ, contato, endereço (para a política de privacidade e o rodapé).
 
-## 8. Decisões pendentes
-1. Grafia do nome: **Sempre Zero**?
-2. Agendamento: cliente sugere horários e a empresa confirma (recomendado), ou cliente escolhe direto um horário livre da agenda?
-3. Cliente pode criar conta sozinho, além de ser cadastrado pela empresa?
-4. Intervalos-padrão dos lembretes (ex.: óleo a cada 10.000 km ou 12 meses).
-5. Horário de funcionamento e duração média dos serviços (para o agendamento).
+## 8. Decisões tomadas
+1. Nome: **Sempre Zero**.
+2. Agendamento:
+   - **Lavagem**: o app consulta a Google Agenda e mostra os horários livres; o cliente escolhe um.
+   - **Demais serviços** (inclusive terceirizados): o cliente sugere datas e horários e a empresa confirma.
+   - Na confirmação, o evento é criado na Google Agenda.
+3. Lembretes de manutenção: o app sugere intervalos comuns de mercado e o cliente pode ajustar.
+   Quando a empresa registra um serviço (ex.: troca de óleo), ela mesma define a **próxima data e
+   quilometragem**, que passam a valer para aquele veículo.
+4. Funcionamento: **segunda a sexta, das 8h às 18h** (base para os horários de agendamento).
+5. Logo provisória criada no app (marcador com o ponteiro no zero); será substituída depois.
