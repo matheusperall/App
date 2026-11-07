@@ -127,6 +127,10 @@ algo entre **R$ 0 e ~R$ 250/mês**, dependendo das escolhas.
 
 A cada etapa você recebe um link para testar.
 
+**Andamento:** etapas 1 (base) e 2 (garagem) concluídas. A etapa 2 já inclui os
+lembretes de manutenção por data/km; vencimento de documentos e o envio das
+notificações ficam na etapa 4.
+
 ## 7. O que vamos precisar de você (no momento certo)
 - Criar contas (gratuitas) em **Supabase** e **Vercel**, usando o login do GitHub.
 - Permitir o acesso à sua **Google Agenda** (vou passar o passo a passo).

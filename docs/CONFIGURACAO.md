@@ -12,7 +12,10 @@ aparecem, mas login e cadastro não funcionam.
 
 ## 2. Criar as tabelas
 1. No Supabase, abra **SQL Editor** → **New query**.
-2. Copie todo o conteúdo de `supabase/migrations/0001_perfis.sql`, cole e clique em **Run**.
+2. Rode os arquivos da pasta `supabase/migrations`, **um de cada vez e na ordem**
+   (copie o conteúdo, cole e clique em **Run**):
+   1. `0001_perfis.sql` — contas e perfis
+   2. `0002_garagem.sql` — veículos, histórico, lembretes e fotos
 
 ## 3. Ajustar o login por e-mail
 Em **Authentication → URL Configuration**:
@@ -32,7 +35,10 @@ Em **Project Settings → API**, copie:
 - **anon public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 Essas duas são públicas por natureza (a segurança fica nas regras do banco).
-**Nunca** compartilhe a chave `service_role`.
+
+Copie também a **service_role key**. Ela é **secreta**: serve para a empresa cadastrar
+clientes e enviar convites. Cole-a **somente** na Vercel (passo 5). Não envie por
+chat, e-mail ou WhatsApp, nem para mim.
 
 ## 5. Colocar no ar na Vercel
 1. Acesse https://vercel.com e entre com o GitHub.
@@ -41,6 +47,7 @@ Essas duas são públicas por natureza (a segurança fica nas regras do banco).
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `NEXT_PUBLIC_SITE_URL` = o endereço final do app
+   - `SUPABASE_SERVICE_ROLE_KEY` = a chave secreta service_role
 4. Clique em **Deploy**.
 
 ## 6. Tornar sua conta administradora
