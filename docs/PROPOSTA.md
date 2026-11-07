@@ -134,4 +134,8 @@ A cada etapa você recebe um link para testar.
 - Textos da empresa: nome oficial, CNPJ, contato, endereço (para a política de privacidade e o rodapé).
 
 ## 8. Decisões pendentes
-Ver a seção "Perguntas" na conversa / no README do projeto.
+1. Grafia do nome: **Sempre Zero**?
+2. Agendamento: cliente sugere horários e a empresa confirma (recomendado), ou cliente escolhe direto um horário livre da agenda?
+3. Cliente pode criar conta sozinho, além de ser cadastrado pela empresa?
+4. Intervalos-padrão dos lembretes (ex.: óleo a cada 10.000 km ou 12 meses).
+5. Horário de funcionamento e duração média dos serviços (para o agendamento).
