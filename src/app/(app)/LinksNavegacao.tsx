@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos"; contador?: number };
+export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos" | "orcamentos"; contador?: number };
 
 const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   garagem: (
@@ -14,6 +14,12 @@ const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+    </>
+  ),
+  orcamentos: (
+    <>
+      <path d="M6 3h9l4 4v14H6z" />
+      <path d="M15 3v4h4M9 12h7M9 16h5" />
     </>
   ),
   avisos: (
@@ -85,7 +91,7 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
           <li key={i.href} className="flex-1">
             <Link
               href={i.href}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium ${
+              className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${
                 ativo(i.href) ? "text-marca-escura" : "text-suave"
               }`}
             >

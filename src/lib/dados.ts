@@ -1,7 +1,7 @@
 import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { TIPOS_DOCUMENTO, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { TIPOS_DOCUMENTO, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -285,6 +285,53 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Orçamentos
+// ---------------------------------------------------------------------------
+const CAMPOS_ORCAMENTO =
+  "id, numero, veiculo_id, apontamento_id, categoria, pedido, fotos, situacao, itens, valor_total, prazo_dias, validade, observacoes, motivo_recusa, respondido_em, decidido_em, criado_em";
+
+export type OrcamentoComVeiculo = Orcamento & {
+  veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; dono: Dono | null } | null;
+};
+const COM_VEICULO = `${CAMPOS_ORCAMENTO}, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))`;
+
+/** Orçamentos dos veículos informados. */
+export async function listarOrcamentos(veiculoIds: string[]): Promise<OrcamentoComVeiculo[]> {
+  if (veiculoIds.length === 0) return [];
+  if (!isSupabaseConfigured) return DEMO.orcamentos.filter((o) => veiculoIds.includes(o.veiculo_id)) as OrcamentoComVeiculo[];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("orcamentos").select(COM_VEICULO).in("veiculo_id", veiculoIds).order("criado_em", { ascending: false });
+  if (faltaTabela(error)) return [];
+  return (data as unknown as OrcamentoComVeiculo[] | null) ?? [];
+}
+
+/** Empresa: todos os orçamentos, filtrando pela situação. */
+export async function listarOrcamentosEmpresa(situacoes?: string[]): Promise<OrcamentoComVeiculo[]> {
+  if (!isSupabaseConfigured) return DEMO.orcamentos as OrcamentoComVeiculo[];
+  const supabase = await createClient();
+  let q = supabase.from("orcamentos").select(COM_VEICULO).order("criado_em", { ascending: false }).limit(100);
+  if (situacoes?.length) q = q.in("situacao", situacoes);
+  const { data, error } = await q;
+  if (faltaTabela(error)) return [];
+  return (data as unknown as OrcamentoComVeiculo[] | null) ?? [];
+}
+
+export async function obterOrcamento(id: string): Promise<OrcamentoComVeiculo | null> {
+  if (!isSupabaseConfigured) return (DEMO.orcamentos.find((o) => o.id === id) as OrcamentoComVeiculo | undefined) ?? null;
+  if (!ehUuid(id)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("orcamentos").select(COM_VEICULO).eq("id", id).maybeSingle();
+  return (data as unknown as OrcamentoComVeiculo | null) ?? null;
+}
+
+export async function contarOrcamentosAResponder(): Promise<number> {
+  if (!isSupabaseConfigured) return 1;
+  const supabase = await createClient();
+  const { count } = await supabase.from("orcamentos").select("id", { count: "exact", head: true }).eq("situacao", "solicitado");
+  return count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
 // Avisos (central de notificações)
 // ---------------------------------------------------------------------------
 export type Notificacao = { id: string; titulo: string; corpo: string | null; link: string | null; lida_em: string | null; criado_em: string };
@@ -410,6 +457,31 @@ const DEMO = {
     { id: "demo-d1", dono_id: "demo", veiculo_id: "demo-civic", tipo: "licenciamento", descricao: null, vencimento: somarMeses(hoje, 2) },
     { id: "demo-d2", dono_id: "demo", veiculo_id: "demo-civic", tipo: "seguro", descricao: "Porto Seguro", vencimento: somarDias(hoje, 12) },
   ] satisfies Documento[],
+  orcamentos: [
+    {
+      id: "demo-o1",
+      numero: 7,
+      veiculo_id: "demo-civic",
+      apontamento_id: null,
+      categoria: "estetica",
+      pedido: "Gostaria de um orçamento para higienização interna completa e hidratação dos bancos de couro.",
+      fotos: [],
+      situacao: "respondido",
+      itens: [
+        { descricao: "Higienização interna completa", valor: 350 },
+        { descricao: "Hidratação dos bancos de couro", valor: 180 },
+      ],
+      valor_total: 530,
+      prazo_dias: 1,
+      validade: somarDias(hoje, 15),
+      observacoes: "Serviço feito em 1 dia. Retire o carro no fim da tarde.",
+      motivo_recusa: null,
+      respondido_em: `${hoje}T14:00:00Z`,
+      decidido_em: null,
+      criado_em: `${hoje}T12:00:00Z`,
+      veiculo: { id: "demo-civic", dono_id: "demo", placa: "BRA2E19", marca: "Honda", modelo: "Civic EXL", apelido: null, dono: { id: "demo", nome: "Cliente Demonstração", email: "demo@semprezero.app", telefone: "(11) 90000-0000" } },
+    },
+  ] satisfies (Orcamento & { veiculo: unknown })[],
   notificacoes: [
     {
       id: "demo-n1",

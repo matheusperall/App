@@ -77,7 +77,7 @@ export async function criarApontamento(_: EstadoForm, form: FormData): Promise<E
 }
 
 const RESPOSTAS = {
-  orcamento: { aviso: "pediu um orçamento", confirmacao: "Pedido de orçamento enviado! Vamos responder em breve." },
+  orcamento: { aviso: "pediu um orçamento", confirmacao: "Pedido de orçamento enviado! Você vai receber os valores na aba Orçamentos." },
   agendamento: { aviso: "quer agendar", confirmacao: "Pedido de agendamento enviado! Vamos entrar em contato para combinar o horário." },
   recusado: { aviso: "deixou para depois", confirmacao: "Tudo bem! O apontamento fica guardado no histórico do veículo." },
 } as const;
@@ -93,7 +93,7 @@ export async function responderApontamento(_: EstadoForm, form: FormData): Promi
   const supabase = await createClient();
   const { data: apontamento } = await supabase
     .from("apontamentos")
-    .select("id, veiculo_id, titulo, situacao")
+    .select("id, veiculo_id, titulo, situacao, categoria, fotos")
     .eq("id", id)
     .maybeSingle();
   if (!apontamento) return { erro: "Apontamento não encontrado." };
@@ -109,12 +109,39 @@ export async function responderApontamento(_: EstadoForm, form: FormData): Promi
 
   const r = RESPOSTAS[resposta as keyof typeof RESPOSTAS];
   const veiculo = await carregarVeiculo(apontamento.veiculo_id);
+
+  // Pedido de orçamento a partir do apontamento: cria o orçamento ligado a ele (se ainda não existe)
+  let link = `/garagem/${apontamento.veiculo_id}/apontamentos/${id}`;
+  if (resposta === "orcamento") {
+    const { data: existente } = await supabase
+      .from("orcamentos")
+      .select("id")
+      .eq("apontamento_id", id)
+      .in("situacao", ["solicitado", "respondido"])
+      .maybeSingle();
+    if (existente) link = `/orcamentos/${existente.id}`;
+    else {
+      const { data: novo } = await supabase
+        .from("orcamentos")
+        .insert({
+          veiculo_id: apontamento.veiculo_id,
+          apontamento_id: id,
+          categoria: apontamento.categoria,
+          pedido: `${apontamento.titulo}${mensagem ? `\n\n${mensagem}` : ""}`,
+          fotos: apontamento.fotos,
+        })
+        .select("id")
+        .single();
+      if (novo) link = `/orcamentos/${novo.id}`;
+    }
+  }
+
   if (resposta !== "recusado" || usuario.papel !== "admin") {
     await notificarEmpresa(
       {
         titulo: `${usuario.nome || "Cliente"} ${r.aviso}`,
         corpo: `${apontamento.titulo}${veiculo ? ` · ${nomeVeiculo(veiculo)} (${veiculo.placa})` : ""}${mensagem ? ` — “${mensagem}”` : ""}`,
-        link: `/garagem/${apontamento.veiculo_id}/apontamentos/${id}`,
+        link,
       },
       await getSiteUrl(),
     );

@@ -127,7 +127,7 @@ algo entre **R$ 0 e ~R$ 250/mês**, dependendo das escolhas.
 
 A cada etapa você recebe um link para testar.
 
-**Andamento:** etapas 1 (base), 2 (garagem), 3 (apontamentos e notificações) e 4 (lembretes e vencimentos) concluídas. A etapa 2 já inclui os
+**Andamento:** etapas 1 (base), 2 (garagem), 3 (apontamentos e notificações) 4 (lembretes e vencimentos) e 5 (orçamentos) concluídas. A etapa 2 já inclui os
 lembretes de manutenção por data/km; vencimento de documentos e o envio das
 lembretes automáticos ficam na etapa 4.
 

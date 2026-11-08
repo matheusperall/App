@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Placa, SeloPrioridade } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
-import { caixaDeEntrada, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
+import { caixaDeEntrada, contarOrcamentosAResponder, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
 import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo } from "@/lib/garagem";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { lembretesConfigurados } from "@/lib/env";
@@ -12,17 +12,18 @@ export const metadata: Metadata = { title: "Painel da empresa" };
 
 export default async function PainelPage() {
   await exigirAdmin();
-  const [{ clientes, veiculos, abertos, respostas }, caixa, vencimentos] = await Promise.all([
+  const [{ clientes, abertos, respostas }, caixa, vencimentos, orcamentosAResponder] = await Promise.all([
     contarPainel(),
     caixaDeEntrada(),
     vencimentosProximos(),
+    contarOrcamentosAResponder(),
   ]);
   const novos = caixa.filter((c) => c.situacao !== "agendado");
   const agendados = caixa.filter((c) => c.situacao === "agendado");
 
   const indicadores = [
     { rotulo: "Clientes", valor: clientes, href: "/painel/clientes" },
-    { rotulo: "Veículos", valor: veiculos, href: "/painel/clientes" },
+    { rotulo: "Orçamentos a responder", valor: orcamentosAResponder, href: "/orcamentos?f=responder", destaque: orcamentosAResponder > 0 },
     { rotulo: "Apontamentos abertos", valor: abertos, href: null },
     { rotulo: "Respostas de clientes", valor: respostas, href: null, destaque: respostas > 0 },
   ];
@@ -57,7 +58,7 @@ export default async function PainelPage() {
             </>
           );
           return i.href ? (
-            <Link key={i.rotulo} href={i.href} className="rounded-2xl border border-borda bg-white p-5 transition hover:border-marca/50">
+            <Link key={i.rotulo} href={i.href} className={`rounded-2xl border bg-white p-5 transition hover:border-marca/50 ${i.destaque ? "border-marca/50" : "border-borda"}`}>
               {conteudo}
             </Link>
           ) : (

@@ -19,6 +19,7 @@ aparecem, mas login e cadastro não funcionam.
    3. `0003_apontamentos.sql` — apontamentos, avisos e notificações no celular
    4. `0004_fipe.sql` — dados da tabela FIPE no veículo
    5. `0005_lembretes.sql` — documentos/vencimentos e lembretes automáticos
+   6. `0006_orcamentos.sql` — pedidos de orçamento
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

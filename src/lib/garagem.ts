@@ -259,3 +259,40 @@ export function somarDias(dataISO: string, dias: number) {
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
 }
+
+// ---------------------------------------------------------------------------
+// Orçamentos
+// ---------------------------------------------------------------------------
+export type ItemOrcamento = { descricao: string; valor: number };
+
+export type Orcamento = {
+  id: string;
+  numero: number;
+  veiculo_id: string;
+  apontamento_id: string | null;
+  categoria: Categoria;
+  pedido: string | null;
+  fotos: string[];
+  situacao: SituacaoOrcamento;
+  itens: ItemOrcamento[];
+  valor_total: number | null;
+  prazo_dias: number | null;
+  validade: string | null;
+  observacoes: string | null;
+  motivo_recusa: string | null;
+  respondido_em: string | null;
+  decidido_em: string | null;
+  criado_em: string;
+};
+
+export const SITUACOES_ORCAMENTO = {
+  solicitado: { rotulo: "Aguardando resposta", rotuloEmpresa: "A responder", classe: "bg-alerta-claro text-[#8a5a00]" },
+  respondido: { rotulo: "Orçamento recebido", rotuloEmpresa: "Aguardando cliente", classe: "bg-marca-clara text-marca-escura" },
+  aceito: { rotulo: "Aprovado", rotuloEmpresa: "Aprovado", classe: "bg-sucesso-claro text-sucesso" },
+  recusado: { rotulo: "Recusado", rotuloEmpresa: "Recusado", classe: "bg-fundo text-suave" },
+  cancelado: { rotulo: "Cancelado", rotuloEmpresa: "Cancelado", classe: "bg-fundo text-suave" },
+} as const;
+export type SituacaoOrcamento = keyof typeof SITUACOES_ORCAMENTO;
+
+export const orcamentoVencido = (o: Pick<Orcamento, "situacao" | "validade">, hoje = hojeISO()) =>
+  o.situacao === "respondido" && !!o.validade && o.validade < hoje;

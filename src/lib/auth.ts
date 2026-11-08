@@ -19,7 +19,8 @@ const USUARIO_DEMO: UsuarioAtual = {
   email: "demo@semprezero.app",
   nome: "Cliente Demonstração",
   telefone: null,
-  papel: "admin",
+  // Modo demonstração: DEMO_PAPEL=cliente mostra as telas como o cliente vê
+  papel: process.env.DEMO_PAPEL === "cliente" ? "cliente" : "admin",
 };
 
 /** Usuário logado, ou null. Lê a sessão (dado de requisição). */

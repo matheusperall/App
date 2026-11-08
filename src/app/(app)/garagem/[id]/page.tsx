@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FotoVeiculo, ItemApontamento, ItemDocumento, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
+import { ItemListaOrcamento } from "@/components/orcamento";
 import { exigirUsuario } from "@/lib/auth";
-import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { listarApontamentos, listarDocumentosVeiculos, listarOrcamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { PRIORIDADES, apontamentoAberto, formatarData, formatarValor, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
@@ -17,11 +18,12 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
 
-  const [servicos, manutencoes, apontamentos, documentos, fotos] = await Promise.all([
+  const [servicos, manutencoes, apontamentos, documentos, orcamentos, fotos] = await Promise.all([
     listarServicos(id),
     listarManutencoes([id]),
     listarApontamentos([id]),
     listarDocumentosVeiculos([id]),
+    listarOrcamentos([id]),
     urlsDasFotos([veiculo.foto]),
   ]);
   const admin = usuario.papel === "admin";
@@ -79,6 +81,9 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             )}
             <Link href={`/garagem/${veiculo.id}/servicos/novo`} className="botao-primario flex-1 text-sm">
               + Registrar serviço
+            </Link>
+            <Link href={`/orcamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno flex-1 text-sm">
+              {admin ? "Enviar orçamento" : "Pedir orçamento"}
             </Link>
             <Link href={`/garagem/${veiculo.id}/editar`} className="botao-contorno text-sm">
               Editar
@@ -171,6 +176,17 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             </ul>
           )}
         </Cartao>
+
+        {orcamentos.length > 0 && (
+          <Cartao className="p-0 lg:col-span-2">
+            <h2 className="px-5 pt-5 font-semibold">Orçamentos</h2>
+            <ul className="mt-1 divide-y divide-borda">
+              {orcamentos.slice(0, 5).map((o) => (
+                <ItemListaOrcamento key={o.id} o={o} empresa={admin} />
+              ))}
+            </ul>
+          </Cartao>
+        )}
 
         <Cartao className="lg:col-span-2">
           <h2 className="font-semibold">Histórico de serviços</h2>
