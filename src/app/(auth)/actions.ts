@@ -6,7 +6,12 @@ import { traduzirErro } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
 import { caminhoSeguro, getSiteUrl } from "@/lib/site";
 
-export type EstadoForm = { erro?: string; sucesso?: string };
+export type EstadoForm = {
+  erro?: string;
+  sucesso?: string;
+  /** Valores digitados, para não apagar o formulário quando der erro */
+  valores?: Record<string, string>;
+};
 
 const NAO_CONFIGURADO: EstadoForm = {
   erro: "O banco de dados ainda não foi conectado. Veja docs/CONFIGURACAO.md.",
@@ -18,11 +23,11 @@ export async function entrar(_: EstadoForm, form: FormData): Promise<EstadoForm>
   if (!isSupabaseConfigured) return NAO_CONFIGURADO;
   const email = texto(form, "email").toLowerCase();
   const senha = String(form.get("senha") ?? "");
-  if (!email || !senha) return { erro: "Preencha e-mail e senha." };
+  if (!email || !senha) return { erro: "Preencha e-mail e senha.", valores: { email } };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-  if (error) return { erro: traduzirErro(error.message) };
+  if (error) return { erro: traduzirErro(error.message), valores: { email } };
 
   redirect(caminhoSeguro(form.get("next")));
 }
@@ -34,11 +39,13 @@ export async function cadastrar(_: EstadoForm, form: FormData): Promise<EstadoFo
   const email = texto(form, "email").toLowerCase();
   const senha = String(form.get("senha") ?? "");
   const aceite = form.get("aceite") === "on";
+  const valores = { nome, telefone, email };
+  const falha = (erro: string): EstadoForm => ({ erro, valores });
 
-  if (nome.length < 2) return { erro: "Informe seu nome." };
-  if (!email.includes("@")) return { erro: "Informe um e-mail válido." };
-  if (senha.length < 8) return { erro: "A senha deve ter pelo menos 8 caracteres." };
-  if (!aceite) return { erro: "Para continuar, aceite os termos de uso e a política de privacidade." };
+  if (nome.length < 2) return falha("Informe seu nome.");
+  if (!email.includes("@")) return falha("Informe um e-mail válido.");
+  if (senha.length < 8) return falha("A senha deve ter pelo menos 8 caracteres.");
+  if (!aceite) return falha("Para continuar, aceite os termos de uso e a política de privacidade.");
 
   const supabase = await createClient();
   const site = await getSiteUrl();
@@ -50,7 +57,10 @@ export async function cadastrar(_: EstadoForm, form: FormData): Promise<EstadoFo
       emailRedirectTo: `${site}/auth/confirm?next=/garagem`,
     },
   });
-  if (error) return { erro: traduzirErro(error.message) };
+  if (error) {
+    console.error("[cadastro]", error.status, error.code, error.message);
+    return falha(traduzirErro(error.message));
+  }
 
   // Se a confirmação de e-mail estiver desligada, já entra direto.
   if (data.session) redirect("/garagem");

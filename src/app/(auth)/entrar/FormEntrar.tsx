@@ -13,14 +13,14 @@ export function FormEntrar() {
   const erroLink = params.get("erro") === "link";
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="space-y-4" key={estado.erro ?? "inicial"}>
       <input type="hidden" name="next" value={params.get("next") ?? ""} />
       {erroLink && <Aviso tipo="erro">O link expirou ou já foi usado. Tente novamente.</Aviso>}
       {params.get("confirmado") && <Aviso tipo="sucesso">E-mail confirmado! Agora é só entrar.</Aviso>}
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
       <Campo rotulo="E-mail">
-        <input name="email" type="email" autoComplete="email" inputMode="email" required className="campo" placeholder="voce@email.com" />
+        <input name="email" defaultValue={estado.valores?.email} type="email" autoComplete="email" inputMode="email" required className="campo" placeholder="voce@email.com" />
       </Campo>
       <Campo rotulo="Senha">
         <input name="senha" type="password" autoComplete="current-password" required className="campo" placeholder="Sua senha" />

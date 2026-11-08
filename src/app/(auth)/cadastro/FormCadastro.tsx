@@ -21,17 +21,17 @@ export function FormCadastro() {
   }
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="space-y-4" key={estado.erro ?? "inicial"}>
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
       <Campo rotulo="Nome completo">
-        <input name="nome" autoComplete="name" required className="campo" placeholder="Seu nome" />
+        <input name="nome" defaultValue={estado.valores?.nome} autoComplete="name" required className="campo" placeholder="Seu nome" />
       </Campo>
       <Campo rotulo="Celular (WhatsApp)" dica="Opcional. Usado só para falarmos sobre seus serviços.">
-        <input name="telefone" type="tel" autoComplete="tel" inputMode="tel" className="campo" placeholder="(11) 90000-0000" />
+        <input name="telefone" defaultValue={estado.valores?.telefone} type="tel" autoComplete="tel" inputMode="tel" className="campo" placeholder="(11) 90000-0000" />
       </Campo>
       <Campo rotulo="E-mail">
-        <input name="email" type="email" autoComplete="email" inputMode="email" required className="campo" placeholder="voce@email.com" />
+        <input name="email" defaultValue={estado.valores?.email} type="email" autoComplete="email" inputMode="email" required className="campo" placeholder="voce@email.com" />
       </Campo>
       <Campo rotulo="Senha" dica="Mínimo de 8 caracteres.">
         <input name="senha" type="password" autoComplete="new-password" minLength={8} required className="campo" placeholder="Crie uma senha" />
