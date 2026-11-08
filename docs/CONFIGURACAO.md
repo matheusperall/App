@@ -16,6 +16,9 @@ aparecem, mas login e cadastro não funcionam.
    (copie o conteúdo, cole e clique em **Run**):
    1. `0001_perfis.sql` — contas e perfis
    2. `0002_garagem.sql` — veículos, histórico, lembretes e fotos
+   3. `0003_apontamentos.sql` — apontamentos, avisos e notificações no celular
+
+   (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 
 ## 3. Ajustar o login por e-mail
 Em **Authentication → URL Configuration**:
@@ -49,6 +52,12 @@ chat, e-mail ou WhatsApp, nem para mim.
    - `NEXT_PUBLIC_SITE_URL` = o endereço final do app
    - `SUPABASE_SERVICE_ROLE_KEY` = a chave secreta service_role
 4. Clique em **Deploy**.
+
+## 5.1 Notificações no celular e e-mails (opcional, recomendado)
+Entre no app como administrador e abra **Painel › Configurações**. A página gera as
+chaves de notificação (`NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`) e explica
+como ativar os e-mails de aviso (`RESEND_API_KEY` e `EMAIL_REMETENTE`). Depois de
+cadastrar na Vercel, faça Redeploy.
 
 ## 6. Tornar sua conta administradora
 1. Abra o app e crie sua conta normalmente em **Criar conta**.

@@ -1,7 +1,7 @@
 import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { hojeISO, somarMeses, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { hojeISO, somarMeses, type Apontamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -132,13 +132,88 @@ export async function obterCliente(id: string): Promise<Dono | null> {
 }
 
 export async function contarPainel() {
-  if (!isSupabaseConfigured) return { clientes: 1, veiculos: DEMO.veiculos.length };
+  if (!isSupabaseConfigured) return { clientes: 1, veiculos: DEMO.veiculos.length, abertos: 1, respostas: 0 };
   const supabase = await createClient();
-  const [c, v] = await Promise.all([
+  const [c, v, a, r] = await Promise.all([
     supabase.from("perfis").select("id", { count: "exact", head: true }).eq("papel", "cliente"),
     supabase.from("veiculos").select("id", { count: "exact", head: true }),
+    supabase.from("apontamentos").select("id", { count: "exact", head: true }).in("situacao", ["pendente", "orcamento", "agendamento", "agendado"]),
+    supabase.from("apontamentos").select("id", { count: "exact", head: true }).in("situacao", ["orcamento", "agendamento"]),
   ]);
-  return { clientes: c.count ?? 0, veiculos: v.count ?? 0 };
+  return { clientes: c.count ?? 0, veiculos: v.count ?? 0, abertos: a.count ?? 0, respostas: r.count ?? 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Apontamentos
+// ---------------------------------------------------------------------------
+const CAMPOS_APONTAMENTO =
+  "id, veiculo_id, categoria, titulo, descricao, prioridade, fotos, situacao, mensagem_cliente, respondido_em, criado_em";
+
+export async function listarApontamentos(veiculoIds: string[]): Promise<Apontamento[]> {
+  if (veiculoIds.length === 0) return [];
+  if (!isSupabaseConfigured) return DEMO.apontamentos.filter((a) => veiculoIds.includes(a.veiculo_id));
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("apontamentos")
+    .select(CAMPOS_APONTAMENTO)
+    .in("veiculo_id", veiculoIds)
+    .order("criado_em", { ascending: false });
+  return (data as Apontamento[] | null) ?? [];
+}
+
+export async function obterApontamento(id: string): Promise<Apontamento | null> {
+  if (!isSupabaseConfigured) return DEMO.apontamentos.find((a) => a.id === id) ?? null;
+  if (!ehUuid(id)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("apontamentos").select(CAMPOS_APONTAMENTO).eq("id", id).maybeSingle();
+  return (data as Apontamento | null) ?? null;
+}
+
+export type ItemCaixa = Apontamento & {
+  veiculo: { id: string; placa: string; marca: string; modelo: string; apelido: string | null; dono: Dono | null } | null;
+};
+
+/** Apontamentos em que o cliente respondeu (orçamento/agendamento) ou que estão agendados. */
+export async function caixaDeEntrada(): Promise<ItemCaixa[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("apontamentos")
+    .select(
+      `${CAMPOS_APONTAMENTO}, veiculo:veiculos (id, placa, marca, modelo, apelido, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))`,
+    )
+    .in("situacao", ["orcamento", "agendamento", "agendado"])
+    .order("respondido_em", { ascending: false, nullsFirst: false })
+    .limit(50);
+  return (data as unknown as ItemCaixa[] | null) ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Avisos (central de notificações)
+// ---------------------------------------------------------------------------
+export type Notificacao = { id: string; titulo: string; corpo: string | null; link: string | null; lida_em: string | null; criado_em: string };
+
+export async function listarNotificacoes(usuarioId: string): Promise<Notificacao[]> {
+  if (!isSupabaseConfigured) return DEMO.notificacoes;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("notificacoes")
+    .select("id, titulo, corpo, link, lida_em, criado_em")
+    .eq("usuario_id", usuarioId)
+    .order("criado_em", { ascending: false })
+    .limit(50);
+  return data ?? [];
+}
+
+export async function contarNaoLidas(usuarioId: string): Promise<number> {
+  if (!isSupabaseConfigured) return DEMO.notificacoes.filter((n) => !n.lida_em).length;
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("notificacoes")
+    .select("id", { count: "exact", head: true })
+    .eq("usuario_id", usuarioId)
+    .is("lida_em", null);
+  return count ?? 0;
 }
 
 function ehUuid(id: string) {
@@ -220,4 +295,29 @@ const DEMO = {
       definido_pela_empresa: true,
     },
   ] satisfies Manutencao[],
+  apontamentos: [
+    {
+      id: "demo-a1",
+      veiculo_id: "demo-civic",
+      categoria: "funilaria_pintura",
+      titulo: "Risco na porta traseira direita",
+      descricao: "Risco profundo, chegou no primer. Recomendamos repintura localizada para evitar oxidação.",
+      prioridade: "media",
+      fotos: [],
+      situacao: "pendente",
+      mensagem_cliente: null,
+      respondido_em: null,
+      criado_em: `${hoje}T13:00:00Z`,
+    },
+  ] satisfies Apontamento[],
+  notificacoes: [
+    {
+      id: "demo-n1",
+      titulo: "Novo apontamento no seu Honda Civic EXL",
+      corpo: "Risco na porta traseira direita — Recomendado",
+      link: "/garagem/demo-civic/apontamentos/demo-a1",
+      lida_em: null,
+      criado_em: `${hoje}T13:00:00Z`,
+    },
+  ] satisfies Notificacao[],
 };

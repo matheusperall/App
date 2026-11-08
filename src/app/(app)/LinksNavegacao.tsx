@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" };
+export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos"; contador?: number };
 
 const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   garagem: (
@@ -13,6 +14,12 @@ const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
     <>
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+    </>
+  ),
+  avisos: (
+    <>
+      <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
     </>
   ),
   painel: (
@@ -25,6 +32,15 @@ const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   ),
 };
 
+function Contador({ n, className = "" }: { n?: number; className?: string }) {
+  if (!n) return null;
+  return (
+    <span className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-perigo px-1 text-[10px] font-bold text-white ${className}`}>
+      {n > 9 ? "9+" : n}
+    </span>
+  );
+}
+
 function Icone({ nome }: { nome: ItemNav["icone"] }) {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
@@ -35,12 +51,16 @@ function Icone({ nome }: { nome: ItemNav["icone"] }) {
 
 export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "topo" | "rodape" }) {
   const path = usePathname();
+  // Depois de abrir a página de avisos, o contador zera sem precisar recarregar
+  const [avisosVistos, setAvisosVistos] = useState(false);
+  if (path === "/notificacoes" && !avisosVistos) setAvisosVistos(true);
+  const lista = itens.map((i) => (i.href === "/notificacoes" && avisosVistos ? { ...i, contador: 0 } : i));
   const ativo = (href: string) => path === href || path.startsWith(`${href}/`);
 
   if (local === "topo") {
     return (
       <nav className="hidden items-center gap-1 sm:flex">
-        {itens.map((i) => (
+        {lista.map((i) => (
           <Link
             key={i.href}
             href={i.href}
@@ -48,7 +68,10 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
               ativo(i.href) ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
             }`}
           >
-            {i.rotulo}
+            <span className="flex items-center gap-1.5">
+              {i.rotulo}
+              <Contador n={i.contador} />
+            </span>
           </Link>
         ))}
       </nav>
@@ -58,7 +81,7 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-borda bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
       <ul className="mx-auto flex max-w-md">
-        {itens.map((i) => (
+        {lista.map((i) => (
           <li key={i.href} className="flex-1">
             <Link
               href={i.href}
@@ -66,7 +89,10 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
                 ativo(i.href) ? "text-marca-escura" : "text-suave"
               }`}
             >
-              <Icone nome={i.icone} />
+              <span className="relative">
+                <Icone nome={i.icone} />
+                <Contador n={i.contador} className="absolute -top-1.5 -right-2.5" />
+              </span>
               {i.rotulo}
             </Link>
           </li>

@@ -171,3 +171,49 @@ export function formatarPlaca(placa: string) {
 export function nomeVeiculo(v: Pick<Veiculo, "apelido" | "marca" | "modelo">) {
   return v.apelido?.trim() || [v.marca, v.modelo].filter(Boolean).join(" ") || "Meu veículo";
 }
+
+// ---------------------------------------------------------------------------
+// Apontamentos (o que a oficina identificou no veículo)
+// ---------------------------------------------------------------------------
+export type Apontamento = {
+  id: string;
+  veiculo_id: string;
+  categoria: Categoria;
+  titulo: string;
+  descricao: string | null;
+  prioridade: Prioridade;
+  fotos: string[];
+  situacao: SituacaoApontamento;
+  mensagem_cliente: string | null;
+  respondido_em: string | null;
+  criado_em: string;
+};
+
+export const PRIORIDADES = {
+  urgente: { rotulo: "Urgente", classe: "bg-perigo-claro text-perigo", ordem: 0 },
+  media: { rotulo: "Recomendado", classe: "bg-alerta-claro text-[#8a5a00]", ordem: 1 },
+  baixa: { rotulo: "Quando puder", classe: "bg-fundo text-suave", ordem: 2 },
+} as const;
+export type Prioridade = keyof typeof PRIORIDADES;
+
+export const SITUACOES_APONTAMENTO = {
+  pendente: { rotulo: "Aguardando você", rotuloEmpresa: "Aguardando cliente", aberto: true },
+  orcamento: { rotulo: "Orçamento solicitado", rotuloEmpresa: "Pediu orçamento", aberto: true },
+  agendamento: { rotulo: "Agendamento solicitado", rotuloEmpresa: "Quer agendar", aberto: true },
+  agendado: { rotulo: "Agendado", rotuloEmpresa: "Agendado", aberto: true },
+  concluido: { rotulo: "Concluído", rotuloEmpresa: "Concluído", aberto: false },
+  recusado: { rotulo: "Deixado para depois", rotuloEmpresa: "Cliente recusou", aberto: false },
+} as const;
+export type SituacaoApontamento = keyof typeof SITUACOES_APONTAMENTO;
+
+export const apontamentoAberto = (a: Pick<Apontamento, "situacao">) => SITUACOES_APONTAMENTO[a.situacao].aberto;
+
+export function formatarDataHora(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}

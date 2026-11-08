@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FotoVeiculo, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
+import { FotoVeiculo, ItemApontamento, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
-import { formatarData, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
+import { listarApontamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { PRIORIDADES, apontamentoAberto, formatarData, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
 export const metadata: Metadata = { title: "Veículo" };
@@ -17,11 +17,17 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
 
-  const [servicos, manutencoes, fotos] = await Promise.all([
+  const [servicos, manutencoes, apontamentos, fotos] = await Promise.all([
     listarServicos(id),
     listarManutencoes([id]),
+    listarApontamentos([id]),
     urlsDasFotos([veiculo.foto]),
   ]);
+  const admin = usuario.papel === "admin";
+  const abertos = apontamentos
+    .filter(apontamentoAberto)
+    .sort((a, b) => PRIORIDADES[a.prioridade].ordem - PRIORIDADES[b.prioridade].ordem);
+  const fechados = apontamentos.filter((a) => !apontamentoAberto(a));
   const deOutroDono = veiculo.dono_id !== usuario.id;
   manutencoes.sort(
     (a, b) =>
@@ -37,6 +43,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
       )}
 
       {sp.registrado && <Aviso tipo="sucesso">Serviço registrado no histórico.</Aviso>}
+      {sp.apontado && <Aviso tipo="sucesso">Apontamento registrado. O cliente foi avisado.</Aviso>}
 
       <div className="overflow-hidden rounded-2xl border border-borda bg-white lg:grid lg:grid-cols-[1.1fr_1fr]">
         <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="aspect-[16/9] w-full lg:aspect-auto lg:h-full" />
@@ -58,6 +65,11 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           <FormKm veiculoId={veiculo.id} kmAtual={veiculo.km_atual} />
           <p className="text-xs text-suave">Quilometragem atualizada em {formatarData(veiculo.km_atualizado_em)}</p>
           <div className="flex flex-wrap gap-2 pt-1">
+            {admin && (
+              <Link href={`/garagem/${veiculo.id}/apontamentos/novo`} className="botao-escuro flex-1 text-sm">
+                + Apontamento
+              </Link>
+            )}
             <Link href={`/garagem/${veiculo.id}/servicos/novo`} className="botao-primario flex-1 text-sm">
               + Registrar serviço
             </Link>
@@ -67,6 +79,45 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           </div>
         </div>
       </div>
+
+      {(abertos.length > 0 || admin) && (
+        <Cartao className={abertos.length > 0 ? "border-tinta/20" : ""}>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">📍 Apontamentos {abertos.length > 0 && <span className="text-suave">({abertos.length})</span>}</h2>
+            {admin && (
+              <Link href={`/garagem/${veiculo.id}/apontamentos/novo`} className="text-sm font-semibold text-marca-escura hover:underline">
+                + Novo
+              </Link>
+            )}
+          </div>
+          {abertos.length === 0 ? (
+            <p className="mt-2 text-sm text-suave">Nenhum apontamento em aberto.</p>
+          ) : (
+            <>
+              {!admin && (
+                <p className="mt-1 text-sm text-suave">
+                  Itens que a nossa equipe identificou no seu veículo. Toque para ver, pedir orçamento ou agendar.
+                </p>
+              )}
+              <ul className="-mx-2 mt-1">
+                {abertos.map((a) => (
+                  <ItemApontamento key={a.id} a={a} empresa={admin} />
+                ))}
+              </ul>
+            </>
+          )}
+          {fechados.length > 0 && (
+            <details className="mt-2 text-sm">
+              <summary className="cursor-pointer text-suave">Ver {fechados.length} {fechados.length === 1 ? "anterior" : "anteriores"}</summary>
+              <ul className="-mx-2 mt-1">
+                {fechados.map((a) => (
+                  <ItemApontamento key={a.id} a={a} empresa={admin} />
+                ))}
+              </ul>
+            </details>
+          )}
+        </Cartao>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
         <Cartao>

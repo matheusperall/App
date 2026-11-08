@@ -3,15 +3,19 @@ import Link from "next/link";
 import { CartaoVeiculo } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario, primeiroNome } from "@/lib/auth";
-import { listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
+import { listarApontamentos, listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
+import { AtivarNotificacoes } from "@/components/AtivarNotificacoes";
+import { vapidPublica } from "@/lib/notificar";
 
 export const metadata: Metadata = { title: "Minha garagem" };
 
 export default async function GaragemPage({ searchParams }: PageProps<"/garagem">) {
   const [usuario, params] = await Promise.all([exigirUsuario(), searchParams]);
   const veiculos = await listarVeiculos(usuario.id);
-  const [manutencoes, fotos] = await Promise.all([
-    listarManutencoes(veiculos.map((v) => v.id)),
+  const ids = veiculos.map((v) => v.id);
+  const [manutencoes, apontamentos, fotos] = await Promise.all([
+    listarManutencoes(ids),
+    listarApontamentos(ids),
     urlsDasFotos(veiculos.map((v) => v.foto)),
   ]);
 
@@ -30,6 +34,8 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           </Link>
         )}
       </div>
+
+      <AtivarNotificacoes chavePublica={vapidPublica()} compacto />
 
       {usuario.papel === "admin" && (
         <Aviso>
@@ -56,6 +62,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
               veiculo={v}
               fotoUrl={v.foto ? fotos[v.foto] : undefined}
               manutencoes={manutencoes.filter((m) => m.veiculo_id === v.id)}
+              apontamentos={apontamentos.filter((a) => a.veiculo_id === v.id)}
             />
           ))}
         </div>

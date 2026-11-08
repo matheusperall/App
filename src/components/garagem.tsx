@@ -2,6 +2,10 @@ import Link from "next/link";
 import {
   CATEGORIAS,
   PRESTADORES,
+  PRIORIDADES,
+  SITUACOES_APONTAMENTO,
+  apontamentoAberto,
+  type Apontamento,
   descreverPrazo,
   formatarData,
   formatarKm,
@@ -74,12 +78,15 @@ export function CartaoVeiculo({
   veiculo,
   fotoUrl,
   manutencoes,
+  apontamentos = [],
 }: {
   veiculo: Veiculo;
   fotoUrl?: string;
   manutencoes: Manutencao[];
+  apontamentos?: Apontamento[];
 }) {
   const { vencidas, emBreve } = contarAlertas(manutencoes, veiculo.km_atual);
+  const abertos = apontamentos.filter(apontamentoAberto).length;
   return (
     <Link
       href={`/garagem/${veiculo.id}`}
@@ -96,8 +103,13 @@ export function CartaoVeiculo({
           </div>
           <Placa placa={veiculo.placa} tamanho="sm" />
         </div>
-        {vencidas + emBreve > 0 ? (
+        {vencidas + emBreve + abertos > 0 ? (
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            {abertos > 0 && (
+              <span className="rounded-full bg-tinta px-2.5 py-1 text-white">
+                📍 {abertos} {abertos === 1 ? "apontamento" : "apontamentos"}
+              </span>
+            )}
             {vencidas > 0 && (
               <span className="rounded-full bg-perigo-claro px-2.5 py-1 text-perigo">
                 {vencidas} {vencidas === 1 ? "manutenção vencida" : "manutenções vencidas"}
@@ -182,5 +194,40 @@ export function Voltar({ href, children }: { href: string; children: React.React
     <Link href={href} className="inline-flex items-center gap-1 text-sm font-medium text-suave hover:text-texto">
       <span aria-hidden="true">←</span> {children}
     </Link>
+  );
+}
+
+export function SeloPrioridade({ prioridade }: { prioridade: Apontamento["prioridade"] }) {
+  const p = PRIORIDADES[prioridade];
+  return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.classe}`}>{p.rotulo}</span>;
+}
+
+export function ItemApontamento({ a, empresa = false }: { a: Apontamento; empresa?: boolean }) {
+  const cat = CATEGORIAS[a.categoria];
+  const sit = SITUACOES_APONTAMENTO[a.situacao];
+  return (
+    <li>
+      <Link
+        href={`/garagem/${a.veiculo_id}/apontamentos/${a.id}`}
+        className="flex gap-3 rounded-xl px-2 py-3 transition hover:bg-fundo"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fundo text-lg" aria-hidden="true">
+          {cat.icone}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-medium">{a.titulo}</p>
+            <SeloPrioridade prioridade={a.prioridade} />
+          </div>
+          <p className="mt-1 text-xs text-suave">
+            {cat.rotulo} · {formatarData(a.criado_em)} ·{" "}
+            <span className={a.situacao === "pendente" && !empresa ? "font-semibold text-marca-escura" : ""}>
+              {empresa ? sit.rotuloEmpresa : sit.rotulo}
+            </span>
+            {a.fotos.length > 0 && <> · 📷 {a.fotos.length}</>}
+          </p>
+        </div>
+      </Link>
+    </li>
   );
 }
