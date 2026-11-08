@@ -65,7 +65,7 @@ export function ConfirmarAgendamento({
         </Campo>
       </div>
       <Campo rotulo="Duração" dica={tipo === "servico" ? "Serviços de vários dias terminam às 18h do último dia." : undefined}>
-        <select name="duracao" defaultValue={tipo === "lavagem" ? "60" : "d1"} className="campo">
+        <select name="duracao" defaultValue={tipo === "lavagem" ? "120" : "d1"} className="campo">
           {DURACOES.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
         </select>
       </Campo>

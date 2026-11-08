@@ -5,8 +5,8 @@ import { FotoVeiculo, ItemApontamento, ItemDocumento, ItemManutencao, ItemServic
 import { Aviso, Cartao } from "@/components/ui";
 import { ItemListaOrcamento } from "@/components/orcamento";
 import { exigirUsuario } from "@/lib/auth";
-import { listarApontamentos, listarDocumentosVeiculos, listarOrcamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
-import { PRIORIDADES, apontamentoAberto, formatarData, formatarValor, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
+import { listarApontamentos, listarDocumentosVeiculos, listarLeiturasKm, listarOrcamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { PRIORIDADES, REGISTROS_PARA_MEDIA, apontamentoAberto, formatarData, formatarValor, kmEstimado, kmPorMes, nomeVeiculo, registrosFaltando, ritmoDoVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
 export const metadata: Metadata = { title: "Veículo" };
@@ -18,12 +18,13 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
 
-  const [servicos, manutencoes, apontamentos, documentos, orcamentos, fotos] = await Promise.all([
+  const [servicos, manutencoes, apontamentos, documentos, orcamentos, leituras, fotos] = await Promise.all([
     listarServicos(id),
     listarManutencoes([id]),
     listarApontamentos([id]),
     listarDocumentosVeiculos([id]),
     listarOrcamentos([id]),
+    listarLeiturasKm(id),
     urlsDasFotos([veiculo.foto]),
   ]);
   const admin = usuario.papel === "admin";
@@ -32,9 +33,13 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
     .sort((a, b) => PRIORIDADES[a.prioridade].ordem - PRIORIDADES[b.prioridade].ordem);
   const fechados = apontamentos.filter((a) => !apontamentoAberto(a));
   const deOutroDono = veiculo.dono_id !== usuario.id;
+  const ritmo = ritmoDoVeiculo(veiculo);
+  const temManutencaoPorKm = manutencoes.some((m) => m.proximo_km != null);
+  const faltam = registrosFaltando(leituras);
   manutencoes.sort(
     (a, b) =>
-      ORDEM[situacaoManutencao(a, veiculo.km_atual).situacao] - ORDEM[situacaoManutencao(b, veiculo.km_atual).situacao],
+      ORDEM[situacaoManutencao(a, veiculo.km_atual, undefined, ritmo).situacao] -
+      ORDEM[situacaoManutencao(b, veiculo.km_atual, undefined, ritmo).situacao],
   );
 
   return (
@@ -48,7 +53,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
       {sp.registrado && <Aviso tipo="sucesso">Serviço registrado no histórico.</Aviso>}
       {sp.apontado && <Aviso tipo="sucesso">Apontamento registrado. O cliente foi avisado.</Aviso>}
 
-      <div className="overflow-hidden rounded-2xl border border-borda bg-white lg:grid lg:grid-cols-[1.1fr_1fr]">
+      <div className="overflow-hidden rounded-2xl border border-borda bg-white lg:grid lg:grid-cols-[1.1fr_1fr] [&>*]:min-w-0">
         <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="aspect-[16/9] w-full lg:aspect-auto lg:h-full" />
         <div className="space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
@@ -73,24 +78,47 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           )}
           <FormKm veiculoId={veiculo.id} kmAtual={veiculo.km_atual} />
           <p className="text-xs text-suave">Quilometragem atualizada em {formatarData(veiculo.km_atualizado_em)}</p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {admin && (
-              <Link href={`/garagem/${veiculo.id}/apontamentos/novo`} className="botao-escuro flex-1 text-sm">
-                + Apontamento
+          {ritmo.kmPorDia ? (
+            <p className="text-xs text-suave">
+              Ritmo de uso: <strong className="text-texto">~{kmPorMes(ritmo.kmPorDia).toLocaleString("pt-BR")} km/mês</strong> · km estimado hoje:{" "}
+              {kmEstimado(ritmo).toLocaleString("pt-BR")} km
+            </p>
+          ) : (
+            temManutencaoPorKm && (
+              <div className="rounded-xl border border-marca/30 bg-marca-clara/60 p-3 text-sm">
+                <p className="font-semibold text-tinta">Ajude a prever suas manutenções por km</p>
+                <p className="text-suave">
+                  Atualize a quilometragem uma vez por mês. Com {REGISTROS_PARA_MEDIA} registros calculamos o seu ritmo de uso e
+                  avisamos a data certa da próxima troca.{" "}
+                  <strong className="text-texto">
+                    {REGISTROS_PARA_MEDIA - faltam} de {REGISTROS_PARA_MEDIA} registros
+                  </strong>
+                </p>
+              </div>
+            )
+          )}
+          <div className="space-y-2 pt-1">
+            <div className="flex gap-2">
+              {admin && (
+                <Link href={`/garagem/${veiculo.id}/apontamentos/novo`} className="botao-escuro flex-1 px-3 text-sm">
+                  + Apontamento
+                </Link>
+              )}
+              <Link href={`/garagem/${veiculo.id}/servicos/novo`} className="botao-primario flex-1 px-3 text-sm">
+                + Registrar serviço
               </Link>
-            )}
-            <Link href={`/garagem/${veiculo.id}/servicos/novo`} className="botao-primario flex-1 text-sm">
-              + Registrar serviço
-            </Link>
-            <Link href={`/agendamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno flex-1 text-sm">
-              Agendar
-            </Link>
-            <Link href={`/orcamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno flex-1 text-sm">
-              {admin ? "Enviar orçamento" : "Pedir orçamento"}
-            </Link>
-            <Link href={`/garagem/${veiculo.id}/editar`} className="botao-contorno text-sm">
-              Editar
-            </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Link href={`/agendamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno px-2 py-2.5 text-sm">
+                Agendar
+              </Link>
+              <Link href={`/orcamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno px-2 py-2.5 text-sm">
+                Orçamento
+              </Link>
+              <Link href={`/garagem/${veiculo.id}/editar`} className="botao-contorno px-2 py-2.5 text-sm">
+                Editar
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -134,7 +162,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
         </Cartao>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] [&>*]:min-w-0">
         <Cartao>
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Próximas manutenções</h2>
@@ -154,7 +182,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           ) : (
             <ul className="divide-y divide-borda">
               {manutencoes.map((m) => (
-                <ItemManutencao key={m.id} m={m} kmAtual={veiculo.km_atual} />
+                <ItemManutencao key={m.id} m={m} kmAtual={veiculo.km_atual} ritmo={ritmo} />
               ))}
             </ul>
           )}

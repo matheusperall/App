@@ -3,7 +3,9 @@
 /** Funcionamento: segunda (1) a sexta (5), das 8h às 18h (horário de Brasília). */
 export const FUNCIONAMENTO = { dias: [1, 2, 3, 4, 5], abre: 8, fecha: 18 };
 /** Duração de uma lavagem, em minutos. */
-export const LAVAGEM_MINUTOS = 60;
+export const LAVAGEM_MINUTOS = 120;
+/** Quantos veículos podem ser lavados ao mesmo tempo. */
+export const LAVAGENS_SIMULTANEAS = 2;
 /** De quanto em quanto tempo começa um horário de lavagem. */
 export const INTERVALO_MINUTOS = 60;
 /** Antecedência mínima para agendar online (horas). */
@@ -64,10 +66,11 @@ export function partesBrasilia(d: Date) {
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
 /**
- * Horários livres para lavagem: dias úteis, dentro do funcionamento,
- * sem conflito com os intervalos ocupados (Google Agenda + agendamentos do app).
+ * Horários livres para lavagem: dias úteis, dentro do funcionamento.
+ * - bloqueios: eventos "ocupado" da sua Google Agenda (folga, feriado…) — fecham o horário inteiro
+ * - lavagens: lavagens já marcadas no app — o horário fecha quando atinge LAVAGENS_SIMULTANEAS
  */
-export function horariosLivres(ocupados: Intervalo[], agora = new Date()) {
+export function horariosLivres(bloqueios: Intervalo[], agora = new Date(), lavagens: Intervalo[] = []) {
   const minimo = agora.getTime() + ANTECEDENCIA_HORAS * 3600_000;
   const hojeBr = partesBrasilia(agora).dia;
   const dias: { dia: string; horarios: string[] }[] = [];
@@ -84,7 +87,8 @@ export function horariosLivres(ocupados: Intervalo[], agora = new Date()) {
       const inicio = dataHora(dia, hora);
       const fim = new Date(inicio.getTime() + LAVAGEM_MINUTOS * 60_000);
       if (inicio.getTime() < minimo) continue;
-      if (ocupados.some((o) => inicio < o.fim && fim > o.inicio)) continue;
+      if (bloqueios.some((o) => inicio < o.fim && fim > o.inicio)) continue;
+      if (!cabeMaisUma(lavagens, inicio, fim)) continue;
       horarios.push(hora);
     }
     if (horarios.length) dias.push({ dia, horarios });
@@ -110,4 +114,16 @@ export function formatarQuando(inicio: string | null, fim?: string | null) {
   );
   const f = fim ? partesBrasilia(new Date(fim)) : null;
   return `${maiuscula(diaTxt)}, ${i.hora}${f && f.dia === i.dia ? `–${f.hora}` : ""}`;
+}
+
+/**
+ * Verifica se cabe mais uma lavagem no intervalo: em nenhum momento entre início e fim
+ * pode haver LAVAGENS_SIMULTANEAS lavagens ao mesmo tempo.
+ */
+export function cabeMaisUma(lavagens: Intervalo[], inicio: Date, fim: Date) {
+  const sobrepostas = lavagens.filter((l) => inicio < l.fim && fim > l.inicio);
+  if (sobrepostas.length < LAVAGENS_SIMULTANEAS) return true;
+  // Pico de lavagens simultâneas dentro do intervalo (varre os pontos de início)
+  const pontos = [inicio.getTime(), ...sobrepostas.map((l) => l.inicio.getTime())].filter((t) => t >= inicio.getTime() && t < fim.getTime());
+  return !pontos.some((t) => sobrepostas.filter((l) => l.inicio.getTime() <= t && l.fim.getTime() > t).length >= LAVAGENS_SIMULTANEAS);
 }

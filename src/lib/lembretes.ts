@@ -1,6 +1,12 @@
 import "server-only";
+import { recalcularRitmo } from "@/lib/ritmo";
 import {
   TIPOS_DOCUMENTO,
+  dataPrevistaKm,
+  kmEstimado,
+  registrosFaltando,
+  ritmoDoVeiculo,
+  type LeituraKm,
   diasEntre,
   formatarData,
   hojeISO,
@@ -18,8 +24,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Manutenções: avisa 30 dias antes, 7 dias antes, no dia, e uma vez por mês enquanto estiver vencida.
  *              Pela quilometragem: quando faltar 1.000 km e quando passar do km.
  * Documentos:  avisa 30, 7 e 1 dia antes, no dia, e uma vez por mês enquanto estiver vencido.
- * Hodômetro:   uma vez por mês pede para atualizar a quilometragem se ela está há mais de 45 dias sem atualizar
- *              (os lembretes por km dependem disso).
+ * Hodômetro:   enquanto não houver ritmo de uso calculado, pede o km uma vez por mês até o cliente
+ *              informar 3 registros (ou até um serviço registrar o km). Com o ritmo, a manutenção por km
+ *              ganha uma data prevista e é avisada como as demais (30 e 7 dias antes, no dia…).
  *
  * Cada aviso tem uma "chave" registrada em lembretes_enviados, para nunca repetir o mesmo aviso.
  */
@@ -47,23 +54,54 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
 
   const itens: Item[] = [];
 
+  // ---------------- Ritmo de uso (recalcula para quem tem manutenção por km) ----------------
+  const { data: porKm } = await admin.from("manutencoes").select("veiculo_id").not("proximo_km", "is", null);
+  const veiculosPorKm = [...new Set((porKm ?? []).map((m) => m.veiculo_id as string))];
+  for (const id of veiculosPorKm) await recalcularRitmo(admin, id);
+
   // ---------------- Manutenções ----------------
-  const { data: manutencoes } = await admin
+  const consultaM = await admin
     .from("manutencoes")
-    .select("id, tipo, proxima_data, proximo_km, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido, km_atual)");
+    .select("id, tipo, proxima_data, proximo_km, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido, km_atual, km_atualizado_em, km_por_dia)");
+  let manutencoes: unknown[] | null = consultaM.data;
+  if (consultaM.error?.code === "42703") {
+    // banco ainda sem o 0008
+    ({ data: manutencoes } = await admin
+      .from("manutencoes")
+      .select("id, tipo, proxima_data, proximo_km, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido, km_atual, km_atualizado_em)"));
+  }
 
   for (const m of (manutencoes ?? []) as unknown as {
     id: string;
     tipo: string;
     proxima_data: string | null;
     proximo_km: number | null;
-    veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; km_atual: number } | null;
+    veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; km_atual: number; km_atualizado_em: string; km_por_dia?: number | null } | null;
   }[]) {
     const v = m.veiculo;
     if (!v) continue;
     const nome = rotuloManutencao(m.tipo);
     const carro = nomeVeiculo(v);
     const link = `/garagem/${v.id}`;
+
+    const ritmo = ritmoDoVeiculo(v);
+    const dataKm = m.proximo_km != null ? dataPrevistaKm(ritmo, m.proximo_km) : null;
+
+    // Pelo km, com ritmo de uso: vira uma data prevista (quando chega antes da data limite)
+    if (dataKm && m.proximo_km != null && (!m.proxima_data || dataKm < m.proxima_data)) {
+      const dias = diasEntre(hoje, dataKm);
+      const etapa = etapaPorData(dias, [7, 30]);
+      if (etapa) {
+        itens.push({
+          chave: `m:${m.id}:${m.proximo_km}:est-${etapa}`,
+          usuarioId: v.dono_id,
+          titulo: `${dias < 0 ? "⚠️ " : ""}${nome}: ${dias < 0 ? "km provavelmente atingido" : dias === 0 ? "km previsto para hoje" : `km previsto em ${dias} ${dias === 1 ? "dia" : "dias"}`}`,
+          corpo: `${carro} (${v.placa}) — pelo seu ritmo de uso, os ${m.proximo_km.toLocaleString("pt-BR")} km chegam por volta de ${formatarData(dataKm)}. Agende pelo app.`,
+          link,
+        });
+        continue;
+      }
+    }
 
     // Pela data
     if (m.proxima_data) {
@@ -82,7 +120,7 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
     }
     // Pela quilometragem
     if (m.proximo_km != null) {
-      const falta = m.proximo_km - v.km_atual;
+      const falta = m.proximo_km - kmEstimado(ritmo, hoje);
       const etapa = falta <= 0 ? "km-passou" : falta <= 1000 ? "km-breve" : null;
       if (etapa) {
         itens.push({
@@ -123,26 +161,30 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
     });
   }
 
-  // ---------------- Hodômetro desatualizado ----------------
-  const comKm = new Set(
-    ((manutencoes ?? []) as unknown as { proximo_km: number | null; veiculo: { id: string } | null }[])
-      .filter((m) => m.proximo_km != null && m.veiculo)
-      .map((m) => m.veiculo!.id),
-  );
-  if (comKm.size) {
-    const { data: veiculos } = await admin
+  // ---------------- Pedido mensal do km (até termos o ritmo de uso) ----------------
+  if (veiculosPorKm.length) {
+    const { data: veiculos, error: erroV } = await admin
       .from("veiculos")
-      .select("id, dono_id, placa, marca, modelo, apelido, km_atualizado_em")
-      .in("id", [...comKm]);
-    for (const v of veiculos ?? []) {
-      if (diasEntre(v.km_atualizado_em.slice(0, 10), hoje) < 45) continue;
-      itens.push({
-        chave: `km:${v.id}:${hoje.slice(0, 7)}`,
-        usuarioId: v.dono_id,
-        titulo: "Atualize a quilometragem 🚗",
-        corpo: `Informe o km atual do ${nomeVeiculo(v)} (${v.placa}) para mantermos seus lembretes de manutenção em dia.`,
-        link: `/garagem/${v.id}`,
-      });
+      .select("id, dono_id, placa, marca, modelo, apelido, km_atualizado_em, km_por_dia")
+      .in("id", veiculosPorKm)
+      .is("km_por_dia", null);
+    if (!erroV) {
+      for (const v of veiculos ?? []) {
+        if (diasEntre(v.km_atualizado_em.slice(0, 10), hoje) < 25) continue; // já informou neste mês
+        const { data: leituras } = await admin.from("leituras_km").select("km, data, origem").eq("veiculo_id", v.id);
+        const faltam = registrosFaltando((leituras ?? []) as LeituraKm[], hoje);
+        itens.push({
+          chave: `km:${v.id}:${hoje.slice(0, 7)}`,
+          usuarioId: v.dono_id,
+          titulo: "Qual o km do seu carro hoje? 🚗",
+          corpo: `Informe a quilometragem do ${nomeVeiculo(v)} (${v.placa}). ${
+            faltam > 0
+              ? `Faltam ${faltam} ${faltam === 1 ? "registro mensal" : "registros mensais"} para calcularmos seu ritmo de uso e avisarmos a data certa das manutenções.`
+              : "Assim mantemos a previsão das suas manutenções em dia."
+          }`,
+          link: `/garagem/${v.id}`,
+        });
+      }
     }
   }
 

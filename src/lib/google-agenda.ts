@@ -86,7 +86,8 @@ export type Evento = {
   descricao: string;
   inicio: Date;
   fim: Date;
-  /** false = não bloqueia a agenda (serviços de parceiros não impedem lavagens) */
+  /** Lavagem ou serviço (só muda a cor). Todos entram como "livre" para não fechar a agenda:
+   *  a capacidade de lavagens é controlada pelo app; "ocupado" fica só para os seus bloqueios. */
   ocupa: boolean;
 };
 
@@ -98,7 +99,7 @@ export async function criarEvento(e: Evento) {
       description: e.descricao,
       start: { dateTime: e.inicio.toISOString(), timeZone: "America/Sao_Paulo" },
       end: { dateTime: e.fim.toISOString(), timeZone: "America/Sao_Paulo" },
-      transparency: e.ocupa ? "opaque" : "transparent",
+      transparency: "transparent",
       colorId: e.ocupa ? "7" : "5",
     }),
   });
@@ -113,7 +114,7 @@ export async function atualizarEvento(id: string, e: Evento) {
       description: e.descricao,
       start: { dateTime: e.inicio.toISOString(), timeZone: "America/Sao_Paulo" },
       end: { dateTime: e.fim.toISOString(), timeZone: "America/Sao_Paulo" },
-      transparency: e.ocupa ? "opaque" : "transparent",
+      transparency: "transparent",
     }),
   });
 }

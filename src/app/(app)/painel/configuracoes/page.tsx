@@ -57,9 +57,8 @@ export default async function ConfiguracoesPage() {
         {googleConfigurado() ? (
           <>
             <p className="text-sm text-suave">
-              Os agendamentos confirmados aparecem na sua agenda. Lavagens bloqueiam o horário; serviços de parceiros
-              aparecem como “livre” para não impedir lavagens. Para bloquear um horário (folga, feriado), crie um evento
-              comum na sua agenda.
+              Os agendamentos confirmados aparecem na sua agenda (lavagens de 2 horas, até 2 veículos por horário). Para
+              bloquear um horário (folga, feriado), crie um evento comum, marcado como “ocupado”, na sua agenda.
             </p>
             <p className="text-xs text-suave">Conta de serviço: <code>{emailContaServico()}</code></p>
             <TestarGoogle />

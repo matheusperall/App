@@ -18,20 +18,25 @@ export const emailConfigurado = () => Boolean(resendChave());
  * manda notificação para os celulares inscritos e um e-mail (se configurado).
  * Nunca lança erro: falhas de envio não podem atrapalhar a ação principal.
  */
-export async function notificar(usuarioIds: string[], aviso: Aviso, siteUrl: string) {
+export async function notificar(usuarioIds: string[], aviso: Aviso, siteUrl: string, opcoes: { email?: boolean } = {}) {
   const ids = [...new Set(usuarioIds)].filter(Boolean);
   const admin = createAdminClient();
   if (!admin || ids.length === 0) return;
 
   try {
-    await admin.from("notificacoes").insert(
-      ids.map((usuario_id) => ({ usuario_id, titulo: aviso.titulo, corpo: aviso.corpo ?? null, link: aviso.link ?? null })),
-    );
+    for (let i = 0; i < ids.length; i += 500) {
+      await admin.from("notificacoes").insert(
+        ids.slice(i, i + 500).map((usuario_id) => ({ usuario_id, titulo: aviso.titulo, corpo: aviso.corpo ?? null, link: aviso.link ?? null })),
+      );
+    }
   } catch (e) {
     console.error("[notificar] central de avisos", e);
   }
 
-  await Promise.allSettled([enviarPush(admin, ids, aviso), enviarEmails(admin, ids, aviso, siteUrl)]);
+  await Promise.allSettled([
+    enviarPush(admin, ids, aviso),
+    opcoes.email === false ? Promise.resolve() : enviarEmails(admin, ids, aviso, siteUrl),
+  ]);
 }
 
 /** Avisa todos os administradores (a empresa). */
@@ -48,16 +53,17 @@ async function enviarPush(admin: AdminClient, ids: string[], aviso: Aviso) {
   if (!pushConfigurado()) return;
   webpush.setVapidDetails("mailto:contato@semprezero.app", vapidPublica(), vapidPrivada());
 
-  const { data: inscricoes } = await admin
-    .from("push_inscricoes")
-    .select("id, endpoint, p256dh, auth")
-    .in("usuario_id", ids);
+  const inscricoes: { id: string; endpoint: string; p256dh: string; auth: string }[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await admin.from("push_inscricoes").select("id, endpoint, p256dh, auth").in("usuario_id", ids.slice(i, i + 200));
+    inscricoes.push(...(data ?? []));
+  }
 
   const carga = JSON.stringify({ titulo: aviso.titulo, corpo: aviso.corpo ?? "", link: aviso.link ?? "/notificacoes" });
   const expiradas: string[] = [];
 
   await Promise.allSettled(
-    (inscricoes ?? []).map(async (i) => {
+    inscricoes.map(async (i) => {
       try {
         await webpush.sendNotification({ endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } }, carga, {
           TTL: 60 * 60 * 24,
@@ -77,26 +83,26 @@ async function enviarPush(admin: AdminClient, ids: string[], aviso: Aviso) {
 
 async function enviarEmails(admin: AdminClient, ids: string[], aviso: Aviso, siteUrl: string) {
   if (!emailConfigurado()) return;
-  const { data: perfis } = await admin.from("perfis").select("email, nome").in("id", ids);
-  const link = `${siteUrl}${aviso.link ?? "/notificacoes"}`;
+  const perfis: { email: string | null; nome: string | null }[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await admin.from("perfis").select("email, nome").in("id", ids.slice(i, i + 200));
+    perfis.push(...(data ?? []));
+  }
+  const link = aviso.link?.startsWith("http") ? aviso.link : `${siteUrl}${aviso.link ?? "/notificacoes"}`;
+  const emails = perfis
+    .filter((p) => p.email)
+    .map((p) => ({ from: remetente(), to: [p.email as string], subject: aviso.titulo, html: modeloEmail(p.nome, aviso, link) }));
 
-  await Promise.allSettled(
-    (perfis ?? [])
-      .filter((p) => p.email)
-      .map(async (p) => {
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${resendChave()}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: remetente(),
-            to: [p.email],
-            subject: aviso.titulo,
-            html: modeloEmail(p.nome, aviso, link),
-          }),
-        });
-        if (!r.ok) console.error("[notificar] e-mail", r.status, await r.text());
-      }),
-  );
+  // Envio em lotes de até 100 (limite do Resend por chamada)
+  for (let i = 0; i < emails.length; i += 100) {
+    const lote = emails.slice(i, i + 100);
+    const r = await fetch(lote.length === 1 ? "https://api.resend.com/emails" : "https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendChave()}`, "Content-Type": "application/json" },
+      body: JSON.stringify(lote.length === 1 ? lote[0] : lote),
+    });
+    if (!r.ok) console.error("[notificar] e-mail", r.status, await r.text());
+  }
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

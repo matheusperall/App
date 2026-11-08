@@ -49,8 +49,8 @@ Depois faça **Deployments → ⋯ → Redeploy**.
 No app, abra **Painel → Configurações → 📅 Google Agenda → Testar conexão**.
 
 ## Como o app usa a agenda
-- **Lavagem:** o cliente só vê horários livres (dias úteis, 8h–18h). Qualquer evento
-  "ocupado" na sua agenda bloqueia o horário: use isso para folgas e feriados.
-- **Outros serviços:** você confirma o dia e a duração; o evento entra na agenda como
-  "livre", para não bloquear as lavagens.
+- **Lavagem (2 horas, até 2 veículos ao mesmo tempo):** o cliente só vê horários livres (dias úteis, 8h–18h). Qualquer evento
+  "ocupado" criado por você na agenda bloqueia o horário: use isso para folgas e feriados.
+- **Outros serviços:** você confirma o dia e a duração. Os eventos criados pelo app entram como
+  "livre", para que a capacidade de lavagens seja controlada pelo próprio app.
 - Cancelamentos removem o evento da agenda automaticamente.

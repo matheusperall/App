@@ -56,7 +56,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           <Link href="/garagem/novo" className="botao-primario mt-2">Cadastrar meu veículo</Link>
         </Cartao>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {veiculos.map((v) => (
             <CartaoVeiculo
               key={v.id}

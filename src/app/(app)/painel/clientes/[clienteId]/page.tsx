@@ -51,7 +51,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       {veiculos.length === 0 ? (
         <Cartao><p className="text-sm text-suave">Nenhum veículo cadastrado para este cliente.</p></Cartao>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {veiculos.map((v) => (
             <CartaoVeiculo key={v.id} veiculo={v} fotoUrl={v.foto ? fotos[v.foto] : undefined} manutencoes={manutencoes.filter((m) => m.veiculo_id === v.id)} apontamentos={apontamentos.filter((a) => a.veiculo_id === v.id)} documentos={documentos.filter((d) => d.veiculo_id === v.id)} />
           ))}

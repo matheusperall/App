@@ -21,6 +21,7 @@ aparecem, mas login e cadastro não funcionam.
    5. `0005_lembretes.sql` — documentos/vencimentos e lembretes automáticos
    6. `0006_orcamentos.sql` — pedidos de orçamento
    7. `0007_agendamentos.sql` — agendamentos
+   8. `0008_km_e_comunicados.sql` — ritmo de uso (previsão por km) e comunicados
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

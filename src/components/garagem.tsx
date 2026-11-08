@@ -7,6 +7,8 @@ import {
   TIPOS_DOCUMENTO,
   apontamentoAberto,
   situacaoDocumento,
+  ritmoDoVeiculo,
+  type Ritmo,
   type Apontamento,
   type Documento,
   descreverPrazo,
@@ -66,11 +68,11 @@ export function SeloSituacao({ situacao }: { situacao: Situacao }) {
 }
 
 /** Resumo de pendências de um veículo, para o cartão da lista */
-export function contarAlertas(manutencoes: Manutencao[], kmAtual: number) {
+export function contarAlertas(manutencoes: Manutencao[], kmAtual: number, ritmo?: Ritmo) {
   let vencidas = 0;
   let emBreve = 0;
   for (const m of manutencoes) {
-    const s = situacaoManutencao(m, kmAtual).situacao;
+    const s = situacaoManutencao(m, kmAtual, undefined, ritmo).situacao;
     if (s === "vencida") vencidas++;
     if (s === "em_breve") emBreve++;
   }
@@ -90,7 +92,7 @@ export function CartaoVeiculo({
   apontamentos?: Apontamento[];
   documentos?: Documento[];
 }) {
-  const m = contarAlertas(manutencoes, veiculo.km_atual);
+  const m = contarAlertas(manutencoes, veiculo.km_atual, ritmoDoVeiculo(veiculo));
   const docs = documentos.map((d) => situacaoDocumento(d.vencimento).situacao);
   const vencidas = m.vencidas + docs.filter((x) => x === "vencida").length;
   const emBreve = m.emBreve + docs.filter((x) => x === "em_breve").length;
@@ -137,8 +139,8 @@ export function CartaoVeiculo({
   );
 }
 
-export function ItemManutencao({ m, kmAtual }: { m: Manutencao; kmAtual: number }) {
-  const { situacao, dias, kmRestante } = situacaoManutencao(m, kmAtual);
+export function ItemManutencao({ m, kmAtual, ritmo }: { m: Manutencao; kmAtual: number; ritmo?: Ritmo }) {
+  const { situacao, dias, kmRestante, dataKm } = situacaoManutencao(m, kmAtual, undefined, ritmo);
   const proxima = [m.proxima_data && formatarData(m.proxima_data), m.proximo_km != null && formatarKm(m.proximo_km)]
     .filter(Boolean)
     .join(" ou ");
@@ -149,6 +151,7 @@ export function ItemManutencao({ m, kmAtual }: { m: Manutencao; kmAtual: number 
         <p className="text-sm text-suave">
           Próxima: {proxima || "—"}
           {situacao !== "sem_dados" && <span className="block text-xs">{descreverPrazo(dias, kmRestante)}</span>}
+          {dataKm && <span className="block text-xs text-marca-escura">Previsão para {formatarKm(m.proximo_km)}: ~{formatarData(dataKm)}</span>}
         </p>
       </div>
       <SeloSituacao situacao={situacao} />

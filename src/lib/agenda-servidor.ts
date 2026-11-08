@@ -5,11 +5,15 @@ import { googleConfigurado, ocupadosGoogle } from "@/lib/google-agenda";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Intervalos ocupados para lavagem: eventos da Google Agenda da empresa
- * + lavagens já confirmadas no app (caso a Google Agenda não esteja configurada).
+ * Para a lavagem: bloqueios da Google Agenda da empresa (eventos "ocupado")
+ * e as lavagens já confirmadas no app (que contam para o limite simultâneo).
  */
-export async function intervalosOcupados(de: Date, ate: Date): Promise<{ ocupados: Intervalo[]; aviso?: string }> {
-  const ocupados: Intervalo[] = [];
+export async function intervalosOcupados(
+  de: Date,
+  ate: Date,
+): Promise<{ bloqueios: Intervalo[]; lavagens: Intervalo[]; aviso?: string }> {
+  const bloqueios: Intervalo[] = [];
+  const lavagens: Intervalo[] = [];
   let aviso: string | undefined;
 
   const admin = createAdminClient();
@@ -21,23 +25,24 @@ export async function intervalosOcupados(de: Date, ate: Date): Promise<{ ocupado
       .eq("tipo", "lavagem")
       .gte("fim", de.toISOString())
       .lte("inicio", ate.toISOString());
-    for (const a of data ?? []) if (a.inicio && a.fim) ocupados.push({ inicio: new Date(a.inicio), fim: new Date(a.fim) });
+    for (const a of data ?? []) if (a.inicio && a.fim) lavagens.push({ inicio: new Date(a.inicio), fim: new Date(a.fim) });
   }
 
   if (googleConfigurado()) {
     try {
-      ocupados.push(...(await ocupadosGoogle(de, ate)));
+      // Os eventos criados pelo app entram como "livre", então aqui só vêm os seus bloqueios
+      bloqueios.push(...(await ocupadosGoogle(de, ate)));
     } catch (e) {
       console.error("[agenda]", (e as Error).message);
       aviso = "Não conseguimos consultar a agenda agora; os horários podem não estar atualizados.";
     }
   }
-  return { ocupados, aviso };
+  return { bloqueios, lavagens, aviso };
 }
 
 export async function horariosDisponiveis(agora = new Date()) {
   if (!isSupabaseConfigured) return { dias: horariosLivres([], agora), aviso: undefined };
   const ate = new Date(agora.getTime() + (DIAS_A_FRENTE + 1) * 86400_000);
-  const { ocupados, aviso } = await intervalosOcupados(agora, ate);
-  return { dias: horariosLivres(ocupados, agora), aviso };
+  const { bloqueios, lavagens, aviso } = await intervalosOcupados(agora, ate);
+  return { dias: horariosLivres(bloqueios, agora, lavagens), aviso };
 }

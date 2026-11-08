@@ -75,9 +75,10 @@ export default async function PainelPage() {
         })}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Link href="/painel/clientes/novo" className="botao-primario">+ Cadastrar cliente</Link>
         <Link href="/painel/clientes" className="botao-contorno">Buscar cliente ou placa</Link>
+        <Link href="/painel/comunicados" className="botao-escuro">📣 Enviar comunicado</Link>
       </div>
 
       <Cartao className="p-0">

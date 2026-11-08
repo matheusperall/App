@@ -14,6 +14,7 @@ import {
   placaValida,
 } from "@/lib/garagem";
 import { createClient } from "@/lib/supabase/server";
+import { registrarLeitura } from "@/lib/ritmo";
 
 const DEMO: EstadoForm = { erro: "Modo demonstração: conecte o banco de dados para salvar." };
 
@@ -62,10 +63,12 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
 
   // Dono: a empresa pode cadastrar para um cliente; o cliente, só para si.
   let donoId = usuario.id;
+  let kmAnterior = 0;
   if (id) {
-    const { data: atual } = await supabase.from("veiculos").select("dono_id").eq("id", id).maybeSingle();
+    const { data: atual } = await supabase.from("veiculos").select("dono_id, km_atual").eq("id", id).maybeSingle();
     if (!atual) return { erro: "Veículo não encontrado." };
     donoId = atual.dono_id;
+    kmAnterior = atual.km_atual;
   } else if (usuario.papel === "admin" && texto(form, "dono_id")) {
     donoId = texto(form, "dono_id");
   }
@@ -111,6 +114,11 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
     return { erro: "Não foi possível salvar o veículo. Tente novamente." };
   }
 
+  // Histórico do hodômetro: leitura inicial no cadastro, ou nova leitura se o km mudou na edição
+  if (km > 0 && (!id || km !== kmAnterior)) {
+    await registrarLeitura(supabase, resultado.data.id, km, !id ? "cadastro" : usuario.papel === "admin" ? "empresa" : "cliente");
+  }
+
   revalidatePath("/garagem");
   redirect(`/garagem/${resultado.data.id}`);
 }
@@ -144,6 +152,7 @@ export async function atualizarKm(_: EstadoForm, form: FormData): Promise<Estado
     .update({ km_atual: km, km_atualizado_em: new Date().toISOString() })
     .eq("id", id);
   if (error) return { erro: "Não foi possível atualizar." };
+  await registrarLeitura(supabase, id, km, usuario.papel === "admin" ? "empresa" : "cliente");
 
   revalidatePath(`/garagem/${id}`);
   return { sucesso: "Quilometragem atualizada." };
@@ -211,6 +220,9 @@ export async function registrarServico(_: EstadoForm, form: FormData): Promise<E
       { onConflict: "veiculo_id,tipo" },
     );
   }
+
+  // O km informado no serviço entra no histórico do hodômetro (e ajuda a calcular o ritmo de uso)
+  if (km != null) await registrarLeitura(supabase, veiculoId, km, "servico", data);
 
   // Atualiza o hodômetro se o serviço trouxe uma quilometragem maior
   if (km != null && km > veiculo.km_atual) {

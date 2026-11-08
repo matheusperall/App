@@ -2,7 +2,7 @@ import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Agendamento } from "@/lib/agenda";
-import { TIPOS_DOCUMENTO, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { TIPOS_DOCUMENTO, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -13,7 +13,7 @@ export type Cliente = Dono & { criado_em: string; veiculos: { id: string; placa:
 
 const CAMPOS_BASICOS =
   "id, dono_id, placa, marca, modelo, ano, cor, apelido, km_atual, km_atualizado_em, foto";
-const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod`;
+const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod, km_por_dia`;
 
 /** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
 const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
@@ -239,7 +239,7 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
   const supabase = await createClient();
   const hoje = hojeISO();
   const limite = somarMeses(hoje, 1);
-  const veic = "veiculo:veiculos (id, placa, marca, modelo, apelido, km_atual, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))";
+  const veic = "veiculo:veiculos (id, placa, marca, modelo, apelido, km_atual, km_atualizado_em, km_por_dia, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))";
 
   const [m, d] = await Promise.all([
     supabase.from("manutencoes").select(`id, tipo, proxima_data, proximo_km, ${veic}`).limit(500),
@@ -251,13 +251,13 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
       .limit(200),
   ]);
 
-  type V = { id: string; placa: string; marca: string; modelo: string; apelido: string | null; km_atual: number; dono: Dono | null } | null;
+  type V = { id: string; placa: string; marca: string; modelo: string; apelido: string | null; km_atual: number; km_atualizado_em: string; km_por_dia?: number | null; dono: Dono | null } | null;
   const nome = (v: NonNullable<V>) => v.apelido || `${v.marca} ${v.modelo}`.trim();
   const lista: Vencimento[] = [];
 
   for (const x of (m.data ?? []) as unknown as { id: string; tipo: string; proxima_data: string | null; proximo_km: number | null; veiculo: V }[]) {
     if (!x.veiculo) continue;
-    const s = situacaoManutencao(x, x.veiculo.km_atual, hoje);
+    const s = situacaoManutencao(x, x.veiculo.km_atual, hoje, ritmoDoVeiculo(x.veiculo));
     if (s.situacao !== "vencida" && s.situacao !== "em_breve") continue;
     lista.push({
       chave: `m-${x.id}`,
@@ -283,6 +283,14 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
     }
   }
   return lista.sort((a, b) => Number(b.vencido) - Number(a.vencido) || (a.data ?? "9999").localeCompare(b.data ?? "9999"));
+}
+
+export async function listarLeiturasKm(veiculoId: string): Promise<LeituraKm[]> {
+  if (!isSupabaseConfigured) return DEMO.leituras;
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("leituras_km").select("km, data, origem").eq("veiculo_id", veiculoId).order("data");
+  if (faltaTabela(error)) return [];
+  return (data as LeituraKm[] | null) ?? [];
 }
 
 // ---------------------------------------------------------------------------
@@ -441,6 +449,7 @@ const DEMO = {
       km_atual: 48200,
       km_atualizado_em: `${hoje}T12:00:00Z`,
       foto: null,
+      km_por_dia: 27.0,
     },
   ] satisfies Veiculo[],
   servicos: [
@@ -516,6 +525,11 @@ const DEMO = {
     { id: "demo-d1", dono_id: "demo", veiculo_id: "demo-civic", tipo: "licenciamento", descricao: null, vencimento: somarMeses(hoje, 2) },
     { id: "demo-d2", dono_id: "demo", veiculo_id: "demo-civic", tipo: "seguro", descricao: "Porto Seguro", vencimento: somarDias(hoje, 12) },
   ] satisfies Documento[],
+  leituras: [
+    { km: 39000, data: somarMeses(hoje, -11), origem: "servico" },
+    { km: 47100, data: somarMeses(hoje, -2), origem: "servico" },
+    { km: 48200, data: hoje, origem: "cliente" },
+  ] satisfies LeituraKm[],
   orcamentos: [
     {
       id: "demo-o1",

@@ -21,6 +21,7 @@ export type Veiculo = {
   fipe_marca_cod?: string | null;
   fipe_modelo_cod?: string | null;
   fipe_ano_cod?: string | null;
+  km_por_dia?: number | null;
 };
 
 export type Servico = {
@@ -138,15 +139,28 @@ export type Situacao = "vencida" | "em_breve" | "em_dia" | "sem_dados";
 export const AVISO_DIAS = 30;
 export const AVISO_KM = 1000;
 
-export function situacaoManutencao(m: Pick<Manutencao, "proxima_data" | "proximo_km">, kmAtual: number, hoje = hojeISO()) {
-  const dias = m.proxima_data ? diasEntre(hoje, m.proxima_data) : null;
-  const kmRestante = m.proximo_km != null ? m.proximo_km - kmAtual : null;
-  if (dias == null && kmRestante == null) return { situacao: "sem_dados" as Situacao, dias, kmRestante };
-  if ((dias != null && dias < 0) || (kmRestante != null && kmRestante <= 0))
-    return { situacao: "vencida" as Situacao, dias, kmRestante };
+/**
+ * Situação de uma manutenção. Com o ritmo de uso do veículo, a parte da quilometragem
+ * vira uma data prevista (e vale o que vier primeiro: a data ou o km previsto).
+ */
+export function situacaoManutencao(
+  m: Pick<Manutencao, "proxima_data" | "proximo_km">,
+  kmAtual: number,
+  hoje = hojeISO(),
+  ritmo?: Ritmo,
+) {
+  const km = ritmo ? kmEstimado(ritmo, hoje) : kmAtual;
+  const dataKm = ritmo && m.proximo_km != null ? dataPrevistaKm(ritmo, m.proximo_km) : null;
+  const diasData = m.proxima_data ? diasEntre(hoje, m.proxima_data) : null;
+  const diasKm = dataKm ? diasEntre(hoje, dataKm) : null;
+  const dias = diasData == null ? diasKm : diasKm == null ? diasData : Math.min(diasData, diasKm);
+  const kmRestante = m.proximo_km != null ? m.proximo_km - km : null;
+  const base = { dias, kmRestante, dataKm, estimado: Boolean(ritmo?.kmPorDia) };
+  if (dias == null && kmRestante == null) return { situacao: "sem_dados" as Situacao, ...base };
+  if ((dias != null && dias < 0) || (kmRestante != null && kmRestante <= 0)) return { situacao: "vencida" as Situacao, ...base };
   if ((dias != null && dias <= AVISO_DIAS) || (kmRestante != null && kmRestante <= AVISO_KM))
-    return { situacao: "em_breve" as Situacao, dias, kmRestante };
-  return { situacao: "em_dia" as Situacao, dias, kmRestante };
+    return { situacao: "em_breve" as Situacao, ...base };
+  return { situacao: "em_dia" as Situacao, ...base };
 }
 
 export function descreverPrazo(dias: number | null, kmRestante: number | null) {
@@ -296,3 +310,71 @@ export type SituacaoOrcamento = keyof typeof SITUACOES_ORCAMENTO;
 
 export const orcamentoVencido = (o: Pick<Orcamento, "situacao" | "validade">, hoje = hojeISO()) =>
   o.situacao === "respondido" && !!o.validade && o.validade < hoje;
+
+// ---------------------------------------------------------------------------
+// Ritmo de uso (km por dia) e previsão das manutenções por quilometragem
+// ---------------------------------------------------------------------------
+export type LeituraKm = { km: number; data: string; origem: "cadastro" | "cliente" | "servico" | "empresa" };
+
+/** Quantos registros mensais o cliente informa para calcularmos a média. */
+export const REGISTROS_PARA_MEDIA = 3;
+const INTERVALO_MINIMO_DIAS = 14;
+
+/**
+ * Calcula o ritmo de uso:
+ * 1) Com 3 registros do cliente: média entre o registro anterior a eles e o último.
+ * 2) Sem os 3 registros: se um serviço informou o km, usa o tempo que o carro levou
+ *    para chegar a esse km desde a leitura mais antiga do último ano.
+ */
+export function calcularRitmo(leituras: LeituraKm[], hoje = hojeISO()): { kmPorDia: number; origem: "media" | "servico" } | null {
+  const umAnoAtras = somarDias(hoje, -365);
+  const lista = leituras.filter((l) => l.data >= umAnoAtras).sort((a, b) => a.data.localeCompare(b.data) || a.km - b.km);
+  const taxa = (a: LeituraKm, b: LeituraKm) => {
+    const dias = diasEntre(a.data, b.data);
+    const km = b.km - a.km;
+    return dias >= INTERVALO_MINIMO_DIAS && km > 0 && km / dias <= 1500 ? km / dias : null;
+  };
+
+  const doCliente = lista.filter((l) => l.origem === "cliente" || l.origem === "empresa");
+  if (doCliente.length >= REGISTROS_PARA_MEDIA) {
+    const ultimos = doCliente.slice(-REGISTROS_PARA_MEDIA);
+    const anterior = [...lista].reverse().find((l) => l.data < ultimos[0].data);
+    const t = taxa(anterior ?? ultimos[0], ultimos[ultimos.length - 1]);
+    if (t) return { kmPorDia: Math.round(t * 100) / 100, origem: "media" };
+  }
+
+  const servico = [...lista].reverse().find((l) => l.origem === "servico");
+  if (servico) {
+    const maisAntiga = lista.find((l) => l.data < servico.data);
+    const t = maisAntiga ? taxa(maisAntiga, servico) : null;
+    if (t) return { kmPorDia: Math.round(t * 100) / 100, origem: "servico" };
+  }
+  return null;
+}
+
+/** Registros do cliente que ainda faltam para fechar a média (0 = já tem). */
+export function registrosFaltando(leituras: LeituraKm[], hoje = hojeISO()) {
+  const umAnoAtras = somarDias(hoje, -365);
+  const n = leituras.filter((l) => l.data >= umAnoAtras && (l.origem === "cliente" || l.origem === "empresa")).length;
+  return Math.max(0, REGISTROS_PARA_MEDIA - n);
+}
+
+export type Ritmo = { kmPorDia: number | null; kmBase: number; dataBase: string };
+
+export function ritmoDoVeiculo(v: Pick<Veiculo, "km_atual" | "km_atualizado_em"> & { km_por_dia?: number | null }): Ritmo {
+  return { kmPorDia: v.km_por_dia ?? null, kmBase: v.km_atual, dataBase: v.km_atualizado_em.slice(0, 10) };
+}
+
+/** Km estimado hoje, a partir da última leitura e do ritmo de uso. */
+export function kmEstimado(r: Ritmo, hoje = hojeISO()) {
+  if (!r.kmPorDia) return r.kmBase;
+  return Math.round(r.kmBase + r.kmPorDia * Math.max(0, diasEntre(r.dataBase, hoje)));
+}
+
+/** Data prevista para atingir um km. */
+export function dataPrevistaKm(r: Ritmo, km: number) {
+  if (!r.kmPorDia) return null;
+  return somarDias(r.dataBase, Math.ceil(Math.max(0, km - r.kmBase) / r.kmPorDia));
+}
+
+export const kmPorMes = (kmPorDia: number) => Math.round(kmPorDia * 30);
