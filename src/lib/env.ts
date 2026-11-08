@@ -8,5 +8,8 @@ export const supabaseAnonKey = (
   ""
 ).trim();
 
-/** true quando as variáveis do Supabase foram preenchidas */
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+/** A URL precisa ser algo como https://xxxx.supabase.co */
+export const supabaseUrlValida = /^https:\/\/[^\s/]+$/.test(supabaseUrl);
+
+/** true quando as variáveis do Supabase foram preenchidas corretamente */
+export const isSupabaseConfigured = Boolean(supabaseUrlValida && supabaseAnonKey);

@@ -11,6 +11,16 @@ const matches = (path: string, list: string[]) =>
   list.some((p) => path === p || path.startsWith(`${p}/`));
 
 export async function updateSession(request: NextRequest) {
+  try {
+    return await renovarSessao(request);
+  } catch (erro) {
+    // Nunca derruba o site por causa do login: registra e segue.
+    console.error("[proxy] falha ao verificar a sessão:", erro);
+    return NextResponse.next({ request });
+  }
+}
+
+async function renovarSessao(request: NextRequest) {
   let response = NextResponse.next({ request });
   if (!isSupabaseConfigured) return response;
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,6 +24,8 @@ const USUARIO_DEMO: UsuarioAtual = {
 
 /** Usuário logado, ou null. Lê a sessão (dado de requisição). */
 export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
+  // Conteúdo por usuário: sempre renderizado na hora da requisição.
+  await connection();
   // Sem banco conectado: usuário de demonstração, para visualizar as telas.
   if (!isSupabaseConfigured) return USUARIO_DEMO;
 
