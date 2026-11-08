@@ -5,6 +5,9 @@ import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { CopiarTexto } from "./CopiarTexto";
+import { lembretesConfigurados } from "@/lib/env";
+import { ExecutarLembretes } from "./ExecutarLembretes";
+import { randomBytes } from "node:crypto";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -18,6 +21,8 @@ export default async function ConfiguracoesPage() {
   const email = emailConfigurado();
   // Par de chaves novo a cada visita; só é usado se você copiar para a Vercel.
   const chaves = push ? null : webpush.generateVAPIDKeys();
+  const lembretes = lembretesConfigurados();
+  const segredoCron = lembretes ? null : randomBytes(24).toString("base64url");
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -42,6 +47,24 @@ export default async function ConfiguracoesPage() {
             </p>
           </>
         )}
+      </Cartao>
+
+      <Cartao className="space-y-3">
+        <h2 className="font-semibold">⏰ Lembretes automáticos</h2>
+        <Status ok={lembretes} sim="Ativados — rodam todo dia por volta das 8h" nao="Ainda não ativados" />
+        <p className="text-sm text-suave">
+          Todo dia o app verifica manutenções e documentos de todos os clientes e avisa quem estiver com algo vencendo
+          (30 dias, 7 dias, 1 dia antes e no dia).
+        </p>
+        {segredoCron && (
+          <>
+            <p className="text-sm text-suave">
+              Para ativar, cadastre esta senha na Vercel (tipo <strong>Secret</strong>) e faça <strong>Redeploy</strong>:
+            </p>
+            <CopiarTexto rotulo="CRON_SECRET" valor={segredoCron} secreto />
+          </>
+        )}
+        {lembretes && <ExecutarLembretes />}
       </Cartao>
 
       <Cartao className="space-y-3">

@@ -226,3 +226,36 @@ export function formatarDataHora(iso: string) {
     minute: "2-digit",
   }).format(new Date(iso));
 }
+
+// ---------------------------------------------------------------------------
+// Documentos e vencimentos
+// ---------------------------------------------------------------------------
+export const TIPOS_DOCUMENTO = {
+  licenciamento: { rotulo: "Licenciamento (CRLV)", icone: "📄", doVeiculo: true, dica: "O prazo depende do estado e do final da placa. Confira no site do Detran." },
+  ipva: { rotulo: "IPVA", icone: "💰", doVeiculo: true, dica: "Data da cota única ou da próxima parcela." },
+  seguro: { rotulo: "Seguro", icone: "🛡️", doVeiculo: true, dica: "Data de fim da vigência da apólice." },
+  cnh: { rotulo: "CNH", icone: "🪪", doVeiculo: false, dica: "Data de validade impressa na carteira." },
+  outro: { rotulo: "Outro", icone: "📌", doVeiculo: true, dica: "" },
+} as const;
+export type TipoDocumento = keyof typeof TIPOS_DOCUMENTO;
+
+export type Documento = {
+  id: string;
+  dono_id: string;
+  veiculo_id: string | null;
+  tipo: TipoDocumento;
+  descricao: string | null;
+  vencimento: string; // AAAA-MM-DD
+};
+
+export function situacaoDocumento(vencimento: string, hoje = hojeISO()) {
+  const dias = diasEntre(hoje, vencimento);
+  const situacao: Situacao = dias < 0 ? "vencida" : dias <= AVISO_DIAS ? "em_breve" : "em_dia";
+  return { situacao, dias };
+}
+
+export function somarDias(dataISO: string, dias: number) {
+  const d = new Date(`${dataISO}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}

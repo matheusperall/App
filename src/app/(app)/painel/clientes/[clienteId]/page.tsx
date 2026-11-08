@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { CartaoVeiculo, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
-import { listarApontamentos, listarManutencoes, listarVeiculos, obterCliente, urlsDasFotos } from "@/lib/dados";
+import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, obterCliente, urlsDasFotos } from "@/lib/dados";
 
 export const metadata: Metadata = { title: "Cliente" };
 
@@ -18,9 +18,10 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
   const cliente = await obterCliente(clienteId);
   if (!cliente) notFound();
   const veiculos = await listarVeiculos(cliente.id);
-  const [manutencoes, apontamentos, fotos] = await Promise.all([
+  const [manutencoes, apontamentos, documentos, fotos] = await Promise.all([
     listarManutencoes(veiculos.map((v) => v.id)),
     listarApontamentos(veiculos.map((v) => v.id)),
+    listarDocumentosVeiculos(veiculos.map((v) => v.id)),
     urlsDasFotos(veiculos.map((v) => v.foto)),
   ]);
 
@@ -52,7 +53,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {veiculos.map((v) => (
-            <CartaoVeiculo key={v.id} veiculo={v} fotoUrl={v.foto ? fotos[v.foto] : undefined} manutencoes={manutencoes.filter((m) => m.veiculo_id === v.id)} apontamentos={apontamentos.filter((a) => a.veiculo_id === v.id)} />
+            <CartaoVeiculo key={v.id} veiculo={v} fotoUrl={v.foto ? fotos[v.foto] : undefined} manutencoes={manutencoes.filter((m) => m.veiculo_id === v.id)} apontamentos={apontamentos.filter((a) => a.veiculo_id === v.id)} documentos={documentos.filter((d) => d.veiculo_id === v.id)} />
           ))}
         </div>
       )}

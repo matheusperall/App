@@ -4,8 +4,11 @@ import {
   PRESTADORES,
   PRIORIDADES,
   SITUACOES_APONTAMENTO,
+  TIPOS_DOCUMENTO,
   apontamentoAberto,
+  situacaoDocumento,
   type Apontamento,
+  type Documento,
   descreverPrazo,
   formatarData,
   formatarKm,
@@ -79,13 +82,18 @@ export function CartaoVeiculo({
   fotoUrl,
   manutencoes,
   apontamentos = [],
+  documentos = [],
 }: {
   veiculo: Veiculo;
   fotoUrl?: string;
   manutencoes: Manutencao[];
   apontamentos?: Apontamento[];
+  documentos?: Documento[];
 }) {
-  const { vencidas, emBreve } = contarAlertas(manutencoes, veiculo.km_atual);
+  const m = contarAlertas(manutencoes, veiculo.km_atual);
+  const docs = documentos.map((d) => situacaoDocumento(d.vencimento).situacao);
+  const vencidas = m.vencidas + docs.filter((x) => x === "vencida").length;
+  const emBreve = m.emBreve + docs.filter((x) => x === "em_breve").length;
   const abertos = apontamentos.filter(apontamentoAberto).length;
   return (
     <Link
@@ -112,7 +120,7 @@ export function CartaoVeiculo({
             )}
             {vencidas > 0 && (
               <span className="rounded-full bg-perigo-claro px-2.5 py-1 text-perigo">
-                {vencidas} {vencidas === 1 ? "manutenção vencida" : "manutenções vencidas"}
+                {vencidas} {vencidas === 1 ? "item vencido" : "itens vencidos"}
               </span>
             )}
             {emBreve > 0 && (
@@ -228,6 +236,26 @@ export function ItemApontamento({ a, empresa = false }: { a: Apontamento; empres
           </p>
         </div>
       </Link>
+    </li>
+  );
+}
+
+export function ItemDocumento({ d }: { d: Documento }) {
+  const info = TIPOS_DOCUMENTO[d.tipo];
+  const { situacao, dias } = situacaoDocumento(d.vencimento);
+  return (
+    <li className="flex items-start justify-between gap-3 py-3">
+      <div className="min-w-0">
+        <p className="font-medium">
+          <span aria-hidden="true">{info.icone} </span>
+          {d.tipo === "outro" && d.descricao ? d.descricao : info.rotulo}
+        </p>
+        <p className="text-sm text-suave">
+          Vence em {formatarData(d.vencimento)}
+          <span className="block text-xs">{descreverPrazo(dias, null)}</span>
+        </p>
+      </div>
+      <SeloSituacao situacao={situacao} />
     </li>
   );
 }

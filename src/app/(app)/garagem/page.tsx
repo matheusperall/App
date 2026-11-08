@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CartaoVeiculo } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario, primeiroNome } from "@/lib/auth";
-import { listarApontamentos, listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
+import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
 import { AtivarNotificacoes } from "@/components/AtivarNotificacoes";
 import { vapidPublica } from "@/lib/notificar";
 
@@ -13,9 +13,10 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
   const [usuario, params] = await Promise.all([exigirUsuario(), searchParams]);
   const veiculos = await listarVeiculos(usuario.id);
   const ids = veiculos.map((v) => v.id);
-  const [manutencoes, apontamentos, fotos] = await Promise.all([
+  const [manutencoes, apontamentos, documentos, fotos] = await Promise.all([
     listarManutencoes(ids),
     listarApontamentos(ids),
+    listarDocumentosVeiculos(ids),
     urlsDasFotos(veiculos.map((v) => v.foto)),
   ]);
 
@@ -63,6 +64,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
               fotoUrl={v.foto ? fotos[v.foto] : undefined}
               manutencoes={manutencoes.filter((m) => m.veiculo_id === v.id)}
               apontamentos={apontamentos.filter((a) => a.veiculo_id === v.id)}
+              documentos={documentos.filter((d) => d.veiculo_id === v.id)}
             />
           ))}
         </div>

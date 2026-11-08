@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FotoVeiculo, ItemApontamento, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
+import { FotoVeiculo, ItemApontamento, ItemDocumento, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { listarApontamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { PRIORIDADES, apontamentoAberto, formatarData, formatarValor, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
@@ -17,10 +17,11 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
 
-  const [servicos, manutencoes, apontamentos, fotos] = await Promise.all([
+  const [servicos, manutencoes, apontamentos, documentos, fotos] = await Promise.all([
     listarServicos(id),
     listarManutencoes([id]),
     listarApontamentos([id]),
+    listarDocumentosVeiculos([id]),
     urlsDasFotos([veiculo.foto]),
   ]);
   const admin = usuario.papel === "admin";
@@ -152,6 +153,26 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
         </Cartao>
 
         <Cartao>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Documentos e vencimentos</h2>
+            <Link href={`/garagem/${veiculo.id}/documentos`} className="text-sm font-semibold text-marca-escura hover:underline">
+              {documentos.length ? "Editar" : "Informar"}
+            </Link>
+          </div>
+          {documentos.length === 0 ? (
+            <p className="mt-3 text-sm text-suave">
+              Informe o vencimento do licenciamento, IPVA e seguro e avisamos antes de vencer.
+            </p>
+          ) : (
+            <ul className="divide-y divide-borda">
+              {documentos.map((d) => (
+                <ItemDocumento key={d.id} d={d} />
+              ))}
+            </ul>
+          )}
+        </Cartao>
+
+        <Cartao className="lg:col-span-2">
           <h2 className="font-semibold">Histórico de serviços</h2>
           {servicos.length === 0 ? (
             <p className="mt-3 text-sm text-suave">Nenhum serviço registrado ainda.</p>

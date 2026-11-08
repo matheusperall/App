@@ -3,15 +3,20 @@ import Link from "next/link";
 import { Placa, SeloPrioridade } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
-import { caixaDeEntrada, contarPainel } from "@/lib/dados";
+import { caixaDeEntrada, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
 import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo } from "@/lib/garagem";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
+import { lembretesConfigurados } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Painel da empresa" };
 
 export default async function PainelPage() {
   await exigirAdmin();
-  const [{ clientes, veiculos, abertos, respostas }, caixa] = await Promise.all([contarPainel(), caixaDeEntrada()]);
+  const [{ clientes, veiculos, abertos, respostas }, caixa, vencimentos] = await Promise.all([
+    contarPainel(),
+    caixaDeEntrada(),
+    vencimentosProximos(),
+  ]);
   const novos = caixa.filter((c) => c.situacao !== "agendado");
   const agendados = caixa.filter((c) => c.situacao === "agendado");
 
@@ -34,8 +39,9 @@ export default async function PainelPage() {
         </Link>
       </div>
 
-      {(!pushConfigurado() || !emailConfigurado()) && (
+      {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados()) && (
         <Aviso tipo="alerta">
+          {!lembretesConfigurados() ? "Os lembretes automáticos ainda não estão ativados. " : ""}
           {!pushConfigurado() ? "As notificações no celular ainda não estão configuradas. " : ""}
           {!emailConfigurado() ? "O envio de e-mails de aviso ainda não está configurado. " : ""}
           <Link href="/painel/configuracoes" className="font-semibold underline">Configurar agora</Link>
@@ -67,6 +73,7 @@ export default async function PainelPage() {
 
       <Caixa titulo="📥 Respostas de clientes" vazio="Nenhuma resposta nova. Quando um cliente pedir orçamento ou agendamento, aparece aqui." itens={novos} />
       {agendados.length > 0 && <Caixa titulo="📅 Agendados" vazio="" itens={agendados} />}
+      <Vencimentos itens={vencimentos} />
     </div>
   );
 }
@@ -102,5 +109,58 @@ function Caixa({ titulo, vazio, itens }: { titulo: string; vazio: string; itens:
         </ul>
       )}
     </Cartao>
+  );
+}
+
+function linkWhatsApp(telefone: string, texto: string) {
+  const n = telefone.replace(/\D/g, "");
+  return `https://wa.me/${n.length <= 11 ? `55${n}` : n}?text=${encodeURIComponent(texto)}`;
+}
+
+function Vencimentos({ itens }: { itens: Vencimento[] }) {
+  return (
+    <section id="vencimentos" className="scroll-mt-20">
+      <Cartao className="p-0">
+        <div className="px-5 pt-5">
+          <h2 className="font-semibold">⏰ Vencimentos dos clientes (próximos 30 dias)</h2>
+          <p className="text-sm text-suave">Manutenções e documentos vencidos ou vencendo. Boa hora para oferecer o serviço.</p>
+        </div>
+        {itens.length === 0 ? (
+          <p className="px-5 pt-2 pb-5 text-sm text-suave">Nada vencendo nos próximos 30 dias.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-borda">
+            {itens.slice(0, 60).map((v) => (
+              <li key={v.chave} className="flex items-start justify-between gap-3 px-5 py-3">
+                <Link href={v.veiculo ? `/garagem/${v.veiculo.id}` : v.cliente ? `/painel/clientes/${v.cliente.id}` : "#"} className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {v.titulo}{" "}
+                    <span className={`text-xs font-semibold ${v.vencido ? "text-perigo" : "text-[#8a5a00]"}`}>
+                      {v.vencido ? "vencido" : "em breve"}
+                    </span>
+                  </p>
+                  <p className="text-sm text-suave">
+                    {v.cliente?.nome ?? "Cliente"}
+                    {v.veiculo && ` · ${v.veiculo.nome} (${v.veiculo.placa})`} · {v.detalhe}
+                  </p>
+                </Link>
+                {v.cliente?.telefone && (
+                  <a
+                    href={linkWhatsApp(
+                      v.cliente.telefone,
+                      `Olá, ${v.cliente.nome?.split(" ")[0] ?? ""}! Aqui é da Sempre Zero. Vimos que ${v.titulo.toLowerCase()}${v.veiculo ? ` do seu ${v.veiculo.nome}` : ""} está ${v.vencido ? "vencido" : "perto de vencer"}. Podemos ajudar?`,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-lg border border-borda px-2.5 py-1.5 text-xs font-semibold text-marca-escura hover:border-marca"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Cartao>
+    </section>
   );
 }

@@ -4,11 +4,14 @@ import { sair } from "@/app/(auth)/actions";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { FormPerfil } from "./FormPerfil";
+import { FormDocumento } from "@/components/FormDocumento";
+import { obterCnh } from "@/lib/dados";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
 export default async function ContaPage() {
   const usuario = await exigirUsuario();
+  const cnh = await obterCnh(usuario.id);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -18,6 +21,11 @@ export default async function ContaPage() {
         <h2 className="font-semibold">Dados pessoais</h2>
         <FormPerfil nome={usuario.nome} telefone={usuario.telefone ?? ""} email={usuario.email} />
       </Cartao>
+
+      <div className="space-y-2">
+        <h2 className="font-semibold">Minha CNH</h2>
+        <FormDocumento tipo="cnh" atual={cnh} />
+      </div>
 
       <Cartao className="space-y-3">
         <h2 className="font-semibold">Segurança</h2>

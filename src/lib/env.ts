@@ -22,3 +22,7 @@ export const supabaseUrlValida = /^https:\/\/[^\s/]+$/.test(supabaseUrl);
 
 /** true quando as variáveis do Supabase foram preenchidas corretamente */
 export const isSupabaseConfigured = Boolean(supabaseUrlValida && supabaseAnonKey);
+
+/** Lembretes diários: precisam da senha do agendador (CRON_SECRET) e da chave do servidor. */
+export const lembretesConfigurados = () =>
+  Boolean(limparValor(process.env.CRON_SECRET) && limparValor(process.env.SUPABASE_SERVICE_ROLE_KEY));

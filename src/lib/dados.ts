@@ -1,7 +1,7 @@
 import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { hojeISO, somarMeses, type Apontamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { TIPOS_DOCUMENTO, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -195,6 +195,96 @@ export async function caixaDeEntrada(): Promise<ItemCaixa[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Documentos e vencimentos
+// ---------------------------------------------------------------------------
+const CAMPOS_DOCUMENTO = "id, dono_id, veiculo_id, tipo, descricao, vencimento";
+const faltaTabela = (e: { code?: string } | null) => e?.code === "42P01" || e?.code === "PGRST205";
+
+export async function listarDocumentosVeiculos(veiculoIds: string[]): Promise<Documento[]> {
+  if (veiculoIds.length === 0) return [];
+  if (!isSupabaseConfigured) return DEMO.documentos.filter((d) => d.veiculo_id && veiculoIds.includes(d.veiculo_id));
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("documentos").select(CAMPOS_DOCUMENTO).in("veiculo_id", veiculoIds).order("vencimento");
+  if (faltaTabela(error)) return [];
+  return (data as Documento[] | null) ?? [];
+}
+
+export async function obterCnh(usuarioId: string): Promise<Documento | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("documentos")
+    .select(CAMPOS_DOCUMENTO)
+    .eq("dono_id", usuarioId)
+    .eq("tipo", "cnh")
+    .is("veiculo_id", null)
+    .maybeSingle();
+  return (data as Documento | null) ?? null;
+}
+
+export type Vencimento = {
+  chave: string;
+  titulo: string;
+  data: string | null;
+  detalhe: string;
+  vencido: boolean;
+  veiculo: { id: string; placa: string; nome: string } | null;
+  cliente: Dono | null;
+};
+
+/** Painel: manutenções e documentos de todos os clientes vencidos ou vencendo em 30 dias. */
+export async function vencimentosProximos(): Promise<Vencimento[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const hoje = hojeISO();
+  const limite = somarMeses(hoje, 1);
+  const veic = "veiculo:veiculos (id, placa, marca, modelo, apelido, km_atual, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))";
+
+  const [m, d] = await Promise.all([
+    supabase.from("manutencoes").select(`id, tipo, proxima_data, proximo_km, ${veic}`).limit(500),
+    supabase
+      .from("documentos")
+      .select(`id, tipo, descricao, vencimento, dono:perfis!documentos_dono_id_fkey (id, nome, email, telefone), ${veic}`)
+      .lte("vencimento", limite)
+      .order("vencimento")
+      .limit(200),
+  ]);
+
+  type V = { id: string; placa: string; marca: string; modelo: string; apelido: string | null; km_atual: number; dono: Dono | null } | null;
+  const nome = (v: NonNullable<V>) => v.apelido || `${v.marca} ${v.modelo}`.trim();
+  const lista: Vencimento[] = [];
+
+  for (const x of (m.data ?? []) as unknown as { id: string; tipo: string; proxima_data: string | null; proximo_km: number | null; veiculo: V }[]) {
+    if (!x.veiculo) continue;
+    const s = situacaoManutencao(x, x.veiculo.km_atual, hoje);
+    if (s.situacao !== "vencida" && s.situacao !== "em_breve") continue;
+    lista.push({
+      chave: `m-${x.id}`,
+      titulo: rotuloManutencao(x.tipo),
+      data: x.proxima_data,
+      detalhe: [x.proxima_data && `até ${x.proxima_data.split("-").reverse().join("/")}`, x.proximo_km != null && `${x.proximo_km.toLocaleString("pt-BR")} km`].filter(Boolean).join(" ou "),
+      vencido: s.situacao === "vencida",
+      veiculo: { id: x.veiculo.id, placa: x.veiculo.placa, nome: nome(x.veiculo) },
+      cliente: x.veiculo.dono,
+    });
+  }
+  if (!faltaTabela(d.error)) {
+    for (const x of (d.data ?? []) as unknown as { id: string; tipo: keyof typeof TIPOS_DOCUMENTO; descricao: string | null; vencimento: string; dono: Dono | null; veiculo: V }[]) {
+      lista.push({
+        chave: `d-${x.id}`,
+        titulo: x.tipo === "outro" && x.descricao ? x.descricao : TIPOS_DOCUMENTO[x.tipo].rotulo,
+        data: x.vencimento,
+        detalhe: `vence ${x.vencimento.split("-").reverse().join("/")}`,
+        vencido: x.vencimento < hoje,
+        veiculo: x.veiculo ? { id: x.veiculo.id, placa: x.veiculo.placa, nome: nome(x.veiculo) } : null,
+        cliente: x.dono,
+      });
+    }
+  }
+  return lista.sort((a, b) => Number(b.vencido) - Number(a.vencido) || (a.data ?? "9999").localeCompare(b.data ?? "9999"));
+}
+
+// ---------------------------------------------------------------------------
 // Avisos (central de notificações)
 // ---------------------------------------------------------------------------
 export type Notificacao = { id: string; titulo: string; corpo: string | null; link: string | null; lida_em: string | null; criado_em: string };
@@ -316,6 +406,10 @@ const DEMO = {
       criado_em: `${hoje}T13:00:00Z`,
     },
   ] satisfies Apontamento[],
+  documentos: [
+    { id: "demo-d1", dono_id: "demo", veiculo_id: "demo-civic", tipo: "licenciamento", descricao: null, vencimento: somarMeses(hoje, 2) },
+    { id: "demo-d2", dono_id: "demo", veiculo_id: "demo-civic", tipo: "seguro", descricao: "Porto Seguro", vencimento: somarDias(hoje, 12) },
+  ] satisfies Documento[],
   notificacoes: [
     {
       id: "demo-n1",

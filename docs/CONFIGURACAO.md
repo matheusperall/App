@@ -18,6 +18,7 @@ aparecem, mas login e cadastro não funcionam.
    2. `0002_garagem.sql` — veículos, histórico, lembretes e fotos
    3. `0003_apontamentos.sql` — apontamentos, avisos e notificações no celular
    4. `0004_fipe.sql` — dados da tabela FIPE no veículo
+   5. `0005_lembretes.sql` — documentos/vencimentos e lembretes automáticos
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 
@@ -59,6 +60,9 @@ Entre no app como administrador e abra **Painel › Configurações**. A página
 chaves de notificação (`NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`) e explica
 como ativar os e-mails de aviso (`RESEND_API_KEY` e `EMAIL_REMETENTE`). Depois de
 cadastrar na Vercel, faça Redeploy.
+
+Na mesma página há a senha `CRON_SECRET`, que ativa os **lembretes automáticos diários**
+(agendados no arquivo `vercel.json`, todo dia por volta das 8h de Brasília).
 
 ## 6. Tornar sua conta administradora
 1. Abra o app e crie sua conta normalmente em **Criar conta**.
