@@ -17,6 +17,7 @@ aparecem, mas login e cadastro não funcionam.
    1. `0001_perfis.sql` — contas e perfis
    2. `0002_garagem.sql` — veículos, histórico, lembretes e fotos
    3. `0003_apontamentos.sql` — apontamentos, avisos e notificações no celular
+   4. `0004_fipe.sql` — dados da tabela FIPE no veículo
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

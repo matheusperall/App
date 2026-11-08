@@ -12,6 +12,15 @@ export type Veiculo = {
   km_atual: number;
   km_atualizado_em: string;
   foto: string | null;
+  // Tabela FIPE (opcionais: veículos antigos ou preenchidos à mão não têm)
+  tipo?: "carro" | "moto" | "caminhao";
+  combustivel?: string | null;
+  codigo_fipe?: string | null;
+  valor_fipe?: number | null;
+  fipe_referencia?: string | null;
+  fipe_marca_cod?: string | null;
+  fipe_modelo_cod?: string | null;
+  fipe_ano_cod?: string | null;
 };
 
 export type Servico = {

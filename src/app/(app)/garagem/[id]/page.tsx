@@ -5,7 +5,7 @@ import { FotoVeiculo, ItemApontamento, ItemManutencao, ItemServico, Placa, Volta
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { listarApontamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
-import { PRIORIDADES, apontamentoAberto, formatarData, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
+import { PRIORIDADES, apontamentoAberto, formatarData, formatarValor, nomeVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
 export const metadata: Metadata = { title: "Veículo" };
@@ -52,8 +52,14 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">{nomeVeiculo(veiculo)}</h1>
               <p className="text-suave">
-                {[veiculo.apelido && `${veiculo.marca} ${veiculo.modelo}`, veiculo.ano, veiculo.cor].filter(Boolean).join(" · ")}
+                {[veiculo.apelido && `${veiculo.marca} ${veiculo.modelo}`, veiculo.ano, veiculo.combustivel, veiculo.cor].filter(Boolean).join(" · ")}
               </p>
+              {veiculo.valor_fipe != null && (
+                <p className="mt-1 text-sm">
+                  <span className="text-suave">Valor FIPE:</span> <strong>{formatarValor(veiculo.valor_fipe)}</strong>
+                  {veiculo.fipe_referencia && <span className="text-xs text-suave"> · ref. {veiculo.fipe_referencia}</span>}
+                </p>
+              )}
             </div>
             <Placa placa={veiculo.placa} />
           </div>

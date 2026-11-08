@@ -54,7 +54,7 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
   if (!placaValida(placa)) return { erro: "Placa inválida. Use o formato ABC1234 ou ABC1D23." };
   const marca = texto(form, "marca");
   const modelo = texto(form, "modelo");
-  if (!marca || !modelo) return { erro: "Informe a marca e o modelo." };
+  if (!marca || !modelo) return { erro: "Escolha a marca, o modelo e o ano do veículo (ou preencha manualmente)." };
   const ano = inteiro(form, "ano");
   const anoMax = Number(hojeISO().slice(0, 4)) + 1;
   if (ano != null && (ano < 1950 || ano > anoMax)) return { erro: "Ano inválido." };
@@ -71,7 +71,8 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
   }
 
   const foto = fotosDaPasta(form, donoId)[0] ?? null;
-  const dados = {
+  const tipo = ["carro", "moto", "caminhao"].includes(texto(form, "tipo")) ? texto(form, "tipo") : "carro";
+  const basicos = {
     placa,
     marca,
     modelo,
@@ -81,14 +82,29 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
     km_atual: km,
     foto,
   };
+  const fipe = {
+    tipo,
+    combustivel: textoOuNulo(form, "combustivel"),
+    codigo_fipe: textoOuNulo(form, "codigo_fipe"),
+    valor_fipe: dinheiro(form, "valor_fipe"),
+    fipe_referencia: textoOuNulo(form, "fipe_referencia"),
+    fipe_marca_cod: textoOuNulo(form, "fipe_marca_cod"),
+    fipe_modelo_cod: textoOuNulo(form, "fipe_modelo_cod"),
+    fipe_ano_cod: textoOuNulo(form, "fipe_ano_cod"),
+  };
 
-  const resultado = id
-    ? await supabase.from("veiculos").update(dados).eq("id", id).select("id").single()
-    : await supabase
-        .from("veiculos")
-        .insert({ ...dados, dono_id: donoId, criado_por: usuario.id })
-        .select("id")
-        .single();
+  const gravar = (dados: Record<string, unknown>) =>
+    id
+      ? supabase.from("veiculos").update(dados).eq("id", id).select("id").single()
+      : supabase
+          .from("veiculos")
+          .insert({ ...dados, dono_id: donoId, criado_por: usuario.id })
+          .select("id")
+          .single();
+
+  let resultado = await gravar({ ...basicos, ...fipe });
+  // Banco ainda sem as colunas da FIPE (migração 0004): salva só o básico.
+  if (resultado.error?.code === "42703") resultado = await gravar(basicos);
 
   if (resultado.error) {
     if (resultado.error.code === "23505") return { erro: "Esta placa já está cadastrada." };

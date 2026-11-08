@@ -10,18 +10,21 @@ export type Dono = { id: string; nome: string; email: string | null; telefone: s
 export type VeiculoComDono = Veiculo & { dono: Dono | null };
 export type Cliente = Dono & { criado_em: string; veiculos: { id: string; placa: string; modelo: string }[] };
 
-const CAMPOS_VEICULO =
+const CAMPOS_BASICOS =
   "id, dono_id, placa, marca, modelo, ano, cor, apelido, km_atual, km_atualizado_em, foto";
+const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod`;
+
+/** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
+const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
 
 export async function listarVeiculos(donoId: string): Promise<Veiculo[]> {
   if (!isSupabaseConfigured) return DEMO.veiculos.filter((v) => v.dono_id === donoId);
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("veiculos")
-    .select(CAMPOS_VEICULO)
-    .eq("dono_id", donoId)
-    .order("criado_em");
-  return data ?? [];
+  const consulta = (campos: string) =>
+    supabase.from("veiculos").select(campos).eq("dono_id", donoId).order("criado_em");
+  let { data, error } = await consulta(CAMPOS_VEICULO);
+  if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
+  return (data as unknown as Veiculo[] | null) ?? [];
 }
 
 export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
@@ -31,12 +34,15 @@ export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
   }
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("veiculos")
-    .select(`${CAMPOS_VEICULO}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
-    .eq("id", id)
-    .maybeSingle();
-  return (data as VeiculoComDono | null) ?? null;
+  const consulta = (campos: string) =>
+    supabase
+      .from("veiculos")
+      .select(`${campos}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
+      .eq("id", id)
+      .maybeSingle();
+  let { data, error } = await consulta(CAMPOS_VEICULO);
+  if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
+  return (data as unknown as VeiculoComDono | null) ?? null;
 }
 
 export async function listarServicos(veiculoId: string): Promise<Servico[]> {
