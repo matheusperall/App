@@ -8,7 +8,7 @@ import { supabaseUrl } from "@/lib/env";
  * A chave fica apenas nas variáveis de ambiente do servidor (Vercel), nunca no navegador.
  */
 export function createAdminClient() {
-  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!supabaseUrl || !chave) return null;
   return createClient(supabaseUrl, chave, { auth: { persistSession: false, autoRefreshToken: false } });
 }
