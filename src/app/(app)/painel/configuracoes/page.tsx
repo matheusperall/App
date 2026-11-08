@@ -7,6 +7,8 @@ import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { CopiarTexto } from "./CopiarTexto";
 import { lembretesConfigurados } from "@/lib/env";
 import { ExecutarLembretes } from "./ExecutarLembretes";
+import { TestarGoogle } from "./TestarGoogle";
+import { emailContaServico, googleConfigurado } from "@/lib/google-agenda";
 import { randomBytes } from "node:crypto";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -46,6 +48,27 @@ export default async function ConfiguracoesPage() {
               duas do mesmo par.
             </p>
           </>
+        )}
+      </Cartao>
+
+      <Cartao className="space-y-3">
+        <h2 className="font-semibold">📅 Google Agenda</h2>
+        <Status ok={googleConfigurado()} sim="Conectada" nao="Ainda não conectada" />
+        {googleConfigurado() ? (
+          <>
+            <p className="text-sm text-suave">
+              Os agendamentos confirmados aparecem na sua agenda. Lavagens bloqueiam o horário; serviços de parceiros
+              aparecem como “livre” para não impedir lavagens. Para bloquear um horário (folga, feriado), crie um evento
+              comum na sua agenda.
+            </p>
+            <p className="text-xs text-suave">Conta de serviço: <code>{emailContaServico()}</code></p>
+            <TestarGoogle />
+          </>
+        ) : (
+          <p className="text-sm text-suave">
+            Siga o passo a passo do arquivo <code>docs/GOOGLE_AGENDA.md</code> no GitHub (ou peça ajuda no chat). Ao final,
+            cadastre <code>GOOGLE_SERVICE_ACCOUNT_JSON</code> e <code>GOOGLE_CALENDAR_ID</code> na Vercel.
+          </p>
         )}
       </Cartao>
 

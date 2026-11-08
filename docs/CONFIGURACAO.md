@@ -20,6 +20,7 @@ aparecem, mas login e cadastro não funcionam.
    4. `0004_fipe.sql` — dados da tabela FIPE no veículo
    5. `0005_lembretes.sql` — documentos/vencimentos e lembretes automáticos
    6. `0006_orcamentos.sql` — pedidos de orçamento
+   7. `0007_agendamentos.sql` — agendamentos
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 
@@ -64,6 +65,9 @@ cadastrar na Vercel, faça Redeploy.
 
 Na mesma página há a senha `CRON_SECRET`, que ativa os **lembretes automáticos diários**
 (agendados no arquivo `vercel.json`, todo dia por volta das 8h de Brasília).
+
+## 5.2 Google Agenda
+Veja o passo a passo em [GOOGLE_AGENDA.md](GOOGLE_AGENDA.md).
 
 ## 6. Tornar sua conta administradora
 1. Abra o app e crie sua conta normalmente em **Criar conta**.

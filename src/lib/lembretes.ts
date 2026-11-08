@@ -9,6 +9,7 @@ import {
   type TipoDocumento,
 } from "@/lib/garagem";
 import { notificar, notificarEmpresa } from "@/lib/notificar";
+import { formatarQuando } from "@/lib/agenda";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -141,6 +142,35 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
         titulo: "Atualize a quilometragem 🚗",
         corpo: `Informe o km atual do ${nomeVeiculo(v)} (${v.placa}) para mantermos seus lembretes de manutenção em dia.`,
         link: `/garagem/${v.id}`,
+      });
+    }
+  }
+
+  // ---------------- Véspera dos agendamentos ----------------
+  const amanha = new Date(`${hoje}T00:00:00-03:00`);
+  amanha.setUTCDate(amanha.getUTCDate() + 1);
+  const depois = new Date(amanha.getTime() + 86400_000);
+  const { data: agendamentos, error: erroAg } = await admin
+    .from("agendamentos")
+    .select("id, servico, inicio, fim, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido)")
+    .eq("situacao", "confirmado")
+    .gte("inicio", amanha.toISOString())
+    .lt("inicio", depois.toISOString());
+  if (!erroAg) {
+    for (const a of (agendamentos ?? []) as unknown as {
+      id: string;
+      servico: string;
+      inicio: string;
+      fim: string | null;
+      veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null } | null;
+    }[]) {
+      if (!a.veiculo) continue;
+      itens.push({
+        chave: `ag:${a.id}:${a.inicio}:vespera`,
+        usuarioId: a.veiculo.dono_id,
+        titulo: `Amanhã: ${a.servico} 📅`,
+        corpo: `${nomeVeiculo(a.veiculo)} (${a.veiculo.placa}) — ${formatarQuando(a.inicio, a.fim)}. Te esperamos!`,
+        link: `/agendamentos/${a.id}`,
       });
     }
   }

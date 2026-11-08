@@ -82,6 +82,9 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             <Link href={`/garagem/${veiculo.id}/servicos/novo`} className="botao-primario flex-1 text-sm">
               + Registrar serviço
             </Link>
+            <Link href={`/agendamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno flex-1 text-sm">
+              Agendar
+            </Link>
             <Link href={`/orcamentos/novo?veiculo=${veiculo.id}`} className="botao-contorno flex-1 text-sm">
               {admin ? "Enviar orçamento" : "Pedir orçamento"}
             </Link>

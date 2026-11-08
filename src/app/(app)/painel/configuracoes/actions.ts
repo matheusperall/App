@@ -20,3 +20,14 @@ export async function executarLembretesAgora() {
     return { ok: false, mensagem: `Erro: ${(e as Error).message}` };
   }
 }
+
+export async function testarConexaoGoogle() {
+  await exigirAdmin();
+  try {
+    const { testarGoogle } = await import("@/lib/google-agenda");
+    await testarGoogle();
+    return { ok: true, mensagem: "✅ Conexão com a Google Agenda funcionando." };
+  } catch (e) {
+    return { ok: false, mensagem: `❌ ${(e as Error).message}` };
+  }
+}

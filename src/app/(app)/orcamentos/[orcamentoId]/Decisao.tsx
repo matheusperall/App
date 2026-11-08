@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { Aviso, Cartao } from "@/components/ui";
@@ -9,7 +10,16 @@ export function Decisao({ id, situacao }: { id: string; situacao: "solicitado" |
   const [estado, acao, pendente] = useActionState<EstadoForm, FormData>(decidirOrcamento, {});
   const [recusando, setRecusando] = useState(false);
 
-  if (estado.sucesso) return <Aviso tipo="sucesso">{estado.sucesso}</Aviso>;
+  if (estado.sucesso) {
+    return (
+      <div className="space-y-3">
+        <Aviso tipo="sucesso">{estado.sucesso}</Aviso>
+        {estado.sucesso.startsWith("Orçamento aprovado") && (
+          <Link href={`/agendamentos/novo?orcamento=${id}`} className="botao-primario w-full">📅 Agendar o serviço</Link>
+        )}
+      </div>
+    );
+  }
 
   if (situacao === "solicitado") {
     return (

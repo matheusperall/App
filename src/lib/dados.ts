@@ -1,6 +1,7 @@
 import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import type { Agendamento } from "@/lib/agenda";
 import { TIPOS_DOCUMENTO, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
@@ -332,6 +333,64 @@ export async function contarOrcamentosAResponder(): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// Agendamentos
+// ---------------------------------------------------------------------------
+const CAMPOS_AGENDAMENTO =
+  "id, veiculo_id, tipo, servico, categoria, situacao, inicio, fim, preferencias, observacoes, resposta, orcamento_id, apontamento_id, google_evento_id, criado_em";
+export type AgendamentoComVeiculo = Agendamento & {
+  veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; dono: Dono | null } | null;
+};
+const AG_COM_VEICULO = `${CAMPOS_AGENDAMENTO}, veiculo:veiculos (id, dono_id, placa, marca, modelo, apelido, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone))`;
+
+export async function listarAgendamentos(veiculoIds: string[]): Promise<AgendamentoComVeiculo[]> {
+  if (veiculoIds.length === 0) return [];
+  if (!isSupabaseConfigured) return DEMO.agendamentos.filter((a) => veiculoIds.includes(a.veiculo_id)) as AgendamentoComVeiculo[];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agendamentos")
+    .select(AG_COM_VEICULO)
+    .in("veiculo_id", veiculoIds)
+    .order("criado_em", { ascending: false })
+    .limit(50);
+  if (faltaTabela(error)) return [];
+  return (data as unknown as AgendamentoComVeiculo[] | null) ?? [];
+}
+
+/** Empresa: pedidos a confirmar e próximos confirmados. */
+export async function agendaEmpresa(): Promise<{ aConfirmar: AgendamentoComVeiculo[]; proximos: AgendamentoComVeiculo[] }> {
+  if (!isSupabaseConfigured) {
+    const todos = DEMO.agendamentos as AgendamentoComVeiculo[];
+    return { aConfirmar: todos.filter((a) => a.situacao === "solicitado"), proximos: todos.filter((a) => a.situacao === "confirmado") };
+  }
+  const supabase = await createClient();
+  const inicioHoje = new Date(`${hojeISO()}T00:00:00-03:00`).toISOString();
+  const [a, p] = await Promise.all([
+    supabase.from("agendamentos").select(AG_COM_VEICULO).eq("situacao", "solicitado").order("criado_em"),
+    supabase.from("agendamentos").select(AG_COM_VEICULO).eq("situacao", "confirmado").gte("inicio", inicioHoje).order("inicio").limit(100),
+  ]);
+  if (faltaTabela(a.error)) return { aConfirmar: [], proximos: [] };
+  return {
+    aConfirmar: (a.data as unknown as AgendamentoComVeiculo[] | null) ?? [],
+    proximos: (p.data as unknown as AgendamentoComVeiculo[] | null) ?? [],
+  };
+}
+
+export async function obterAgendamento(id: string): Promise<AgendamentoComVeiculo | null> {
+  if (!isSupabaseConfigured) return (DEMO.agendamentos.find((a) => a.id === id) as AgendamentoComVeiculo | undefined) ?? null;
+  if (!ehUuid(id)) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("agendamentos").select(AG_COM_VEICULO).eq("id", id).maybeSingle();
+  return (data as unknown as AgendamentoComVeiculo | null) ?? null;
+}
+
+export async function contarAgendamentosAConfirmar(): Promise<number> {
+  if (!isSupabaseConfigured) return 1;
+  const supabase = await createClient();
+  const { count } = await supabase.from("agendamentos").select("id", { count: "exact", head: true }).eq("situacao", "solicitado");
+  return count ?? 0;
+}
+
+// ---------------------------------------------------------------------------
 // Avisos (central de notificações)
 // ---------------------------------------------------------------------------
 export type Notificacao = { id: string; titulo: string; corpo: string | null; link: string | null; lida_em: string | null; criado_em: string };
@@ -482,6 +541,44 @@ const DEMO = {
       veiculo: { id: "demo-civic", dono_id: "demo", placa: "BRA2E19", marca: "Honda", modelo: "Civic EXL", apelido: null, dono: { id: "demo", nome: "Cliente Demonstração", email: "demo@semprezero.app", telefone: "(11) 90000-0000" } },
     },
   ] satisfies (Orcamento & { veiculo: unknown })[],
+  agendamentos: [
+    {
+      id: "demo-ag1",
+      veiculo_id: "demo-civic",
+      tipo: "lavagem",
+      servico: "Lavagem",
+      categoria: "estetica",
+      situacao: "confirmado",
+      inicio: `${somarDias(hoje, 2)}T13:00:00.000Z`,
+      fim: `${somarDias(hoje, 2)}T14:00:00.000Z`,
+      preferencias: [],
+      observacoes: null,
+      resposta: null,
+      orcamento_id: null,
+      apontamento_id: null,
+      google_evento_id: null,
+      criado_em: `${hoje}T12:00:00Z`,
+      veiculo: { id: "demo-civic", dono_id: "demo", placa: "BRA2E19", marca: "Honda", modelo: "Civic EXL", apelido: null, dono: { id: "demo", nome: "Cliente Demonstração", email: "demo@semprezero.app", telefone: "(11) 90000-0000" } },
+    },
+    {
+      id: "demo-ag2",
+      veiculo_id: "demo-civic",
+      tipo: "servico",
+      servico: "Repintura da porta traseira direita",
+      categoria: "funilaria_pintura",
+      situacao: "solicitado",
+      inicio: null,
+      fim: null,
+      preferencias: [{ data: somarDias(hoje, 4), periodo: "manha" }, { data: somarDias(hoje, 5), periodo: "qualquer" }],
+      observacoes: "Prefiro deixar o carro cedo.",
+      resposta: null,
+      orcamento_id: null,
+      apontamento_id: "demo-a1",
+      google_evento_id: null,
+      criado_em: `${hoje}T12:30:00Z`,
+      veiculo: { id: "demo-civic", dono_id: "demo", placa: "BRA2E19", marca: "Honda", modelo: "Civic EXL", apelido: null, dono: { id: "demo", nome: "Cliente Demonstração", email: "demo@semprezero.app", telefone: "(11) 90000-0000" } },
+    },
+  ] satisfies (Agendamento & { veiculo: unknown })[],
   notificacoes: [
     {
       id: "demo-n1",

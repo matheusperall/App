@@ -3,7 +3,10 @@ import Link from "next/link";
 import { Placa, SeloPrioridade } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
-import { caixaDeEntrada, contarOrcamentosAResponder, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
+import { agendaEmpresa, caixaDeEntrada, contarOrcamentosAResponder, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
+import { ItemAgendamento } from "@/components/agendamento";
+import { partesBrasilia } from "@/lib/agenda";
+import { googleConfigurado } from "@/lib/google-agenda";
 import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo } from "@/lib/garagem";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { lembretesConfigurados } from "@/lib/env";
@@ -12,12 +15,15 @@ export const metadata: Metadata = { title: "Painel da empresa" };
 
 export default async function PainelPage() {
   await exigirAdmin();
-  const [{ clientes, abertos, respostas }, caixa, vencimentos, orcamentosAResponder] = await Promise.all([
+  const [{ clientes, abertos }, caixa, vencimentos, orcamentosAResponder, agenda] = await Promise.all([
     contarPainel(),
     caixaDeEntrada(),
     vencimentosProximos(),
     contarOrcamentosAResponder(),
+    agendaEmpresa(),
   ]);
+  const hoje = partesBrasilia(new Date()).dia;
+  const deHoje = agenda.proximos.filter((a) => a.inicio && partesBrasilia(new Date(a.inicio)).dia === hoje);
   const novos = caixa.filter((c) => c.situacao !== "agendado");
   const agendados = caixa.filter((c) => c.situacao === "agendado");
 
@@ -25,7 +31,7 @@ export default async function PainelPage() {
     { rotulo: "Clientes", valor: clientes, href: "/painel/clientes" },
     { rotulo: "Orçamentos a responder", valor: orcamentosAResponder, href: "/orcamentos?f=responder", destaque: orcamentosAResponder > 0 },
     { rotulo: "Apontamentos abertos", valor: abertos, href: null },
-    { rotulo: "Respostas de clientes", valor: respostas, href: null, destaque: respostas > 0 },
+    { rotulo: "Agendamentos a confirmar", valor: agenda.aConfirmar.length, href: "/agendamentos", destaque: agenda.aConfirmar.length > 0 },
   ];
 
   return (
@@ -35,13 +41,15 @@ export default async function PainelPage() {
           <p className="text-suave">Área da empresa</p>
           <h1 className="text-2xl font-bold sm:text-3xl">Painel</h1>
         </div>
-        <Link href="/painel/configuracoes" className="text-sm font-semibold text-marca-escura hover:underline">
-          Configurações
-        </Link>
+        <div className="flex gap-4 text-sm font-semibold text-marca-escura">
+          <Link href="/garagem" className="hover:underline">Minha garagem</Link>
+          <Link href="/painel/configuracoes" className="hover:underline">Configurações</Link>
+        </div>
       </div>
 
-      {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados()) && (
+      {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados() || !googleConfigurado()) && (
         <Aviso tipo="alerta">
+          {!googleConfigurado() ? "A Google Agenda ainda não está conectada. " : ""}
           {!lembretesConfigurados() ? "Os lembretes automáticos ainda não estão ativados. " : ""}
           {!pushConfigurado() ? "As notificações no celular ainda não estão configuradas. " : ""}
           {!emailConfigurado() ? "O envio de e-mails de aviso ainda não está configurado. " : ""}
@@ -71,6 +79,18 @@ export default async function PainelPage() {
         <Link href="/painel/clientes/novo" className="botao-primario">+ Cadastrar cliente</Link>
         <Link href="/painel/clientes" className="botao-contorno">Buscar cliente ou placa</Link>
       </div>
+
+      <Cartao className="p-0">
+        <div className="flex items-center justify-between px-5 pt-5">
+          <h2 className="font-semibold">📅 Hoje na agenda</h2>
+          <Link href="/agendamentos" className="text-sm font-semibold text-marca-escura hover:underline">Ver agenda</Link>
+        </div>
+        {deHoje.length === 0 ? (
+          <p className="px-5 pt-2 pb-5 text-sm text-suave">Nenhum atendimento marcado para hoje.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-borda">{deHoje.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
+        )}
+      </Cartao>
 
       <Caixa titulo="📥 Respostas de clientes" vazio="Nenhuma resposta nova. Quando um cliente pedir orçamento ou agendamento, aparece aqui." itens={novos} />
       {agendados.length > 0 && <Caixa titulo="📅 Agendados" vazio="" itens={agendados} />}

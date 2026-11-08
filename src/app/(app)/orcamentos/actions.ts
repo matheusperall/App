@@ -196,7 +196,7 @@ export async function decidirOrcamento(_: EstadoForm, form: FormData): Promise<E
   return {
     sucesso:
       decisao === "aceito"
-        ? "Orçamento aprovado! Nossa equipe vai entrar em contato para agendar."
+        ? "Orçamento aprovado! Agora é só escolher os dias para o serviço."
         : decisao === "recusado"
           ? "Tudo bem, registramos sua resposta."
           : "Pedido cancelado.",

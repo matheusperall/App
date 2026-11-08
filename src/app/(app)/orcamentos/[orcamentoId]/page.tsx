@@ -98,8 +98,11 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
         <Aviso tipo="sucesso">
           {admin
             ? `Aprovado pelo cliente em ${o.decidido_em ? formatarDataHora(o.decidido_em) : "—"}. Combine a data do serviço.`
-            : "Você aprovou este orçamento. Nossa equipe vai entrar em contato para agendar."}
+            : "Você aprovou este orçamento. Escolha os melhores dias para fazermos o serviço."}
         </Aviso>
+      )}
+      {o.situacao === "aceito" && !admin && (
+        <Link href={`/agendamentos/novo?orcamento=${o.id}`} className="botao-primario w-full">📅 Agendar o serviço</Link>
       )}
       {o.situacao === "recusado" && (
         <Aviso>

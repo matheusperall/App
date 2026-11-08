@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { Aviso, Cartao } from "@/components/ui";
@@ -37,7 +38,12 @@ export function RespostaCliente({ id, situacao }: { id: string; situacao: Situac
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="resposta" value={escolha} />
         <div className="grid gap-2 sm:grid-cols-3">
-          {OPCOES.map((o) => (
+          {OPCOES.map((o) =>
+            o.valor === "agendamento" ? (
+              <Link key={o.valor} href={`/agendamentos/novo?apontamento=${id}`} className={`${o.classe} text-sm ${escolha ? "opacity-60" : ""}`}>
+                <span aria-hidden="true">{o.icone}</span> {o.rotulo}
+              </Link>
+            ) : (
             <button
               key={o.valor}
               type="button"
@@ -46,7 +52,8 @@ export function RespostaCliente({ id, situacao }: { id: string; situacao: Situac
             >
               <span aria-hidden="true">{o.icone}</span> {o.rotulo}
             </button>
-          ))}
+            ),
+          )}
         </div>
         {escolha && (
           <>
