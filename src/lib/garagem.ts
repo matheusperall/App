@@ -22,6 +22,7 @@ export type Veiculo = {
   fipe_modelo_cod?: string | null;
   fipe_ano_cod?: string | null;
   km_por_dia?: number | null;
+  uf?: string | null;
 };
 
 export type Servico = {
@@ -260,6 +261,9 @@ export type Documento = {
   tipo: TipoDocumento;
   descricao: string | null;
   vencimento: string; // AAAA-MM-DD
+  /** Calculado pelo calendário oficial (final da placa), sem data informada pelo cliente */
+  automatico?: boolean;
+  previsao?: boolean;
 };
 
 export function situacaoDocumento(vencimento: string, hoje = hojeISO()) {

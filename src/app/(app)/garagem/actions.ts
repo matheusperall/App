@@ -85,7 +85,9 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
     km_atual: km,
     foto,
   };
+  const uf = texto(form, "uf").toUpperCase();
   const fipe = {
+    uf: /^[A-Z]{2}$/.test(uf) ? uf : "SP",
     tipo,
     combustivel: textoOuNulo(form, "combustivel"),
     codigo_fipe: textoOuNulo(form, "codigo_fipe"),

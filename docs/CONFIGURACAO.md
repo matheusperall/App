@@ -22,6 +22,7 @@ aparecem, mas login e cadastro não funcionam.
    6. `0006_orcamentos.sql` — pedidos de orçamento
    7. `0007_agendamentos.sql` — agendamentos
    8. `0008_km_e_comunicados.sql` — ritmo de uso (previsão por km) e comunicados
+   9. `0009_uf_veiculo.sql` — estado do veículo (calendário de IPVA e licenciamento)
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

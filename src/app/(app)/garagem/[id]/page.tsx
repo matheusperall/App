@@ -6,7 +6,8 @@ import { Aviso, Cartao } from "@/components/ui";
 import { ItemListaOrcamento } from "@/components/orcamento";
 import { exigirUsuario } from "@/lib/auth";
 import { listarApontamentos, listarDocumentosVeiculos, listarLeiturasKm, listarOrcamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
-import { PRIORIDADES, REGISTROS_PARA_MEDIA, apontamentoAberto, formatarData, formatarValor, kmEstimado, kmPorMes, nomeVeiculo, registrosFaltando, ritmoDoVeiculo, situacaoManutencao } from "@/lib/garagem";
+import { documentosAutomaticos } from "@/lib/calendarios";
+import { PRIORIDADES, REGISTROS_PARA_MEDIA, hojeISO, apontamentoAberto, formatarData, formatarValor, kmEstimado, kmPorMes, nomeVeiculo, registrosFaltando, ritmoDoVeiculo, situacaoManutencao } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
 export const metadata: Metadata = { title: "Veículo" };
@@ -36,6 +37,9 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
   const ritmo = ritmoDoVeiculo(veiculo);
   const temManutencaoPorKm = manutencoes.some((m) => m.proximo_km != null);
   const faltam = registrosFaltando(leituras);
+  const todosDocumentos = [...documentosAutomaticos(veiculo, documentos, hojeISO()), ...documentos].sort((a, b) =>
+    a.vencimento.localeCompare(b.vencimento),
+  );
   manutencoes.sort(
     (a, b) =>
       ORDEM[situacaoManutencao(a, veiculo.km_atual, undefined, ritmo).situacao] -
@@ -192,16 +196,16 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Documentos e vencimentos</h2>
             <Link href={`/garagem/${veiculo.id}/documentos`} className="text-sm font-semibold text-marca-escura hover:underline">
-              {documentos.length ? "Editar" : "Informar"}
+              {documentos.length ? "Editar" : "Ver detalhes"}
             </Link>
           </div>
-          {documentos.length === 0 ? (
+          {todosDocumentos.length === 0 ? (
             <p className="mt-3 text-sm text-suave">
               Informe o vencimento do licenciamento, IPVA e seguro e avisamos antes de vencer.
             </p>
           ) : (
             <ul className="divide-y divide-borda">
-              {documentos.map((d) => (
+              {todosDocumentos.map((d) => (
                 <ItemDocumento key={d.id} d={d} />
               ))}
             </ul>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { documentosAutomaticos } from "@/lib/calendarios";
 import {
   CATEGORIAS,
   PRESTADORES,
@@ -6,6 +7,7 @@ import {
   SITUACOES_APONTAMENTO,
   TIPOS_DOCUMENTO,
   apontamentoAberto,
+  hojeISO,
   situacaoDocumento,
   ritmoDoVeiculo,
   type Ritmo,
@@ -93,7 +95,7 @@ export function CartaoVeiculo({
   documentos?: Documento[];
 }) {
   const m = contarAlertas(manutencoes, veiculo.km_atual, ritmoDoVeiculo(veiculo));
-  const docs = documentos.map((d) => situacaoDocumento(d.vencimento).situacao);
+  const docs = [...documentosAutomaticos(veiculo, documentos, hojeISO()), ...documentos].map((d) => situacaoDocumento(d.vencimento).situacao);
   const vencidas = m.vencidas + docs.filter((x) => x === "vencida").length;
   const emBreve = m.emBreve + docs.filter((x) => x === "em_breve").length;
   const abertos = apontamentos.filter(apontamentoAberto).length;
@@ -253,6 +255,7 @@ export function ItemDocumento({ d }: { d: Documento }) {
           <span aria-hidden="true">{info.icone} </span>
           {d.tipo === "outro" && d.descricao ? d.descricao : info.rotulo}
         </p>
+        {d.automatico && d.descricao && <p className="text-xs text-suave">{d.descricao}{d.previsao ? " · previsão" : ""}</p>}
         <p className="text-sm text-suave">
           Vence em {formatarData(d.vencimento)}
           <span className="block text-xs">{descreverPrazo(dias, null)}</span>

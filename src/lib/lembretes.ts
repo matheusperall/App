@@ -1,5 +1,6 @@
 import "server-only";
 import { recalcularRitmo } from "@/lib/ritmo";
+import { documentosAutomaticos } from "@/lib/calendarios";
 import {
   TIPOS_DOCUMENTO,
   dataPrevistaKm,
@@ -159,6 +160,32 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
       corpo: `${d.veiculo ? `${nomeVeiculo(d.veiculo)} (${d.veiculo.placa}) — ` : ""}vencimento em ${formatarData(d.vencimento)}.`,
       link: d.veiculo ? `/garagem/${d.veiculo.id}/documentos` : "/conta",
     });
+  }
+
+  // ---------------- IPVA e licenciamento pelo calendário (SP, sem data informada) ----------------
+  {
+    let consultaV = await admin.from("veiculos").select("id, dono_id, placa, marca, modelo, apelido, uf");
+    if (consultaV.error?.code === "42703") consultaV = await admin.from("veiculos").select("id, dono_id, placa, marca, modelo, apelido");
+    const manuais = ((documentos ?? []) as unknown as { tipo: string; veiculo: { id: string } | null }[]).map((d) => ({
+      tipo: d.tipo,
+      veiculo_id: d.veiculo?.id ?? null,
+    }));
+    for (const v of (consultaV.data ?? []) as { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; uf?: string }[]) {
+      for (const d of documentosAutomaticos(v, manuais, hoje)) {
+        const dias = diasEntre(hoje, d.vencimento);
+        if (dias < 0) continue; // sem controle de pagamento: não cobra depois do vencimento
+        const etapa = etapaPorData(dias, [1, 7, 30]);
+        if (!etapa) continue;
+        const nome = d.tipo === "ipva" ? `IPVA ${d.descricao.split(" · ")[0]}` : `Licenciamento ${d.descricao.split(" · ")[0]}`;
+        itens.push({
+          chave: `auto:${d.tipo}:${v.id}:${d.vencimento}:${etapa}`,
+          usuarioId: v.dono_id,
+          titulo: `${nome}: ${prazoTexto(dias)}`,
+          corpo: `${nomeVeiculo(v)} (${v.placa}) — ${d.tipo === "ipva" ? d.descricao.split(" · ")[1] : "pelo final da placa"}: ${formatarData(d.vencimento)}${d.previsao ? " (previsão)" : ""}.`,
+          link: `/garagem/${v.id}/documentos`,
+        });
+      }
+    }
   }
 
   // ---------------- Pedido mensal do km (até termos o ritmo de uso) ----------------

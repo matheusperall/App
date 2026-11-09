@@ -9,6 +9,7 @@ import type { EstadoForm } from "@/app/(auth)/actions";
 import { TIPOS_VEICULO, type DetalheFipe, type TipoVeiculo } from "@/lib/fipe";
 import type { Veiculo } from "@/lib/garagem";
 import { salvarVeiculo } from "./actions";
+import { UFS } from "@/lib/calendarios";
 
 type Modo = "fipe" | "resumo" | "manual";
 
@@ -56,18 +57,25 @@ export function FormVeiculo({
       <input type="hidden" name="dono_id" value={donoId} />
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
-      <Campo rotulo="Placa">
-        <input
-          name="placa"
-          required
-          defaultValue={veiculo?.placa}
-          maxLength={8}
-          autoCapitalize="characters"
-          autoComplete="off"
-          className="campo font-mono uppercase tracking-wider"
-          placeholder="ABC1D23"
-        />
-      </Campo>
+      <div className="grid grid-cols-[1fr_6.5rem] gap-3">
+        <Campo rotulo="Placa">
+          <input
+            name="placa"
+            required
+            defaultValue={veiculo?.placa}
+            maxLength={8}
+            autoCapitalize="characters"
+            autoComplete="off"
+            className="campo font-mono uppercase tracking-wider"
+            placeholder="ABC1D23"
+          />
+        </Campo>
+        <Campo rotulo="Estado">
+          <select name="uf" defaultValue={veiculo?.uf ?? "SP"} className="campo px-3">
+            {UFS.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </Campo>
+      </div>
 
       {/* Marca, modelo e ano */}
       <fieldset className="space-y-3">

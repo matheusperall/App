@@ -2,6 +2,7 @@ import "server-only";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Agendamento } from "@/lib/agenda";
+import { documentosAutomaticos } from "@/lib/calendarios";
 import { TIPOS_DOCUMENTO, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
@@ -13,7 +14,7 @@ export type Cliente = Dono & { criado_em: string; veiculos: { id: string; placa:
 
 const CAMPOS_BASICOS =
   "id, dono_id, placa, marca, modelo, ano, cor, apelido, km_atual, km_atualizado_em, foto";
-const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod, km_por_dia`;
+const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod, km_por_dia, uf`;
 
 /** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
 const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
@@ -282,6 +283,32 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
       });
     }
   }
+  // IPVA e licenciamento pelo calendário (veículos de SP sem data informada)
+  {
+    const buscarVeiculos = (uf: boolean) =>
+      supabase
+        .from("veiculos")
+        .select(`id, dono_id, placa, marca, modelo, apelido${uf ? ", uf" : ""}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
+        .limit(1000);
+    let cv: { data: unknown[] | null; error: { code?: string } | null } = await buscarVeiculos(true);
+    if (cv.error?.code === "42703") cv = await buscarVeiculos(false);
+    const manuais = (d.data ?? []) as unknown as { tipo: string; veiculo: { id: string } | null }[];
+    const { data: todosManuais } = await supabase.from("documentos").select("tipo, veiculo_id").in("tipo", ["licenciamento", "ipva"]);
+    for (const v of (cv.data ?? []) as unknown as { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; uf?: string; dono: Dono | null }[]) {
+      for (const a of documentosAutomaticos(v, [...(todosManuais ?? []), ...manuais.map((m) => ({ tipo: m.tipo, veiculo_id: m.veiculo?.id ?? null }))], hoje)) {
+        if (a.vencimento > limite) continue;
+        lista.push({
+          chave: a.id,
+          titulo: a.tipo === "ipva" ? `IPVA ${a.descricao.split(" · ")[0]}` : `Licenciamento ${a.descricao.split(" · ")[0]}`,
+          data: a.vencimento,
+          detalhe: `${a.tipo === "ipva" ? a.descricao.split(" · ")[1] : "pelo final da placa"} · ${a.vencimento.split("-").reverse().join("/")}`,
+          vencido: false,
+          veiculo: { id: v.id, placa: v.placa, nome: v.apelido || `${v.marca} ${v.modelo}`.trim() },
+          cliente: v.dono,
+        });
+      }
+    }
+  }
   return lista.sort((a, b) => Number(b.vencido) - Number(a.vencido) || (a.data ?? "9999").localeCompare(b.data ?? "9999"));
 }
 
@@ -522,7 +549,6 @@ const DEMO = {
     },
   ] satisfies Apontamento[],
   documentos: [
-    { id: "demo-d1", dono_id: "demo", veiculo_id: "demo-civic", tipo: "licenciamento", descricao: null, vencimento: somarMeses(hoje, 2) },
     { id: "demo-d2", dono_id: "demo", veiculo_id: "demo-civic", tipo: "seguro", descricao: "Porto Seguro", vencimento: somarDias(hoje, 12) },
   ] satisfies Documento[],
   leituras: [

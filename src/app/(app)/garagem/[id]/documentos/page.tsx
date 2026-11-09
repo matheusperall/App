@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Voltar } from "@/components/garagem";
-import { exigirUsuario } from "@/lib/auth";
-import { listarDocumentosVeiculos, obterVeiculo } from "@/lib/dados";
-import { TIPOS_DOCUMENTO, nomeVeiculo, type TipoDocumento } from "@/lib/garagem";
+import { CartaoIpva, CartaoLicenciamento } from "@/components/CalendarioDocumento";
 import { FormDocumento } from "@/components/FormDocumento";
+import { Voltar } from "@/components/garagem";
+import { Aviso } from "@/components/ui";
+import { exigirUsuario } from "@/lib/auth";
+import { calendarioIpvaAtual, finalPlaca, proximoLicenciamento, temCalendario } from "@/lib/calendarios";
+import { listarDocumentosVeiculos, obterVeiculo } from "@/lib/dados";
+import { hojeISO, nomeVeiculo } from "@/lib/garagem";
 
 export const metadata: Metadata = { title: "Documentos e vencimentos" };
-
-const DO_VEICULO = (Object.keys(TIPOS_DOCUMENTO) as TipoDocumento[]).filter((t) => TIPOS_DOCUMENTO[t].doVeiculo && t !== "outro");
 
 export default async function DocumentosPage({ params }: PageProps<"/garagem/[id]/documentos">) {
   const [{ id }] = await Promise.all([params, exigirUsuario()]);
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
   const documentos = await listarDocumentosVeiculos([id]);
+  const hoje = hojeISO();
+  const sp = temCalendario(veiculo.uf);
+  const final = finalPlaca(veiculo.placa);
+  const doc = (tipo: string) => documentos.find((d) => d.tipo === tipo) ?? null;
   const outros = documentos.filter((d) => d.tipo === "outro");
 
   return (
@@ -23,14 +28,31 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
       <div>
         <h1 className="text-2xl font-bold">Documentos e vencimentos</h1>
         <p className="text-suave">
-          Informe as datas e avisamos 30 dias, 7 dias e 1 dia antes de vencer. Assim você não paga multa por
-          esquecimento.
+          {sp
+            ? "Licenciamento e IPVA são calculados pelo final da placa, conforme o calendário de São Paulo. "
+            : ""}
+          Avisamos 30 dias, 7 dias e 1 dia antes de vencer.
         </p>
       </div>
+      {!sp && (
+        <Aviso>
+          Veículo registrado em {veiculo.uf}: o calendário automático está disponível para veículos de SP. Informe as datas
+          abaixo.
+        </Aviso>
+      )}
       <div className="space-y-3">
-        {DO_VEICULO.map((t) => (
-          <FormDocumento key={t} tipo={t} veiculoId={id} atual={documentos.find((d) => d.tipo === t) ?? null} />
-        ))}
+        {sp ? (
+          <>
+            <CartaoLicenciamento veiculoId={id} final={final} calendario={proximoLicenciamento(veiculo.placa, hoje)} manual={doc("licenciamento")} />
+            <CartaoIpva veiculoId={id} final={final} calendario={calendarioIpvaAtual(veiculo.placa, hoje)} manual={doc("ipva")} hoje={hoje} />
+          </>
+        ) : (
+          <>
+            <FormDocumento tipo="licenciamento" veiculoId={id} atual={doc("licenciamento")} />
+            <FormDocumento tipo="ipva" veiculoId={id} atual={doc("ipva")} />
+          </>
+        )}
+        <FormDocumento tipo="seguro" veiculoId={id} atual={doc("seguro")} />
         {outros.map((d) => (
           <FormDocumento key={d.id} tipo="outro" veiculoId={id} atual={d} />
         ))}
