@@ -51,3 +51,55 @@ export function lerDetalhe(d: Record<string, unknown>, anoAtual: number): Detalh
     referencia: String(d.MesReferencia ?? "").trim(),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Modelo básico (ex.: "Polo") a partir dos nomes completos da FIPE
+// ---------------------------------------------------------------------------
+/** Palavras que formam o nome do modelo junto com a seguinte (ex.: "Grand Siena", "Space Fox"). */
+const UNE_SEGUINTE = new Set(["grand", "nova", "novo", "new", "range", "classe", "serie", "série", "space", "santa"]);
+
+function normalizarPalavra(p: string) {
+  // "POLO" → "Polo"; mantém siglas com números (HB20, C3, 208) e nomes curtos (UP!, KA)
+  if (/\d/.test(p) || p.length <= 3) return p;
+  return p === p.toUpperCase() ? p.charAt(0) + p.slice(1).toLowerCase() : p;
+}
+
+export function modeloBase(nome: string) {
+  const limpo = nome.replace(/\(.*?\)/g, " ").replace(/\s+/g, " ").trim();
+  const partes = limpo.split(" ");
+  const primeira = partes[0] ?? limpo;
+  const usar = UNE_SEGUINTE.has(primeira.toLowerCase()) && partes[1] && !/^\d/.test(partes[1]) ? 2 : 1;
+  const nomeBase = partes.slice(0, usar).map(normalizarPalavra).join(" ");
+  return { chave: nomeBase.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""), nome: nomeBase };
+}
+
+export type ModeloBasico = { chave: string; nome: string; versoes: number };
+
+/** Agrupa as versões da FIPE pelo modelo básico. */
+export function agruparModelos(modelos: ItemFipe[]): ModeloBasico[] {
+  const grupos = new Map<string, { nomes: Map<string, number>; versoes: number }>();
+  for (const m of modelos) {
+    const b = modeloBase(m.nome);
+    const g = grupos.get(b.chave) ?? { nomes: new Map(), versoes: 0 };
+    g.nomes.set(b.nome, (g.nomes.get(b.nome) ?? 0) + 1);
+    g.versoes++;
+    grupos.set(b.chave, g);
+  }
+  return [...grupos.entries()]
+    .map(([chave, g]) => ({ chave, nome: [...g.nomes.entries()].sort((a, b) => b[1] - a[1])[0][0], versoes: g.versoes }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+/** "2021 Gasolina" → { ano: 2021, combustivel: "Gasolina" }; "32000 Flex" = Zero KM */
+export function lerAnoFipe(nome: string, anoAtual: number) {
+  const m = nome.match(/^(\d{4,5})\s*(.*)$/);
+  const bruto = m ? Number(m[1]) : 0;
+  return { ano: bruto >= 32000 ? anoAtual : bruto, zeroKm: bruto >= 32000, combustivel: (m?.[2] ?? "").trim() };
+}
+
+/** Versões disponíveis por ano para um modelo básico. */
+export type AnoComVersoes = {
+  ano: number;
+  zeroKm: boolean;
+  versoes: { modeloCod: string; nome: string; anoCod: string; combustivel: string }[];
+};

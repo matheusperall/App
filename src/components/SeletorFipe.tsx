@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { TIPOS_VEICULO, lerDetalhe, nomeMarca, type DetalheFipe, type ItemFipe, type TipoVeiculo } from "@/lib/fipe";
+import {
+  TIPOS_VEICULO,
+  agruparModelos,
+  lerDetalhe,
+  nomeMarca,
+  type AnoComVersoes,
+  type DetalheFipe,
+  type ItemFipe,
+  type ModeloBasico,
+  type TipoVeiculo,
+} from "@/lib/fipe";
 import { formatarValor } from "@/lib/garagem";
 
 async function buscar<T>(caminho: string): Promise<T> {
@@ -111,7 +121,7 @@ function Combo({
 export type Escolha = { tipo: TipoVeiculo; marcaCod: string; modeloCod: string; anoCod: string; detalhe: DetalheFipe };
 
 /**
- * Escolha guiada pela tabela FIPE: tipo → marca → modelo → ano.
+ * Escolha guiada pela tabela FIPE: tipo → marca → modelo básico (ex.: Polo) → ano → versão.
  * Ao final, devolve os dados completos do veículo (marca, modelo, ano, combustível, código e valor FIPE).
  */
 export function SeletorFipe({
@@ -125,11 +135,13 @@ export function SeletorFipe({
 }) {
   const [tipo, setTipo] = useState<TipoVeiculo>("carro");
   const [marcas, setMarcas] = useState<ItemFipe[]>([]);
-  const [modelos, setModelos] = useState<ItemFipe[]>([]);
-  const [anos, setAnos] = useState<ItemFipe[]>([]);
+  const [modelos, setModelos] = useState<ModeloBasico[]>([]);
+  const [anos, setAnos] = useState<AnoComVersoes[]>([]);
   const [marca, setMarca] = useState<ItemFipe | null>(null);
-  const [modelo, setModelo] = useState<ItemFipe | null>(null);
+  const [modelo, setModelo] = useState<ModeloBasico | null>(null);
+  const [ano, setAno] = useState<AnoComVersoes | null>(null);
   const [carregando, setCarregando] = useState<"" | "marcas" | "modelos" | "anos" | "detalhe">("marcas");
+  const [incompleto, setIncompleto] = useState(false);
   const [erro, setErro] = useState(false);
   const caminho = TIPOS_VEICULO[tipo].caminho;
 
@@ -151,6 +163,7 @@ export function SeletorFipe({
     setMarca(null);
     setModelo(null);
     setModelos([]);
+    setAno(null);
     setAnos([]);
     setErro(false);
     setCarregando("marcas");
@@ -159,11 +172,12 @@ export function SeletorFipe({
   async function escolherMarca(m: ItemFipe) {
     setMarca(m);
     setModelo(null);
+    setAno(null);
     setAnos([]);
     setCarregando("modelos");
     try {
       const r = await buscar<{ modelos: ItemFipe[] }>(`${caminho}/marcas/${m.codigo}/modelos`);
-      setModelos(r.modelos.map((x) => ({ codigo: String(x.codigo), nome: x.nome })));
+      setModelos(agruparModelos(r.modelos.map((x) => ({ codigo: String(x.codigo), nome: x.nome }))));
     } catch {
       setErro(true);
     } finally {
@@ -171,12 +185,17 @@ export function SeletorFipe({
     }
   }
 
-  async function escolherModelo(m: ItemFipe) {
+  async function escolherModelo(m: ModeloBasico) {
     setModelo(m);
+    setAno(null);
+    setAnos([]);
     setCarregando("anos");
     try {
-      const r = await buscar<ItemFipe[]>(`${caminho}/marcas/${marca!.codigo}/modelos/${m.codigo}/anos`);
-      setAnos(r.map((x) => ({ codigo: String(x.codigo), nome: x.nome.replace(/^32000/, "Zero KM") })));
+      const r = await fetch(`/api/fipe-versoes?tipo=${caminho}&marca=${marca!.codigo}&modelo=${encodeURIComponent(m.chave)}`);
+      if (!r.ok) throw new Error();
+      const dados = (await r.json()) as { anos: AnoComVersoes[]; incompleto?: boolean };
+      setAnos(dados.anos);
+      setIncompleto(Boolean(dados.incompleto));
     } catch {
       setErro(true);
     } finally {
@@ -184,13 +203,11 @@ export function SeletorFipe({
     }
   }
 
-  async function escolherAno(a: ItemFipe) {
+  async function escolherVersao(v: AnoComVersoes["versoes"][number]) {
     setCarregando("detalhe");
     try {
-      const d = await buscar<Record<string, unknown>>(
-        `${caminho}/marcas/${marca!.codigo}/modelos/${modelo!.codigo}/anos/${a.codigo}`,
-      );
-      aoConcluir({ tipo, marcaCod: marca!.codigo, modeloCod: modelo!.codigo, anoCod: a.codigo, detalhe: lerDetalhe(d, anoAtual) });
+      const d = await buscar<Record<string, unknown>>(`${caminho}/marcas/${marca!.codigo}/modelos/${v.modeloCod}/anos/${v.anoCod}`);
+      aoConcluir({ tipo, marcaCod: marca!.codigo, modeloCod: v.modeloCod, anoCod: v.anoCod, detalhe: lerDetalhe(d, anoAtual) });
     } catch {
       setErro(true);
     } finally {
@@ -206,6 +223,8 @@ export function SeletorFipe({
       </div>
     );
   }
+
+  const itensModelo: ItemFipe[] = modelos.map((m) => ({ codigo: m.chave, nome: m.nome }));
 
   return (
     <div className="space-y-3">
@@ -225,8 +244,9 @@ export function SeletorFipe({
           </button>
         ))}
       </div>
+
       <Combo
-        rotulo="Marca"
+        rotulo="1. Marca"
         itens={marcas}
         valor={marca}
         aoEscolher={escolherMarca}
@@ -235,23 +255,69 @@ export function SeletorFipe({
         placeholder="Digite ou escolha a marca"
       />
       <Combo
-        rotulo="Modelo / versão"
-        itens={modelos}
-        valor={modelo}
-        aoEscolher={escolherModelo}
+        rotulo="2. Modelo"
+        itens={itensModelo}
+        valor={modelo ? { codigo: modelo.chave, nome: modelo.nome } : null}
+        aoEscolher={(i) => escolherModelo(modelos.find((m) => m.chave === i.codigo)!)}
         carregando={carregando === "modelos"}
         desabilitado={!marca}
-        placeholder={marca ? "Digite parte do nome, ex.: civic exl" : "Escolha a marca primeiro"}
+        placeholder={marca ? "Ex.: Polo, Gol, HB20" : "Escolha a marca primeiro"}
       />
-      <Combo
-        rotulo="Ano / combustível"
-        itens={anos}
-        valor={null}
-        aoEscolher={escolherAno}
-        carregando={carregando === "anos" || carregando === "detalhe"}
-        desabilitado={!modelo}
-        placeholder={modelo ? "Escolha o ano" : "Escolha o modelo primeiro"}
-      />
+
+      {modelo && (
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium">3. Ano</span>
+          {carregando === "anos" ? (
+            <p className="rounded-xl bg-fundo px-4 py-3 text-sm text-suave">Buscando anos e versões do {modelo.nome}…</p>
+          ) : anos.length === 0 ? (
+            <p className="text-sm text-suave">Nenhum ano encontrado para este modelo.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {anos.map((a) => {
+                const chave = a.zeroKm ? "0km" : String(a.ano);
+                const ativo = ano && (ano.zeroKm ? "0km" : String(ano.ano)) === chave;
+                return (
+                  <button
+                    key={chave}
+                    type="button"
+                    onClick={() => setAno(a)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                      ativo ? "border-marca bg-marca text-white" : "border-borda bg-white hover:border-marca"
+                    }`}
+                  >
+                    {a.zeroKm ? "Zero km" : a.ano}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {incompleto && <p className="text-xs text-suave">Alguns anos podem não ter carregado. Se não achar, tente de novo em instantes.</p>}
+        </div>
+      )}
+
+      {ano && (
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium">
+            4. Versão {ano.zeroKm ? "zero km" : ano.ano} <span className="font-normal text-suave">({ano.versoes.length})</span>
+          </span>
+          <ul className="max-h-80 divide-y divide-borda overflow-auto rounded-xl border border-borda bg-white">
+            {ano.versoes.map((v) => (
+              <li key={`${v.modeloCod}-${v.anoCod}`}>
+                <button
+                  type="button"
+                  disabled={carregando === "detalhe"}
+                  onClick={() => escolherVersao(v)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-marca-clara disabled:opacity-60"
+                >
+                  <span>{v.nome}</span>
+                  {v.combustivel && <span className="shrink-0 rounded-full bg-fundo px-2 py-0.5 text-xs text-suave">{v.combustivel}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {carregando === "detalhe" && <p className="text-sm text-suave">Carregando dados da versão…</p>}
+        </div>
+      )}
     </div>
   );
 }
