@@ -41,3 +41,37 @@ export async function cadastrarCliente(_: EstadoForm, form: FormData): Promise<E
 
   redirect(`/painel/clientes/${data.user.id}?novo=1`);
 }
+
+/**
+ * Reenvia o acesso ao cliente: novo convite (se ainda não aceitou) ou link para criar uma nova senha.
+ * Útil quando o convite expirou (os links valem por tempo limitado).
+ */
+export async function reenviarAcesso(_: EstadoForm, form: FormData): Promise<EstadoForm> {
+  if (!isSupabaseConfigured) return { erro: "Modo demonstração." };
+  await exigirAdmin();
+  const admin = createAdminClient();
+  if (!admin) return { erro: "Falta configurar a chave SUPABASE_SERVICE_ROLE_KEY no servidor." };
+
+  const id = String(form.get("cliente_id") ?? "");
+  const { data: perfil } = await admin.from("perfis").select("email, nome").eq("id", id).maybeSingle();
+  if (!perfil?.email) return { erro: "Cliente sem e-mail cadastrado." };
+
+  const site = await getSiteUrl();
+  const destino = `${site}/auth/confirm?next=/redefinir-senha`;
+  const { data: usuario } = await admin.auth.admin.getUserById(id);
+  const aceitou = Boolean(usuario.user?.email_confirmed_at || usuario.user?.last_sign_in_at);
+
+  const { error } = aceitou
+    ? await admin.auth.resetPasswordForEmail(perfil.email, { redirectTo: destino })
+    : await admin.auth.admin.inviteUserByEmail(perfil.email, { redirectTo: destino, data: { nome: perfil.nome } });
+  if (error) {
+    const m = error.message.toLowerCase();
+    if (m.includes("rate") || m.includes("security purposes")) return { erro: "Limite de e-mails atingido. Aguarde alguns minutos e tente de novo." };
+    return { erro: `Não foi possível reenviar: ${error.message}` };
+  }
+  return {
+    sucesso: aceitou
+      ? `Enviamos para ${perfil.email} um link para criar uma nova senha.`
+      : `Convite reenviado para ${perfil.email}.`,
+  };
+}

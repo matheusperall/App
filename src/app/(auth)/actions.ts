@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/env";
 import { traduzirErro } from "@/lib/erros";
 import { createClient } from "@/lib/supabase/server";
+import { createClienteEmail } from "@/lib/supabase/sem-sessao";
 import { caminhoSeguro, getSiteUrl } from "@/lib/site";
 
 export type EstadoForm = {
@@ -47,9 +48,8 @@ export async function cadastrar(_: EstadoForm, form: FormData): Promise<EstadoFo
   if (senha.length < 8) return falha("A senha deve ter pelo menos 8 caracteres.");
   if (!aceite) return falha("Para continuar, aceite os termos de uso e a política de privacidade.");
 
-  const supabase = await createClient();
   const site = await getSiteUrl();
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await createClienteEmail().auth.signUp({
     email,
     password: senha,
     options: {
@@ -62,8 +62,12 @@ export async function cadastrar(_: EstadoForm, form: FormData): Promise<EstadoFo
     return falha(traduzirErro(error.message));
   }
 
-  // Se a confirmação de e-mail estiver desligada, já entra direto.
-  if (data.session) redirect("/garagem");
+  // Se a confirmação de e-mail estiver desligada, já entra direto (grava a sessão nos cookies).
+  if (data.session) {
+    const supabase = await createClient();
+    await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
+    redirect("/garagem");
+  }
 
   return {
     sucesso: `Conta criada! Enviamos um link de confirmação para ${email}. Abra o e-mail para ativar sua conta.`,
@@ -75,9 +79,8 @@ export async function recuperarSenha(_: EstadoForm, form: FormData): Promise<Est
   const email = texto(form, "email").toLowerCase();
   if (!email.includes("@")) return { erro: "Informe um e-mail válido." };
 
-  const supabase = await createClient();
   const site = await getSiteUrl();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await createClienteEmail().auth.resetPasswordForEmail(email, {
     redirectTo: `${site}/auth/confirm?next=/redefinir-senha`,
   });
   if (error) return { erro: traduzirErro(error.message) };

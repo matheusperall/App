@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { CartaoVeiculo, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
+import { ReenviarAcesso } from "./ReenviarAcesso";
 import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, obterCliente, urlsDasFotos } from "@/lib/dados";
 
 export const metadata: Metadata = { title: "Cliente" };
@@ -36,11 +37,14 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
           <h1 className="text-2xl font-bold">{cliente.nome || "Sem nome"}</h1>
           <p className="text-suave">{[cliente.email, cliente.telefone].filter(Boolean).join(" · ")}</p>
         </div>
-        {cliente.telefone && (
-          <a href={linkWhatsApp(cliente.telefone)} target="_blank" rel="noreferrer" className="botao-contorno text-sm">
-            Chamar no WhatsApp
-          </a>
-        )}
+        <div className="flex flex-col gap-2 sm:w-64">
+          {cliente.telefone && (
+            <a href={linkWhatsApp(cliente.telefone)} target="_blank" rel="noreferrer" className="botao-contorno w-full text-sm">
+              Chamar no WhatsApp
+            </a>
+          )}
+          <ReenviarAcesso clienteId={cliente.id} />
+        </div>
       </Cartao>
 
       <div className="flex items-center justify-between gap-4">

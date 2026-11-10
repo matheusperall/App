@@ -4,9 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { caminhoSeguro } from "@/lib/site";
 
 /**
- * Destino dos links enviados por e-mail (confirmação de conta, convite,
- * recuperação de senha). Aceita os dois formatos do Supabase:
- * ?token_hash=...&type=...  ou  ?code=...
+ * Destino dos links enviados por e-mail (confirmação de conta, convite, recuperação de senha).
+ *
+ * Formatos aceitos:
+ *  - ?token_hash=...&type=...   (modelo de e-mail personalizado) → confirmado aqui no servidor
+ *  - ?code=...                  (fluxo PKCE)                     → confirmado aqui no servidor
+ *  - #access_token=...          (convites e links "implícitos")  → a parte depois do # não chega
+ *    ao servidor; o navegador mantém o # no redirecionamento e a página /auth/concluir finaliza.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -14,21 +18,22 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   const code = searchParams.get("code");
   const next = caminhoSeguro(searchParams.get("next"));
-
-  const supabase = await createClient();
-  let ok = false;
+  const concluir = (extra = "") => NextResponse.redirect(`${origin}/auth/concluir?next=${encodeURIComponent(next)}${extra}`);
 
   if (tokenHash && type) {
+    const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    ok = !error;
-  } else if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    ok = !error;
+    if (error) return concluir(`&erro=${encodeURIComponent(error.code ?? "link")}`);
+    return NextResponse.redirect(`${origin}${type === "invite" || type === "recovery" ? "/redefinir-senha" : next}`);
   }
 
-  if (!ok) return NextResponse.redirect(`${origin}/entrar?erro=link`);
+  if (code) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return concluir(`&erro=${encodeURIComponent(error.code ?? "link")}`);
+    return NextResponse.redirect(`${origin}${next}`);
+  }
 
-  // Convite e recuperação: a pessoa precisa definir uma senha.
-  const destino = type === "invite" || type === "recovery" ? "/redefinir-senha" : next;
-  return NextResponse.redirect(`${origin}${destino}`);
+  // Sem nada na URL: o acesso veio depois do # (ou o link veio com erro depois do #)
+  return concluir();
 }

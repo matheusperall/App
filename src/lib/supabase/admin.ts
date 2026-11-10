@@ -10,5 +10,5 @@ import { limparValor, supabaseUrl } from "@/lib/env";
 export function createAdminClient() {
   const chave = limparValor(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!supabaseUrl || !chave) return null;
-  return createClient(supabaseUrl, chave, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(supabaseUrl, chave, { auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" } });
 }
