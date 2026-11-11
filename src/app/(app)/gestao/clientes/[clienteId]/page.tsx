@@ -54,9 +54,9 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
       </Cartao>
 
       <div className="grid grid-cols-3 gap-3">
-        <Indicador rotulo="Total gasto" valor={<Dinheiro valor={totalGasto} />} />
-        <Indicador rotulo="Última visita" valor={<span className="text-xl">{ultima ? formatarData(ultima) : "—"}</span>} />
-        <Indicador rotulo="Em aberto" valor={<Dinheiro valor={emAberto} />} destaque={emAberto > 0} />
+        <Indicador compacto rotulo="Total gasto" valor={<Dinheiro valor={totalGasto} />} />
+        <Indicador compacto rotulo="Última visita" valor={<span>{ultima ? formatarData(ultima) : "—"}</span>} />
+        <Indicador compacto rotulo="Em aberto" valor={<Dinheiro valor={emAberto} />} destaque={emAberto > 0} />
       </div>
 
       {!f.perfil_id && (

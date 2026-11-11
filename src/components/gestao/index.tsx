@@ -28,15 +28,15 @@ export function Dinheiro({ valor, sinal = false, className = "" }: { valor: numb
   return <span className={`tabular-nums ${cor} ${className}`}>{formatarValor(valor)}</span>;
 }
 
-export function Indicador({ rotulo, valor, detalhe, href, destaque = false }: { rotulo: string; valor: ReactNode; detalhe?: ReactNode; href?: string; destaque?: boolean }) {
+export function Indicador({ rotulo, valor, detalhe, href, destaque = false, compacto = false }: { rotulo: string; valor: ReactNode; detalhe?: ReactNode; href?: string; destaque?: boolean; compacto?: boolean }) {
   const conteudo = (
     <>
       <p className="text-sm text-suave">{rotulo}</p>
-      <p className={`mt-1 font-titulo text-2xl font-bold tabular-nums sm:text-[1.7rem] ${destaque ? "text-marca-escura" : ""}`}>{valor}</p>
+      <p className={`mt-1 font-titulo font-bold tabular-nums break-words ${compacto ? "text-base sm:text-2xl" : "text-xl sm:text-[1.7rem]"} ${destaque ? "text-marca-escura" : ""}`}>{valor}</p>
       {detalhe && <div className="mt-1 text-xs text-suave">{detalhe}</div>}
     </>
   );
-  const classe = `block rounded-2xl border bg-white p-4 sm:p-5 ${destaque ? "border-marca/50" : "border-borda"}`;
+  const classe = `block min-w-0 rounded-2xl border bg-white ${compacto ? "p-3 sm:p-5" : "p-4 sm:p-5"} ${destaque ? "border-marca/50" : "border-borda"}`;
   return href ? (
     <Link href={href} className={`${classe} transition hover:border-marca/60`}>
       {conteudo}

@@ -12,7 +12,7 @@ export function GraficoDias({ dias, hoje }: { dias: { dia: string; valor: number
         {dias.map((d) => (
           <div key={d.dia} tabIndex={d.valor > 0 ? 0 : -1} className="group relative flex h-full flex-1 items-end outline-none">
             <div
-              className={`w-full rounded-t-[4px] ${d.valor > 0 ? "bg-marca group-hover:bg-marca-escura group-focus:bg-marca-escura" : ""} ${d.dia === hoje ? "ring-2 ring-tinta/20" : ""}`}
+              className={`w-full rounded-t-[4px] ${d.valor > 0 ? "bg-marca group-hover:bg-marca-escura group-focus:bg-marca-escura" : ""} ${d.dia === hoje && d.valor > 0 ? "ring-2 ring-tinta/20" : ""}`}
               style={{ height: d.valor > 0 ? `${Math.max(3, (d.valor / max) * 100)}%` : 0 }}
             />
             {d.valor > 0 && (

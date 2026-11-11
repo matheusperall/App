@@ -256,10 +256,11 @@ export function FormOS({
       </Cartao>
 
       {/* 2. Veículo */}
-      {temCliente && (
-        <Cartao className="space-y-3">
+      <Cartao className="space-y-3">
           <h2 className="font-semibold">2. Veículo</h2>
-          {editando && !novoVeiculo ? (
+          {!temCliente ? (
+            <p className="text-sm text-suave">Escolha ou cadastre o cliente primeiro.</p>
+          ) : editando && !novoVeiculo ? (
             <p className="rounded-xl bg-fundo px-4 py-3 text-sm">
               {veiculosDoCliente.find((v) => v.id === veiculoId)?.nome ?? "Veículo"}{" "}
               <span className="font-mono">{veiculosDoCliente.find((v) => v.id === veiculoId)?.placa}</span>
@@ -351,7 +352,6 @@ export function FormOS({
             </>
           )}
         </Cartao>
-      )}
 
       {/* 3. Serviços */}
       <Cartao className="space-y-3">
@@ -440,7 +440,7 @@ export function FormOS({
                     <span className="min-w-0 truncate text-sm">{s.nome}</span>
                     <span className="flex shrink-0 items-center gap-3 text-sm">
                       <span className="tabular-nums text-suave">{formatarValor(s.preco)}</span>
-                      <span className="font-semibold text-marca-escura">+ Adicionar</span>
+                      <span className="font-semibold text-marca-escura">+<span className="hidden sm:inline"> Adicionar</span></span>
                     </span>
                   </button>
                 </li>

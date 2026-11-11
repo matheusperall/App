@@ -102,9 +102,9 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
       <section className="space-y-3">
         <NavMes mes={mes} base="/gestao/financeiro" />
         <div className="grid grid-cols-3 gap-3">
-          <Indicador rotulo="Entrou" valor={<Dinheiro valor={entradas} />} />
-          <Indicador rotulo="Saiu" valor={<Dinheiro valor={saidas} />} />
-          <Indicador rotulo="Saldo do mês" valor={<Dinheiro valor={arred(entradas - saidas)} sinal />} />
+          <Indicador compacto rotulo="Entrou" valor={<Dinheiro valor={entradas} />} />
+          <Indicador compacto rotulo="Saiu" valor={<Dinheiro valor={saidas} />} />
+          <Indicador compacto rotulo="Saldo do mês" valor={<Dinheiro valor={arred(entradas - saidas)} sinal />} />
         </div>
         <Cartao className="p-0">
           <h2 className="px-5 pt-5 font-semibold">Lançamentos</h2>
