@@ -10,7 +10,6 @@ import { TIPOS_DOCUMENTO, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, 
 
 export type Dono = { id: string; nome: string; email: string | null; telefone: string | null };
 export type VeiculoComDono = Veiculo & { dono: Dono | null };
-export type Cliente = Dono & { criado_em: string; veiculos: { id: string; placa: string; modelo: string }[] };
 
 const CAMPOS_BASICOS =
   "id, dono_id, placa, marca, modelo, ano, cor, apelido, km_atual, km_atualizado_em, foto";
@@ -106,39 +105,6 @@ export async function urlsDasFotos(caminhos: (string | null | undefined)[]): Pro
 // ---------------------------------------------------------------------------
 // Área da empresa
 // ---------------------------------------------------------------------------
-export async function listarClientes(busca: string): Promise<Cliente[]> {
-  if (!isSupabaseConfigured) {
-    return [{ ...DEMO.dono, criado_em: "2026-11-01T12:00:00Z", veiculos: DEMO.veiculos.map(({ id, placa, modelo }) => ({ id, placa, modelo })) }];
-  }
-  const supabase = await createClient();
-  const termo = busca.trim().replace(/[%,()]/g, " ").trim();
-
-  let idsPorPlaca: string[] = [];
-  if (termo) {
-    const placa = termo.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (placa.length >= 3) {
-      const { data } = await supabase.from("veiculos").select("dono_id").ilike("placa", `%${placa}%`).limit(50);
-      idsPorPlaca = (data ?? []).map((d) => d.dono_id);
-    }
-  }
-
-  let consulta = supabase
-    .from("perfis")
-    .select("id, nome, email, telefone, criado_em, veiculos!veiculos_dono_id_fkey (id, placa, modelo)")
-    .eq("papel", "cliente")
-    .order("nome")
-    .limit(100);
-
-  if (termo) {
-    const filtros = [`nome.ilike.%${termo}%`, `email.ilike.%${termo}%`, `telefone.ilike.%${termo}%`];
-    if (idsPorPlaca.length) filtros.push(`id.in.(${idsPorPlaca.join(",")})`);
-    consulta = consulta.or(filtros.join(","));
-  }
-
-  const { data } = await consulta;
-  return (data as Cliente[] | null) ?? [];
-}
-
 export async function obterCliente(id: string): Promise<Dono | null> {
   if (!isSupabaseConfigured) return id === DEMO.dono.id ? DEMO.dono : null;
   if (!ehUuid(id)) return null;

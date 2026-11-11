@@ -7,6 +7,7 @@ import { SeloOrcamento, TabelaItens } from "@/components/orcamento";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterOrcamento, urlsDasFotos } from "@/lib/dados";
+import { osPorOrigem } from "@/lib/gestao-dados";
 import { CATEGORIAS, formatarData, formatarDataHora, formatarValor, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
 import { excluirOrcamento } from "../actions";
 import { Decisao } from "./Decisao";
@@ -28,6 +29,7 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
   const cat = CATEGORIAS[o.categoria];
   const vencido = orcamentoVencido(o);
   const respondido = o.itens.length > 0;
+  const osLigada = admin && o.situacao === "aceito" ? (await osPorOrigem("orcamento_id", [o.id]))[o.id] : undefined;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -100,6 +102,13 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
             ? `Aprovado pelo cliente em ${o.decidido_em ? formatarDataHora(o.decidido_em) : "—"}. Combine a data do serviço.`
             : "Você aprovou este orçamento. Escolha os melhores dias para fazermos o serviço."}
         </Aviso>
+      )}
+      {o.situacao === "aceito" && admin && (
+        osLigada ? (
+          <Link href={`/gestao/os/${osLigada.id}`} className="botao-contorno w-full">Ver OS #{osLigada.numero}</Link>
+        ) : (
+          <Link href={`/gestao/os/nova?orcamento=${o.id}`} className="botao-primario w-full">🧾 Abrir OS com estes itens</Link>
+        )
       )}
       {o.situacao === "aceito" && !admin && (
         <Link href={`/agendamentos/novo?orcamento=${o.id}`} className="botao-primario w-full">📅 Agendar o serviço</Link>

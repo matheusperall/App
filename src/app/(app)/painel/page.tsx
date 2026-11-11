@@ -28,7 +28,7 @@ export default async function PainelPage() {
   const agendados = caixa.filter((c) => c.situacao === "agendado");
 
   const indicadores = [
-    { rotulo: "Clientes", valor: clientes, href: "/painel/clientes" },
+    { rotulo: "Clientes", valor: clientes, href: "/gestao/clientes" },
     { rotulo: "Orçamentos a responder", valor: orcamentosAResponder, href: "/orcamentos?f=responder", destaque: orcamentosAResponder > 0 },
     { rotulo: "Apontamentos abertos", valor: abertos, href: null },
     { rotulo: "Agendamentos a confirmar", valor: agenda.aConfirmar.length, href: "/agendamentos", destaque: agenda.aConfirmar.length > 0 },
@@ -76,8 +76,8 @@ export default async function PainelPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Link href="/painel/clientes/novo" className="botao-primario">+ Cadastrar cliente</Link>
-        <Link href="/painel/clientes" className="botao-contorno">Buscar cliente ou placa</Link>
+        <Link href="/gestao/os/nova" className="botao-primario">+ Nova OS</Link>
+        <Link href="/gestao/clientes" className="botao-contorno">Buscar cliente ou placa</Link>
         <Link href="/painel/comunicados" className="botao-escuro">📣 Enviar comunicado</Link>
       </div>
 
