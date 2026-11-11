@@ -551,6 +551,23 @@ create trigger fatura_pagamentos_situacao
 create unique index ordens_servico_agendamento on public.ordens_servico (agendamento_id)
   where agendamento_id is not null and status <> 'cancelada';
 
+-- Resumos calculados pelo banco (respeitam as regras de acesso de quem consulta)
+create view public.gestao_saldos_contas with (security_invoker = true) as
+select c.id as conta_id,
+       c.saldo_inicial
+       + coalesce(sum(case when l.tipo = 'entrada' then l.valor else -l.valor end) filter (where l.pago), 0) as saldo
+  from public.contas c
+  left join public.lancamentos l on l.conta_id = c.id
+ group by c.id;
+
+create view public.gestao_resumo_clientes with (security_invoker = true) as
+select cliente_id,
+       coalesce(sum(total) filter (where status in ('pronta', 'entregue')), 0) as total_gasto,
+       max(data) filter (where status <> 'cancelada') as ultima_visita,
+       count(*) filter (where status <> 'cancelada') as qtd_os
+  from public.ordens_servico
+ group by cliente_id;
+
 -- ===========================================================================
 -- 9. Operações que precisam acontecer "tudo ou nada"
 -- ===========================================================================
