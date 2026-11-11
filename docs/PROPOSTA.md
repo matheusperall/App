@@ -131,6 +131,8 @@ A cada etapa você recebe um link para testar.
 lembretes de manutenção por data/km; vencimento de documentos e o envio das
 lembretes automáticos ficam na etapa 4.
 
+**Gestão da loja:** módulo de gestão (OS, catálogo, estoque, financeiro, faturas de lojistas) construído dentro do app para substituir a plataforma CERA. Veja [GESTAO.md](GESTAO.md).
+
 ## 7. O que vamos precisar de você (no momento certo)
 - Criar contas (gratuitas) em **Supabase** e **Vercel**, usando o login do GitHub.
 - Permitir o acesso à sua **Google Agenda** (vou passar o passo a passo).
