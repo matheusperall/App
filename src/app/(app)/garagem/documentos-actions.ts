@@ -22,7 +22,7 @@ export async function salvarDocumento(_: EstadoForm, form: FormData): Promise<Es
   const id = texto(form, "id");
 
   // Dono: o do veículo (a empresa pode cuidar dos documentos do cliente) ou o próprio usuário (CNH)
-  let donoId = usuario.id;
+  let donoId: string | null = usuario.id;
   if (veiculoId) {
     const { data: v } = await supabase.from("veiculos").select("dono_id").eq("id", veiculoId).maybeSingle();
     if (!v) return { erro: "Veículo não encontrado." };
@@ -45,8 +45,8 @@ export async function salvarDocumento(_: EstadoForm, form: FormData): Promise<Es
   // Procura um já existente do mesmo tipo (um por veículo; CNH uma por pessoa)
   let existenteId = id;
   if (!existenteId && tipo !== "outro") {
-    let q = supabase.from("documentos").select("id").eq("dono_id", donoId).eq("tipo", tipo);
-    q = veiculoId ? q.eq("veiculo_id", veiculoId) : q.is("veiculo_id", null);
+    let q = supabase.from("documentos").select("id").eq("tipo", tipo);
+    q = veiculoId ? q.eq("veiculo_id", veiculoId) : q.eq("dono_id", usuario.id).is("veiculo_id", null);
     const { data } = await q.maybeSingle();
     existenteId = data?.id ?? "";
   }

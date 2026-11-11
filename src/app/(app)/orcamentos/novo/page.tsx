@@ -4,7 +4,7 @@ import { Voltar } from "@/components/garagem";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { listarVeiculos, obterVeiculo } from "@/lib/dados";
-import { hojeISO, nomeVeiculo, somarDias } from "@/lib/garagem";
+import { hojeISO, nomeVeiculo, pastaFotos, somarDias } from "@/lib/garagem";
 import { FormPedido } from "./FormPedido";
 import { FormResposta } from "../[orcamentoId]/FormResposta";
 
@@ -44,7 +44,7 @@ export default async function NovoOrcamentoPage({ searchParams }: PageProps<"/or
       </div>
       <Cartao>
         <FormPedido
-          veiculos={veiculos.map((v) => ({ id: v.id, nome: `${nomeVeiculo(v)} (${v.placa})`, donoId: v.dono_id }))}
+          veiculos={veiculos.map((v) => ({ id: v.id, nome: `${nomeVeiculo(v)} (${v.placa})`, donoId: pastaFotos(v) }))}
           veiculoInicial={veiculos.some((v) => v.id === veiculoParam) ? veiculoParam : veiculos[0].id}
         />
       </Cartao>

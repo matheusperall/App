@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin, exigirUsuario } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
-import { CATEGORIAS, PRIORIDADES, nomeVeiculo } from "@/lib/garagem";
+import { CATEGORIAS, PRIORIDADES, nomeVeiculo, pastaFotos } from "@/lib/garagem";
 import { notificar, notificarEmpresa } from "@/lib/notificar";
 import { getSiteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
@@ -17,11 +17,11 @@ async function carregarVeiculo(veiculoId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("veiculos")
-    .select("id, dono_id, placa, marca, modelo, apelido, dono:perfis!veiculos_dono_id_fkey (nome)")
+    .select("*, dono:perfis!veiculos_dono_id_fkey (nome)")
     .eq("id", veiculoId)
     .maybeSingle();
   return data as
-    | { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null; dono: { nome: string } | null }
+    | { id: string; dono_id: string | null; cliente_id?: string; placa: string; marca: string; modelo: string; apelido: string | null; dono: { nome: string } | null }
     | null;
 }
 
@@ -43,7 +43,7 @@ export async function criarApontamento(_: EstadoForm, form: FormData): Promise<E
   const fotos = form
     .getAll("fotos")
     .map(String)
-    .filter((p) => p.startsWith(`${veiculo.dono_id}/`) && !p.includes(".."))
+    .filter((p) => p.startsWith(`${pastaFotos(veiculo)}/`) && !p.includes(".."))
     .slice(0, 8);
 
   const supabase = await createClient();

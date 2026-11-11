@@ -251,7 +251,8 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
     const { data } = await admin.from("lembretes_enviados").select("chave").in("chave", chaves.slice(i, i + 100));
     data?.forEach((d) => jaEnviadas.add(d.chave));
   }
-  const novos = itens.filter((i) => !jaEnviadas.has(i.chave));
+  // Clientes sem login no app (só ficha na loja) não recebem lembretes
+  const novos = itens.filter((i) => i.usuarioId && !jaEnviadas.has(i.chave));
 
   // ---------------- Envia, um aviso por pessoa ----------------
   const porUsuario = new Map<string, Item[]>();

@@ -1,3 +1,4 @@
+import { pastaFotos } from "@/lib/garagem";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Voltar } from "@/components/garagem";
@@ -21,7 +22,7 @@ export default async function EditarVeiculoPage({ params }: PageProps<"/garagem/
       <Voltar href={`/garagem/${id}`}>Voltar ao veículo</Voltar>
       <h1 className="text-2xl font-bold">Editar veículo</h1>
       <Cartao>
-        <FormVeiculo veiculo={veiculo} donoId={veiculo.dono_id} fotoUrl={veiculo.foto ? fotos[veiculo.foto] : undefined} />
+        <FormVeiculo veiculo={veiculo} donoId={pastaFotos(veiculo)} fotoUrl={veiculo.foto ? fotos[veiculo.foto] : undefined} />
       </Cartao>
       <Cartao className="space-y-3">
         <h2 className="font-semibold text-perigo">Excluir veículo</h2>
