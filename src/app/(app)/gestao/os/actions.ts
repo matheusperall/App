@@ -330,11 +330,14 @@ export async function receberOS(_: EstadoForm, form: FormData): Promise<EstadoFo
   if (!ehFormaPagamento(forma)) return { erro: "Escolha a forma de pagamento." };
   if (!conta) return { erro: "Escolha a conta em que o dinheiro entrou." };
   if (!dataValida(data)) return { erro: "Data inválida." };
+  const parcelas = forma === "credito" ? Math.min(24, Math.max(1, Number.parseInt(texto(form, "parcelas"), 10) || 1)) : 1;
   const supabase = await createClient();
-  const { error } = await supabase.rpc("gestao_receber_os", { p_os: id, p_forma: forma, p_conta: conta, p_data: data });
+  const { error } = await supabase.rpc("gestao_receber_os", { p_os: id, p_forma: forma, p_conta: conta, p_data: data, p_parcelas: parcelas });
   if (error) {
     console.error("[os] receber", error);
-    return { erro: error.message.includes("lojista") || error.message.includes("já foi") ? error.message : "Não foi possível registrar o pagamento." };
+    if (error.code === "PGRST202") return { erro: "Falta atualizar o banco: rode o arquivo 0011_formas_recebimento.sql no Supabase (veja docs/GESTAO.md)." };
+    const conhecido = ["lojista", "já foi", "não recebe", "não aceita"].some((t) => error.message.includes(t));
+    return { erro: conhecido ? error.message : "Não foi possível registrar o pagamento." };
   }
   revalidatePath("/gestao", "layout");
   return { sucesso: "Pagamento registrado no financeiro." };

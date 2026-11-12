@@ -8,8 +8,8 @@ import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
-import { FORMAS_PAGAMENTO, STATUS_OS, arred, linkWhatsApp, resumoOSWhatsApp } from "@/lib/gestao";
-import { consumoDaOS, listarContas, obterConfig, obterOS } from "@/lib/gestao-dados";
+import { STATUS_OS, rotuloForma, arred, linkWhatsApp, resumoOSWhatsApp } from "@/lib/gestao";
+import { consumoDaOS, listarContas, obterOS } from "@/lib/gestao-dados";
 import { avancarStatus, cancelarOS } from "../actions";
 import { FormReceber } from "./FormReceber";
 
@@ -19,7 +19,7 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
   const [{ osId }, sp] = await Promise.all([params, searchParams, exigirAdmin()]);
   const os = await obterOS(osId);
   if (!os) notFound();
-  const [consumo, contas, config] = await Promise.all([consumoDaOS(os.id), listarContas(), obterConfig()]);
+  const [consumo, contas] = await Promise.all([consumoDaOS(os.id), listarContas()]);
   const s = STATUS_OS[os.status];
   const editavel = (os.status === "aberta" || os.status === "em_andamento") && !os.pago && !os.fatura_id;
   const cancelavel = os.status !== "entregue" && os.status !== "cancelada" && !os.pago && !os.fatura_id;
@@ -99,7 +99,7 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           )}
           <dl className="space-y-1 rounded-xl bg-fundo p-3 text-sm">
             <div className="flex justify-between"><dt className="text-suave">Custo de produtos</dt><dd><Dinheiro valor={os.custo_produtos} /></dd></div>
-            {os.taxa_valor > 0 && <div className="flex justify-between"><dt className="text-suave">Taxa da maquininha</dt><dd><Dinheiro valor={os.taxa_valor} /></dd></div>}
+            {os.taxa_valor > 0 && <div className="flex justify-between"><dt className="text-suave">Taxa de recebimento</dt><dd><Dinheiro valor={os.taxa_valor} /></dd></div>}
             <div className="flex justify-between font-semibold">
               <dt>Margem</dt>
               <dd><Dinheiro valor={margem} sinal /> {os.total > 0 && <span className="text-xs font-normal text-suave">({Math.round((margem / os.total) * 100)}%)</span>}</dd>
@@ -114,7 +114,7 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           <h2 className="font-semibold">Pagamento</h2>
           {os.pago ? (
             <Aviso tipo="sucesso">
-              Pago em {formatarData(os.pago_em)}{os.forma_pagamento && ` · ${FORMAS_PAGAMENTO[os.forma_pagamento]}`}
+              Pago em {formatarData(os.pago_em)}{os.forma_pagamento && ` · ${rotuloForma(os.forma_pagamento, os.parcelas)}`}{os.conta_id && contas.find((c) => c.id === os.conta_id) && ` · ${contas.find((c) => c.id === os.conta_id)!.nome}`}
               {os.taxa_valor > 0 && <> · taxa de <Dinheiro valor={os.taxa_valor} /></>}
             </Aviso>
           ) : os.cliente?.lojista ? (
@@ -128,7 +128,7 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           ) : contas.length === 0 ? (
             <p className="text-sm text-suave">Cadastre uma conta em <Link href="/gestao/financeiro" className="font-semibold text-marca-escura">Financeiro</Link> para receber.</p>
           ) : (
-            <FormReceber osId={os.id} total={os.total} contas={contas.filter((c) => c.ativa)} config={config} hoje={hojeISO()} />
+            <FormReceber osId={os.id} total={os.total} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
           )}
         </Cartao>
       )}

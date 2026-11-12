@@ -29,9 +29,9 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
    - Ao marcar **pronta**, os produtos que o serviço gasta saem do estoque e a OS mostra o
      custo dos produtos e a margem. Se o cliente tem o app, ele recebe "Seu carro está pronto".
    - Ao **entregar**, o serviço vai para o histórico do veículo (com valor e km) e o cliente com app recebe um aviso.
-3. **Receber**: na OS, escolha Pix, dinheiro, débito, crédito ou transferência e a conta onde o
-   dinheiro entrou. No cartão, a taxa da maquininha (débito 1,99% e crédito 3,49%, que você pode mudar
-   em *Financeiro › Configurações*) é lançada como saída automaticamente.
+3. **Receber**: na OS, escolha a forma (Pix, dinheiro, débito, crédito ou transferência). Aparecem só as
+   contas que recebem nessa forma; se for só uma, ela já vem escolhida. No crédito, escolha as parcelas.
+   A taxa da conta para aquela forma (e parcela) é lançada como saída automaticamente.
    - **Cliente lojista não paga por OS**: as OS dele ficam em *Faturas › A faturar*.
 4. **Fim do mês dos lojistas**: *Faturas* → marque as OS → **Gerar fatura** com o vencimento →
    **Copiar extrato** e mande no WhatsApp. Quando ele pagar (tudo ou parte), registre o pagamento.
@@ -89,9 +89,19 @@ O que o arquivo faz no banco:
 - protege tudo para que **só o administrador** veja e mexa nesses dados.
 
 Primeiros passos depois de instalar:
-1. *Financeiro › Gerenciar contas*: ajuste os nomes e o **saldo inicial** de cada conta (o que tem hoje).
+1. *Financeiro › Gerenciar contas*: ajuste os nomes e o **saldo inicial** de cada conta (o que tem hoje) e marque
+   as **formas de recebimento** de cada uma, com as taxas. Exemplo: "Maquininha" recebe débito e crédito
+   (taxa do débito, do crédito à vista e de cada parcela: 2x, 3x… — deixe vazio as parcelas que não aceita);
+   "Banco" recebe Pix e transferência; "Caixa da loja" recebe dinheiro.
 2. *Estoque › + Produto*: cadastre os produtos com a quantidade e o valor que você tem hoje.
 3. *Serviços › + Serviço*: cadastre o que você vende, com o preço e os produtos que cada um gasta.
 4. *Clientes*: marque os lojistas (revendas) como **lojista**.
+
+### Atualização: formas de recebimento por conta (arquivo 0011)
+
+Se você já rodou o `0010_gestao.sql`, rode também **`supabase/migrations/0011_formas_recebimento.sql`**
+(mesmo jeito: SQL Editor › New query › colar › Run). Ele adiciona às contas as formas de recebimento e as
+taxas (Pix, débito, crédito à vista e cada parcela). As contas que já existem começam aceitando todas as
+formas, com as taxas de débito e crédito que estavam nas configurações — depois ajuste em *Gerenciar contas*.
 
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.

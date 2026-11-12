@@ -82,6 +82,8 @@ export const FORMAS_PAGAMENTO = {
   transferencia: "Transferência",
 } as const;
 export type FormaPagamento = keyof typeof FORMAS_PAGAMENTO;
+export const rotuloForma = (f: FormaPagamento, parcelas?: number | null) =>
+  `${FORMAS_PAGAMENTO[f]}${f === "credito" && parcelas && parcelas > 1 ? ` em ${parcelas}x` : ""}`;
 export const ehFormaPagamento = (f: string): f is FormaPagamento => f in FORMAS_PAGAMENTO;
 
 export type ItemOS = { id?: string; catalogo_id: string | null; nome: string; preco: number; ordem?: number };
@@ -103,6 +105,7 @@ export type OrdemServico = {
   pago: boolean;
   pago_em: string | null;
   forma_pagamento: FormaPagamento | null;
+  parcelas?: number | null;
   conta_id: string | null;
   taxa_valor: number;
   fatura_id: string | null;
@@ -117,7 +120,38 @@ export type OrdemServico = {
   cliente: Pick<Ficha, "id" | "nome" | "telefone" | "lojista" | "perfil_id"> | null;
 };
 
-export type Conta = { id: string; nome: string; tipo: "banco" | "caixa" | "digital" | "outro"; saldo_inicial: number; ativa: boolean; saldo: number };
+export type Conta = {
+  id: string;
+  nome: string;
+  tipo: "banco" | "caixa" | "digital" | "outro";
+  saldo_inicial: number;
+  ativa: boolean;
+  saldo: number;
+  /** Formas de recebimento que esta conta aceita */
+  formas: FormaPagamento[];
+  taxa_pix: number;
+  taxa_debito: number;
+  /** Crédito à vista (1x) */
+  taxa_credito: number;
+  /** Crédito parcelado: { "2": 4.59, "3": 5.29 } — parcelas sem taxa não são aceitas */
+  taxas_parcelado: Record<string, number>;
+};
+/** Até quantas parcelas o crédito pode ser configurado */
+export const MAX_PARCELAS = 12;
+
+/** Parcelas aceitas no crédito pela conta: 1x (à vista) e as que têm taxa preenchida. */
+export function parcelasAceitas(c: Pick<Conta, "taxas_parcelado">) {
+  return [1, ...Object.keys(c.taxas_parcelado ?? {}).map(Number).filter((n) => n >= 2 && n <= MAX_PARCELAS).sort((a, b) => a - b)];
+}
+
+/** Percentual de taxa da conta para a forma (e parcelas, no crédito). */
+export function taxaPercentual(c: Pick<Conta, "taxa_pix" | "taxa_debito" | "taxa_credito" | "taxas_parcelado">, forma: FormaPagamento, parcelas = 1) {
+  if (forma === "pix") return c.taxa_pix;
+  if (forma === "debito") return c.taxa_debito;
+  if (forma === "credito") return parcelas > 1 ? (c.taxas_parcelado[String(parcelas)] ?? 0) : c.taxa_credito;
+  return 0;
+}
+
 export const TIPOS_CONTA = { banco: "Banco", caixa: "Caixa", digital: "Conta digital", outro: "Outra" } as const;
 
 export type CategoriaFinanceira = {
@@ -216,12 +250,6 @@ export function situacaoFatura(f: Pick<Fatura, "situacao" | "vencimento">, hoje 
 }
 export const faturaEmAberto = (f: Pick<Fatura, "situacao">) => f.situacao === "aberta" || f.situacao === "parcial";
 
-/** Taxa da maquininha para a forma de pagamento. */
-export function taxaPagamento(forma: FormaPagamento, total: number, cfg: ConfigGestao) {
-  const pct = forma === "debito" ? cfg.taxa_debito : forma === "credito" ? cfg.taxa_credito : 0;
-  return arred((total * pct) / 100);
-}
-
 // ---------------------------------------------------------------------------
 // Meses (AAAA-MM)
 // ---------------------------------------------------------------------------
@@ -287,7 +315,7 @@ export function resumoOSWhatsApp(os: OrdemServico, empresa = "Nexus Automotive")
   ];
   if (os.desconto > 0) linhas.push(`Desconto: −${brl(os.desconto)}`);
   linhas.push(`*Total: ${brl(os.total)}*`);
-  if (os.pago) linhas.push(`Pago${os.forma_pagamento ? ` (${FORMAS_PAGAMENTO[os.forma_pagamento]})` : ""}. Obrigado!`);
+  if (os.pago) linhas.push(`Pago${os.forma_pagamento ? ` (${rotuloForma(os.forma_pagamento, os.parcelas)})` : ""}. Obrigado!`);
   else if (os.cliente?.lojista) linhas.push("Valor entra na fatura do mês.");
   return linhas.filter((l, i) => l !== "" || i === 4).join("\n");
 }

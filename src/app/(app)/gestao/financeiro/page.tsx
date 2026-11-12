@@ -5,9 +5,10 @@ import { FormAcao } from "@/components/gestao/FormAcao";
 import { Campo, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, hojeISO } from "@/lib/garagem";
-import { TIPOS_CONTA, arred, mesAtual, mesValido, valorCampo, type Lancamento } from "@/lib/gestao";
+import { TIPOS_CONTA, arred, mesAtual, mesValido, type Lancamento } from "@/lib/gestao";
 import { contasAPagar, contasAReceberAvulsas, lancamentosDoMes, listarCategorias, listarContas, obterConfig } from "@/lib/gestao-dados";
-import { excluirLancamento, marcarPago, salvarConfig, salvarConta } from "./actions";
+import { excluirLancamento, marcarPago, salvarConfig } from "./actions";
+import { FormConta } from "./FormConta";
 import { FormLancamento } from "./FormLancamento";
 
 export const metadata: Metadata = { title: "Financeiro" };
@@ -47,32 +48,10 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
           <Indicador rotulo="Saldo total" valor={<Dinheiro valor={arred(ativas.reduce((t, c) => t + c.saldo, 0))} />} destaque />
         </div>
         <details className="rounded-2xl border border-borda bg-white p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-marca-escura">Gerenciar contas</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-marca-escura">Gerenciar contas, formas de recebimento e taxas</summary>
           <div className="mt-3 space-y-4">
-            {contas.map((c) => (
-              <FormAcao key={c.id} acao={salvarConta} campos={{ id: c.id }} botao="Salvar" classeBotao="botao-contorno w-full text-sm" className="space-y-2 rounded-xl bg-fundo p-3">
-                <div className="grid grid-cols-[1fr_8rem] gap-2">
-                  <input name="nome" defaultValue={c.nome} className="campo py-2" aria-label="Nome da conta" />
-                  <select name="tipo" defaultValue={c.tipo} className="campo px-2 py-2" aria-label="Tipo">
-                    {Object.entries(TIPOS_CONTA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex-1 text-xs text-suave">Saldo inicial (R$)<input name="saldo_inicial" defaultValue={valorCampo(c.saldo_inicial)} inputMode="decimal" className="campo mt-1 py-2" /></label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="ativa" defaultChecked={c.ativa} className="h-4 w-4 accent-marca" /> Ativa</label>
-                </div>
-              </FormAcao>
-            ))}
-            <FormAcao acao={salvarConta} botao="+ Criar conta" classeBotao="botao-primario w-full text-sm" className="space-y-2" limparAoConcluir>
-              <p className="text-sm font-semibold">Nova conta</p>
-              <div className="grid grid-cols-[1fr_8rem] gap-2">
-                <input name="nome" placeholder="Ex.: Nubank, Maquininha" className="campo py-2" aria-label="Nome da nova conta" />
-                <select name="tipo" defaultValue="banco" className="campo px-2 py-2" aria-label="Tipo">
-                  {Object.entries(TIPOS_CONTA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <input name="saldo_inicial" placeholder="Saldo inicial (R$)" inputMode="decimal" className="campo py-2" aria-label="Saldo inicial" />
-            </FormAcao>
+            {contas.map((c) => <FormConta key={c.id} conta={c} padrao={config} />)}
+            <FormConta padrao={config} />
           </div>
         </details>
       </section>
@@ -143,12 +122,10 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
 
       <Cartao className="space-y-3">
         <h2 className="font-semibold">Configurações da gestão</h2>
-        <FormAcao acao={salvarConfig} botao="Salvar configurações" classeBotao="botao-contorno w-full">
-          <div className="grid grid-cols-3 gap-3">
-            <Campo rotulo="Vagas no pátio"><input name="vagas_patio" defaultValue={config.vagas_patio} inputMode="numeric" className="campo" /></Campo>
-            <Campo rotulo="Taxa débito (%)"><input name="taxa_debito" defaultValue={String(config.taxa_debito).replace(".", ",")} inputMode="decimal" className="campo" /></Campo>
-            <Campo rotulo="Taxa crédito (%)"><input name="taxa_credito" defaultValue={String(config.taxa_credito).replace(".", ",")} inputMode="decimal" className="campo" /></Campo>
-          </div>
+        <FormAcao acao={salvarConfig} botao="Salvar" classeBotao="botao-contorno w-full">
+          <Campo rotulo="Vagas no pátio" dica="Quantos carros cabem ao mesmo tempo. As taxas de recebimento ficam em cada conta (Gerenciar contas).">
+            <input name="vagas_patio" defaultValue={config.vagas_patio} inputMode="numeric" className="campo" />
+          </Campo>
         </FormAcao>
       </Cartao>
     </div>

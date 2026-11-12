@@ -5,7 +5,7 @@ import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
 import { hojeISO } from "@/lib/garagem";
-import { TIPOS_CONTA, lerDinheiro, lerNumero } from "@/lib/gestao";
+import { MAX_PARCELAS, TIPOS_CONTA, ehFormaPagamento, lerDinheiro, lerNumero } from "@/lib/gestao";
 import { createClient } from "@/lib/supabase/server";
 
 const DEMO: EstadoForm = { erro: "Modo demonstração: conecte o banco de dados para salvar." };
@@ -21,12 +21,36 @@ export async function salvarConta(_: EstadoForm, form: FormData): Promise<Estado
   const saldoInicial = lerDinheiro(texto(form, "saldo_inicial")) ?? 0;
   if (nome.length < 2) return { erro: "Informe o nome da conta." };
   if (!(tipo in TIPOS_CONTA)) return { erro: "Escolha o tipo da conta." };
+
+  // Formas de recebimento e taxas (%)
+  const formas = form.getAll("formas").map(String).filter(ehFormaPagamento);
+  const taxa = (campo: string) => {
+    const v = lerNumero(texto(form, campo));
+    return v == null ? 0 : v;
+  };
+  const taxas = { taxa_pix: taxa("taxa_pix"), taxa_debito: taxa("taxa_debito"), taxa_credito: taxa("taxa_credito") };
+  const taxasParcelado: Record<string, number> = {};
+  if (formas.includes("credito")) {
+    for (let p = 2; p <= MAX_PARCELAS; p++) {
+      const v = lerNumero(texto(form, `parc_${p}`));
+      if (v != null) taxasParcelado[String(p)] = v;
+    }
+  }
+  if ([...Object.values(taxas), ...Object.values(taxasParcelado)].some((v) => v < 0 || v > 30)) return { erro: "As taxas devem ficar entre 0% e 30%." };
+
   const supabase = await createClient();
-  const dados = { nome, tipo, saldo_inicial: saldoInicial, ...(id ? { ativa: form.get("ativa") === "on" } : {}) };
-  const { error } = id ? await supabase.from("contas").update(dados).eq("id", id) : await supabase.from("contas").insert(dados);
+  const basico = { nome, tipo, saldo_inicial: saldoInicial, ...(id ? { ativa: form.get("ativa") === "on" } : {}) };
+  const completo = { ...basico, formas, ...taxas, taxas_parcelado: taxasParcelado };
+  const gravar = (dados: Record<string, unknown>) => (id ? supabase.from("contas").update(dados).eq("id", id) : supabase.from("contas").insert(dados));
+  let { error } = await gravar(completo);
+  let aviso = "";
+  if (error?.code === "42703" || error?.code === "PGRST204") {
+    ({ error } = await gravar(basico));
+    aviso = " Para salvar as formas de recebimento e as taxas, rode o arquivo 0011_formas_recebimento.sql no Supabase.";
+  }
   if (error) return { erro: "Não foi possível salvar a conta." };
   revalidatePath("/gestao", "layout");
-  return { sucesso: id ? "Conta atualizada." : "Conta criada." };
+  return { sucesso: (id ? "Conta atualizada." : "Conta criada.") + aviso };
 }
 
 export async function salvarLancamento(_: EstadoForm, form: FormData): Promise<EstadoForm> {
@@ -93,15 +117,9 @@ export async function salvarConfig(_: EstadoForm, form: FormData): Promise<Estad
   if (!isSupabaseConfigured) return DEMO;
   await exigirAdmin();
   const vagas = Math.round(lerNumero(texto(form, "vagas_patio")) ?? 0);
-  const debito = lerNumero(texto(form, "taxa_debito"));
-  const credito = lerNumero(texto(form, "taxa_credito"));
   if (vagas < 1 || vagas > 100) return { erro: "Vagas do pátio: entre 1 e 100." };
-  if (debito == null || debito < 0 || debito > 30 || credito == null || credito < 0 || credito > 30) return { erro: "Taxas inválidas (use % entre 0 e 30)." };
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("gestao_config")
-    .update({ vagas_patio: vagas, taxa_debito: debito, taxa_credito: credito, atualizado_em: new Date().toISOString() })
-    .eq("id", true);
+  const { error } = await supabase.from("gestao_config").update({ vagas_patio: vagas, atualizado_em: new Date().toISOString() }).eq("id", true);
   if (error) return { erro: "Não foi possível salvar." };
   revalidatePath("/gestao", "layout");
   return { sucesso: "Configurações salvas." };

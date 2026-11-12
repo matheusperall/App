@@ -214,7 +214,8 @@ export async function obterOS(id: string): Promise<OrdemServico | null> {
   if (!isSupabaseConfigured) return DEMO.os.find((o) => o.id === id) ?? null;
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("ordens_servico").select(CAMPOS_OS).eq("id", id).maybeSingle();
+  let { data, error } = await supabase.from("ordens_servico").select(`${CAMPOS_OS}, parcelas`).eq("id", id).maybeSingle();
+  if (error?.code === "42703") ({ data, error } = await supabase.from("ordens_servico").select(CAMPOS_OS).eq("id", id).maybeSingle());
   return data ? normalizarOS(data as unknown as OrdemServico) : null;
 }
 
@@ -232,15 +233,31 @@ export async function osPorOrigem(campo: "agendamento_id" | "orcamento_id", ids:
 // ---------------------------------------------------------------------------
 // Financeiro
 // ---------------------------------------------------------------------------
+const TODAS_FORMAS = ["pix", "dinheiro", "debito", "credito", "transferencia"] as const;
+
 export async function listarContas(): Promise<Conta[]> {
   if (!isSupabaseConfigured) return DEMO.contas;
   const supabase = await createClient();
-  const [{ data }, { data: saldos }] = await Promise.all([
-    supabase.from("contas").select("id, nome, tipo, saldo_inicial, ativa").order("criado_em"),
+  const consulta = (campos: string) => supabase.from("contas").select(campos).order("criado_em");
+  const [primeira, { data: saldos }, config] = await Promise.all([
+    consulta("id, nome, tipo, saldo_inicial, ativa, formas, taxa_pix, taxa_debito, taxa_credito, taxas_parcelado"),
     supabase.from("gestao_saldos_contas").select("conta_id, saldo"),
+    obterConfig(),
   ]);
+  let { data } = primeira;
+  // Banco ainda sem o 0011: todas as formas e as taxas das configurações
+  if (primeira.error?.code === "42703") ({ data } = await consulta("id, nome, tipo, saldo_inicial, ativa"));
   const mapa = new Map((saldos ?? []).map((s) => [s.conta_id as string, n(s.saldo)]));
-  return ((data ?? []) as Conta[]).map((c) => ({ ...c, saldo_inicial: n(c.saldo_inicial), saldo: mapa.get(c.id) ?? n(c.saldo_inicial) }));
+  return ((data ?? []) as unknown as Partial<Conta>[]).map((c) => ({
+    ...(c as Conta),
+    saldo_inicial: n(c.saldo_inicial),
+    saldo: mapa.get(c.id!) ?? n(c.saldo_inicial),
+    formas: (c.formas ?? [...TODAS_FORMAS]) as Conta["formas"],
+    taxa_pix: n(c.taxa_pix),
+    taxa_debito: c.taxa_debito == null ? config.taxa_debito : n(c.taxa_debito),
+    taxa_credito: c.taxa_credito == null ? config.taxa_credito : n(c.taxa_credito),
+    taxas_parcelado: Object.fromEntries(Object.entries(c.taxas_parcelado ?? {}).map(([k, v]) => [k, n(v)])),
+  }));
 }
 
 export async function listarCategorias(): Promise<CategoriaFinanceira[]> {
@@ -498,9 +515,10 @@ const DEMO = {
   catalogo: catalogoDemo,
   os: osDemo,
   contas: [
-    { id: "demo-k1", nome: "Caixa da loja", tipo: "caixa", saldo_inicial: 0, ativa: true, saldo: 350 },
-    { id: "demo-k2", nome: "Banco", tipo: "banco", saldo_inicial: 1000, ativa: true, saldo: 1600 },
-  ] satisfies Conta[],
+    { id: "demo-k1", nome: "Caixa da loja", tipo: "caixa", saldo_inicial: 0, ativa: true, saldo: 350, formas: ["dinheiro"], taxa_pix: 0, taxa_debito: 0, taxa_credito: 0, taxas_parcelado: {} },
+    { id: "demo-k2", nome: "Banco", tipo: "banco", saldo_inicial: 1000, ativa: true, saldo: 1600, formas: ["pix", "transferencia"], taxa_pix: 0, taxa_debito: 0, taxa_credito: 0, taxas_parcelado: {} },
+    { id: "demo-k3", nome: "Maquininha", tipo: "outro", saldo_inicial: 0, ativa: true, saldo: 0, formas: ["debito", "credito", "pix"], taxa_pix: 0.99, taxa_debito: 1.99, taxa_credito: 3.49, taxas_parcelado: { "2": 5.39, "3": 6.19, "6": 8.49 } },
+  ] as Conta[],
   categorias: [
     { id: "demo-cat1", nome: "Serviços (OS)", tipo: "entrada", dre: "receita", sistema: "os", ativa: true },
     { id: "demo-cat2", nome: "Faturas de lojistas", tipo: "entrada", dre: "receita", sistema: "fatura", ativa: true },
