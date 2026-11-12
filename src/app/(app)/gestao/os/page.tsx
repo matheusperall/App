@@ -4,7 +4,7 @@ import { NavMes, Vazio } from "@/components/gestao";
 import { Cabecalho, CelulaStatus, GrupoDia, GrupoMes, ResumoPeriodo, type Cor } from "@/components/gestao/Cabecalho";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarValor } from "@/lib/garagem";
-import { STATUS_OS, agruparPorMesEDia, arred, concluida, mesAtual, mesValido, rotuloDia, rotuloForma, tituloMes, type OrdemServico } from "@/lib/gestao";
+import { STATUS_OS, agruparPorMesEDia, arred, concluida, faltaReceber, mesAtual, mesValido, rotuloDia, rotuloForma, tituloMes, type OrdemServico } from "@/lib/gestao";
 import { listarOS, type FiltroOS } from "@/lib/gestao-dados";
 import { ItemOS } from "./ItemOS";
 
@@ -22,6 +22,7 @@ const COR_STATUS: Record<OrdemServico["status"], Cor> = { aberta: "amarelo", em_
 function pagamento(o: OrdemServico): { texto: string; cor: Cor } {
   if (o.status === "cancelada") return { texto: "—", cor: "neutro" };
   if (o.pago) return { texto: o.forma_pagamento ? rotuloForma(o.forma_pagamento, o.parcelas) : "Pago", cor: "verde" };
+  if ((o.valor_pago ?? 0) > 0) return { texto: `Parcial · falta ${formatarValor(faltaReceber(o))}`, cor: "amarelo" };
   if (o.cliente?.lojista) return { texto: o.fatura_id ? "Na fatura" : "A faturar", cor: "amarelo" };
   return concluida(o.status) ? { texto: "A receber", cor: "amarelo" } : { texto: "—", cor: "neutro" };
 }
@@ -75,7 +76,7 @@ export default async function ListaOSPage({ searchParams }: PageProps<"/gestao/o
           { rotulo: `Total (${validas.length} OS)`, valor: soma(validas), cor: "verde" },
           { rotulo: `Concluídas (${concluidas.length})`, valor: soma(concluidas), cor: "verde" },
           { rotulo: `Em aberto (${abertas.length})`, valor: soma(abertas), cor: "amarelo" },
-          { rotulo: "A receber", valor: soma(aReceber), cor: "amarelo" },
+          { rotulo: "A receber", valor: arred(aReceber.reduce((t, o) => t + faltaReceber(o), 0)), cor: "amarelo" },
           { rotulo: "Ticket médio", valor: validas.length ? arred(soma(validas) / validas.length) : 0, cor: "verde" },
           { rotulo: "Taxas de recebimento", valor: arred(validas.reduce((t, o) => t + o.taxa_valor, 0)), cor: "vermelho" },
         ]}

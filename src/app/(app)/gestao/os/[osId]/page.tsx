@@ -7,9 +7,9 @@ import { CopiarWhatsApp } from "@/components/gestao/Copiar";
 import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
-import { formatarData, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
-import { STATUS_OS, rotuloForma, arred, linkWhatsApp, resumoOSWhatsApp } from "@/lib/gestao";
-import { consumoDaOS, listarContas, obterOS } from "@/lib/gestao-dados";
+import { formatarData, formatarValor, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
+import { STATUS_OS, arred, faltaReceber, linkWhatsApp, resumoOSWhatsApp, rotuloForma } from "@/lib/gestao";
+import { consumoDaOS, listarContas, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
 import { avancarStatus, cancelarOS } from "../actions";
 import { FormReceber } from "./FormReceber";
 
@@ -19,10 +19,12 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
   const [{ osId }, sp] = await Promise.all([params, searchParams, exigirAdmin()]);
   const os = await obterOS(osId);
   if (!os) notFound();
-  const [consumo, contas] = await Promise.all([consumoDaOS(os.id), listarContas()]);
+  const [consumo, contas, pagamentos] = await Promise.all([consumoDaOS(os.id), listarContas(), pagamentosDaOS(os.id)]);
+  const falta = faltaReceber(os);
+  const nomeConta = (id: string | null) => contas.find((c) => c.id === id)?.nome;
   const s = STATUS_OS[os.status];
   const editavel = (os.status === "aberta" || os.status === "em_andamento") && !os.pago && !os.fatura_id;
-  const cancelavel = os.status !== "entregue" && os.status !== "cancelada" && !os.pago && !os.fatura_id;
+  const cancelavel = os.status !== "entregue" && os.status !== "cancelada" && !os.pago && !(os.valor_pago ?? 0) && !os.fatura_id;
   const margem = arred(os.total - os.custo_produtos - os.taxa_valor);
   const resumo = resumoOSWhatsApp(os);
 
@@ -111,8 +113,32 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
       {/* Pagamento */}
       {os.status !== "cancelada" && (
         <Cartao className="space-y-3">
-          <h2 className="font-semibold">Pagamento</h2>
-          {os.pago ? (
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Pagamento</h2>
+            {!os.cliente?.lojista && (os.valor_pago ?? 0) > 0 && (
+              <span className="text-sm text-suave">
+                Pago <strong className="text-sucesso">{formatarValor(os.valor_pago ?? 0)}</strong>
+                {falta > 0 && <> · falta <strong className="text-[#b07800]">{formatarValor(falta)}</strong></>}
+              </span>
+            )}
+          </div>
+          {pagamentos.length > 0 && (
+            <ul className="divide-y divide-borda rounded-xl border border-borda text-sm">
+              {pagamentos.map((p, i) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <span className="min-w-0">
+                    <span className="font-medium">{i + 1}º pagamento</span>
+                    <span className="block text-xs text-suave">
+                      {formatarData(p.data)} · {rotuloForma(p.forma, p.parcelas)}{nomeConta(p.conta_id) && ` · ${nomeConta(p.conta_id)}`}
+                      {p.taxa_valor > 0 && ` · taxa ${formatarValor(p.taxa_valor)}`}
+                    </span>
+                  </span>
+                  <span className="font-semibold text-sucesso tabular-nums">{formatarValor(p.valor)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {os.pago && pagamentos.length > 0 ? null : os.pago ? (
             <Aviso tipo="sucesso">
               Pago em {formatarData(os.pago_em)}{os.forma_pagamento && ` · ${rotuloForma(os.forma_pagamento, os.parcelas)}`}{os.conta_id && contas.find((c) => c.id === os.conta_id) && ` · ${contas.find((c) => c.id === os.conta_id)!.nome}`}
               {os.taxa_valor > 0 && <> · taxa de <Dinheiro valor={os.taxa_valor} /></>}
@@ -128,7 +154,7 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           ) : contas.length === 0 ? (
             <p className="text-sm text-suave">Cadastre uma conta em <Link href="/gestao/financeiro" className="font-semibold text-marca-escura">Financeiro</Link> para receber.</p>
           ) : (
-            <FormReceber osId={os.id} total={os.total} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
+            <FormReceber osId={os.id} falta={falta} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
           )}
         </Cartao>
       )}

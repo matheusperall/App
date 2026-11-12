@@ -6,6 +6,8 @@ import type { OrdemServico } from "@/lib/gestao";
 export function ItemOS({ os, comData = false }: { os: OrdemServico; comData?: boolean }) {
   const situacaoPagamento = os.status === "cancelada" ? null : os.pago ? (
     <Selo classe="bg-sucesso-claro text-sucesso">Pago</Selo>
+  ) : (os.valor_pago ?? 0) > 0 ? (
+    <Selo classe="bg-alerta-claro text-[#8a5a00]">Parcial</Selo>
   ) : os.cliente?.lojista ? (
     <Selo classe="bg-marca-clara text-marca-escura">{os.fatura_id ? "Na fatura" : "Lojista"}</Selo>
   ) : os.status === "pronta" || os.status === "entregue" ? (

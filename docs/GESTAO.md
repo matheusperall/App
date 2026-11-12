@@ -29,10 +29,11 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
    - Ao marcar **pronta**, os produtos que o serviço gasta saem do estoque e a OS mostra o
      custo dos produtos e a margem. Se o cliente tem o app, ele recebe "Seu carro está pronto".
    - Ao **entregar**, o serviço vai para o histórico do veículo (com valor e km) e o cliente com app recebe um aviso.
-3. **Receber**: na OS, escolha a forma (Pix, dinheiro, débito, crédito ou transferência). Aparecem só as
-   contas que recebem nessa forma; se for só uma, ela já vem escolhida. No crédito, escolha as parcelas.
-   A taxa da conta para aquela forma (e parcela) é lançada como saída automaticamente.
-   - **Cliente lojista não paga por OS**: as OS dele ficam em *Faturas › A faturar*.
+3. **Receber**: na OS, preencha o **1º pagamento**: valor, forma (Pix, dinheiro, débito, crédito ou
+   transferência), conta (aparecem só as que recebem nessa forma; se for uma só, já vem escolhida) e, no
+   crédito, as parcelas. Para dividir (ex.: parte no Pix, parte no cartão), toque em **+ Adicionar 2º pagamento**.
+   Se a soma for menor que o total, o restante **fica em aberto** e a OS aparece como "Parcial" até
+   receber o resto. A taxa de cada pagamento é lançada sozinha como saída.
 4. **Fim do mês dos lojistas**: *Faturas* → marque as OS → **Gerar fatura** com o vencimento →
    **Copiar extrato** e mande no WhatsApp. Quando ele pagar (tudo ou parte), registre o pagamento:
    igual à OS, a forma escolhida filtra as contas, o crédito pede as parcelas e a taxa entra como saída.
@@ -119,5 +120,11 @@ formas, com as taxas de débito e crédito que estavam nas configurações — d
 Depois do 0011, rode **`supabase/migrations/0012_faturas_e_lancamentos.sql`** do mesmo jeito.
 Ele faz o pagamento de fatura usar as formas e taxas das contas (com parcelas no crédito) e permite
 lançamentos recorrentes e parcelados.
+
+### Atualização: pagamento dividido na OS (arquivo 0013)
+
+Depois do 0012, rode **`supabase/migrations/0013_pagamentos_os.sql`** do mesmo jeito. Ele permite
+receber a OS em vários pagamentos e deixar uma parte em aberto. Os pagamentos já feitos antes continuam
+aparecendo (o arquivo copia cada um para a nova lista de pagamentos).
 
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
