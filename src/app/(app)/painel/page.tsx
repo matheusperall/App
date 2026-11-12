@@ -65,6 +65,7 @@ export default async function PainelPage() {
         <Link href="/gestao/clientes" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="carro" className="h-4 w-4" />Buscar cliente ou placa</Link>
         <Link href="/painel/comunicados" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="megafone" className="h-4 w-4" />Enviar comunicado</Link>
         <Link href="/gestao" className="botao-escuro gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="financeiro" className="h-4 w-4" />Gestão da loja</Link>
+        <Link href="/garagem" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="carro" className="h-4 w-4" />Minha garagem</Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
