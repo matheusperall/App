@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { Voltar } from "@/components/garagem";
 import { FormAcao } from "@/components/gestao/FormAcao";
 import { Campo, Cartao } from "@/components/ui";
@@ -22,7 +23,7 @@ export default async function NovoProdutoPage() {
               <input name="saldo_inicial" inputMode="decimal" className="campo" placeholder="0" />
             </Campo>
             <Campo rotulo="Quanto custou (R$)" dica="Valor total dessa quantidade">
-              <input name="valor_inicial" inputMode="decimal" className="campo" placeholder="0,00" />
+              <CampoDinheiro name="valor_inicial" />
             </Campo>
           </div>
         </FormAcao>

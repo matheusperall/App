@@ -5,9 +5,9 @@ import { FormAcao } from "@/components/gestao/FormAcao";
 import { Campo, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, hojeISO } from "@/lib/garagem";
-import { TIPOS_CONTA, arred, mesAtual, mesValido, type Lancamento } from "@/lib/gestao";
+import { TIPOS_CONTA, arred, mesAtual, mesValido, rotuloSerie, type Lancamento } from "@/lib/gestao";
 import { contasAPagar, contasAReceberAvulsas, lancamentosDoMes, listarCategorias, listarContas, obterConfig } from "@/lib/gestao-dados";
-import { excluirLancamento, marcarPago, salvarConfig } from "./actions";
+import { encerrarSerie, excluirLancamento, marcarPago, salvarConfig } from "./actions";
 import { FormConta } from "./FormConta";
 import { FormLancamento } from "./FormLancamento";
 
@@ -100,6 +100,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
                     <p className="text-xs text-suave">
                       {formatarData(l.pago_em ?? l.data)} · {nomeCat.get(l.categoria_id ?? "") ?? "Sem categoria"} · {nomeConta.get(l.conta_id ?? "") ?? "—"}
                       {!l.pago && " · em aberto"}
+                      {rotuloSerie(l) && ` · ${rotuloSerie(l)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
@@ -142,6 +143,7 @@ function LinhaAberta({ l, hoje, contas, categoria }: { l: Lancamento; hoje: stri
           <p className="font-medium">{l.descricao}</p>
           <p className={`text-xs ${vencida ? "font-semibold text-perigo" : "text-suave"}`}>
             {vencida ? "Vencida em " : "Vence em "}{formatarData(venc)}{categoria && ` · ${categoria}`}
+            {rotuloSerie(l) && <span className="text-suave"> · {rotuloSerie(l)}</span>}
           </p>
         </div>
         <Dinheiro valor={l.valor} className="shrink-0 font-semibold" />
@@ -152,6 +154,17 @@ function LinhaAberta({ l, hoje, contas, categoria }: { l: Lancamento; hoje: stri
         </select>
         <input type="date" name="data" defaultValue={hoje} className="campo w-auto px-2 py-2 text-sm" aria-label="Data do pagamento" />
       </FormAcao>
+      {l.grupo_id && (
+        <FormAcao
+          acao={encerrarSerie}
+          campos={{ id: l.id }}
+          botao={l.recorrente ? "Encerrar recorrência (apaga as próximas)" : "Cancelar parcelas restantes"}
+          pendente="…"
+          classeBotao="text-xs text-suave underline"
+          className=""
+          confirmar="Apagar esta e as próximas ainda não pagas desta série?"
+        />
+      )}
     </li>
   );
 }

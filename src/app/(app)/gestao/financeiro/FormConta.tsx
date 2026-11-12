@@ -1,10 +1,11 @@
 "use client";
 
+import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso } from "@/components/ui";
-import { FORMAS_PAGAMENTO, MAX_PARCELAS, TIPOS_CONTA, valorCampo, type Conta, type FormaPagamento } from "@/lib/gestao";
+import { FORMAS_PAGAMENTO, MAX_PARCELAS, TIPOS_CONTA, type Conta, type FormaPagamento } from "@/lib/gestao";
 import { salvarConta } from "./actions";
 
 const pctCampo = (v: number | undefined) => (v == null ? "" : String(v).replace(".", ","));
@@ -42,7 +43,7 @@ export function FormConta({ conta, padrao }: { conta?: Conta; padrao: { taxa_deb
       </div>
       <label className="block text-xs text-suave">
         Saldo inicial (R$)
-        <input name="saldo_inicial" defaultValue={conta ? valorCampo(conta.saldo_inicial) : ""} placeholder="0,00" inputMode="decimal" className="campo mt-1 py-2" />
+        <CampoDinheiro name="saldo_inicial" valorInicial={conta?.saldo_inicial} className="campo mt-1 py-2" />
       </label>
 
       <fieldset>

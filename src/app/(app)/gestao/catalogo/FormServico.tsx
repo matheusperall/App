@@ -1,11 +1,12 @@
 "use client";
 
+import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
 import { CATEGORIAS, formatarValor, type Categoria } from "@/lib/garagem";
-import { arred, lerDinheiro, lerNumero, valorCampo, type Produto, type ServicoCatalogo } from "@/lib/gestao";
+import { arred, lerNumero, type Produto, type ServicoCatalogo } from "@/lib/gestao";
 import { salvarServicoCatalogo } from "./actions";
 
 type Linha = { chave: number; produto_id: string; quantidade: string };
@@ -13,14 +14,14 @@ let chave = 1;
 
 export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; produtos: Produto[] }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(salvarServicoCatalogo, {});
-  const [preco, setPreco] = useState(servico ? valorCampo(servico.preco) : "");
+  const [preco, setPreco] = useState(servico?.preco ?? 0);
   const [linhas, setLinhas] = useState<Linha[]>(() =>
     (servico?.consumo ?? []).map((c) => ({ chave: chave++, produto_id: c.produto_id, quantidade: String(c.quantidade).replace(".", ",") })),
   );
   const custo = arred(
     linhas.reduce((t, l) => t + (lerNumero(l.quantidade) ?? 0) * (produtos.find((p) => p.id === l.produto_id)?.custo_medio ?? 0), 0),
   );
-  const p = lerDinheiro(preco) ?? 0;
+  const p = preco;
   const consumo = linhas.map((l) => ({ produto_id: l.produto_id, quantidade: lerNumero(l.quantidade) ?? 0 }));
 
   return (
@@ -34,7 +35,7 @@ export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; 
       </Campo>
       <div className="grid grid-cols-2 gap-3">
         <Campo rotulo="Preço (R$)">
-          <input name="preco" value={preco} onChange={(e) => setPreco(e.target.value)} inputMode="decimal" required className="campo" />
+          <CampoDinheiro name="preco" valor={preco} aoMudar={setPreco} />
         </Campo>
         <Campo rotulo="Categoria">
           <select name="categoria" defaultValue={servico?.categoria ?? "estetica"} className="campo px-3">

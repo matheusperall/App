@@ -176,7 +176,18 @@ export type Lancamento = {
   pago_em: string | null;
   os_id: string | null;
   fatura_id: string | null;
+  /** Série: lançamentos recorrentes ou parcelados (mesmo grupo_id) */
+  grupo_id?: string | null;
+  parcela?: number | null;
+  total_parcelas?: number | null;
+  recorrente?: boolean;
 };
+
+/** "Recorrente" ou "Parcela 2/3" */
+export function rotuloSerie(l: Pick<Lancamento, "grupo_id" | "parcela" | "total_parcelas" | "recorrente">) {
+  if (!l.grupo_id) return null;
+  return l.recorrente ? `Recorrente · ${l.parcela}/${l.total_parcelas}` : `Parcela ${l.parcela}/${l.total_parcelas}`;
+}
 
 export type SituacaoFatura = "aberta" | "parcial" | "paga" | "cancelada";
 export type Fatura = {
@@ -194,7 +205,7 @@ export type Fatura = {
   cliente: Pick<Ficha, "id" | "nome" | "telefone"> | null;
 };
 export type ItemFatura = { id: string; os_id: string | null; data: string; placa: string | null; veiculo: string | null; servicos: string; valor: number };
-export type PagamentoFatura = { id: string; data: string; valor: number; forma: FormaPagamento | null; conta_id: string | null };
+export type PagamentoFatura = { id: string; data: string; valor: number; forma: FormaPagamento | null; conta_id: string | null; parcelas?: number | null; taxa_valor?: number | null };
 
 export type ConfigGestao = { vagas_patio: number; taxa_debito: number; taxa_credito: number };
 export const CONFIG_PADRAO: ConfigGestao = { vagas_patio: 6, taxa_debito: 1.99, taxa_credito: 3.49 };

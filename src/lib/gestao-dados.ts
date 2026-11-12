@@ -268,36 +268,44 @@ export async function listarCategorias(): Promise<CategoriaFinanceira[]> {
 }
 
 const CAMPOS_LANC = "id, data, vencimento, tipo, descricao, valor, categoria_id, conta_id, pago, pago_em, os_id, fatura_id";
+/** Série (recorrente/parcelado) — migração 0012 */
+const CAMPOS_SERIE = ", grupo_id, parcela, total_parcelas, recorrente";
 const normLanc = (l: Lancamento) => ({ ...l, valor: n(l.valor) });
+
+type Supa = Awaited<ReturnType<typeof createClient>>;
+/** Consulta lançamentos com os campos da série; se o banco ainda não tem o 0012, sem eles. */
+async function consultarLancamentos(montar: (supabase: Supa, campos: string) => PromiseLike<{ data: unknown; error: { code?: string } | null }>) {
+  const supabase = await createClient();
+  const r = await montar(supabase, CAMPOS_LANC + CAMPOS_SERIE);
+  let data = r.data;
+  if (r.error?.code === "42703") ({ data } = await montar(supabase, CAMPOS_LANC));
+  return ((data ?? []) as Lancamento[]).map(normLanc);
+}
 
 /** Lançamentos com competência no mês ou pagos no mês. */
 export async function lancamentosDoMes(mes: string): Promise<Lancamento[]> {
   if (!isSupabaseConfigured) return DEMO.lancamentos;
-  const supabase = await createClient();
   const { inicio, fim } = limitesMes(mes);
-  const { data } = await supabase
-    .from("lancamentos")
-    .select(CAMPOS_LANC)
-    .or(`and(data.gte.${inicio},data.lte.${fim}),and(pago_em.gte.${inicio},pago_em.lte.${fim})`)
-    .order("data", { ascending: false })
-    .order("criado_em", { ascending: false })
-    .limit(2000);
-  return ((data ?? []) as Lancamento[]).map(normLanc);
+  return consultarLancamentos((supabase, campos) =>
+    supabase
+      .from("lancamentos")
+      .select(campos)
+      .or(`and(data.gte.${inicio},data.lte.${fim}),and(pago_em.gte.${inicio},pago_em.lte.${fim})`)
+      .order("data", { ascending: false })
+      .order("criado_em", { ascending: false })
+      .limit(2000),
+  );
 }
 
 /** Contas a pagar (saídas ainda não pagas), da mais antiga para a mais nova. */
 export async function contasAPagar(): Promise<Lancamento[]> {
   if (!isSupabaseConfigured) return DEMO.lancamentos.filter((l) => !l.pago && l.tipo === "saida");
-  const supabase = await createClient();
-  const { data } = await supabase.from("lancamentos").select(CAMPOS_LANC).eq("pago", false).eq("tipo", "saida").order("vencimento").limit(500);
-  return ((data ?? []) as Lancamento[]).map(normLanc);
+  return consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).eq("pago", false).eq("tipo", "saida").order("vencimento").limit(500));
 }
 
 export async function contasAReceberAvulsas(): Promise<Lancamento[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
-  const { data } = await supabase.from("lancamentos").select(CAMPOS_LANC).eq("pago", false).eq("tipo", "entrada").order("vencimento").limit(500);
-  return ((data ?? []) as Lancamento[]).map(normLanc);
+  return consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).eq("pago", false).eq("tipo", "entrada").order("vencimento").limit(500));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,16 +330,19 @@ export async function obterFatura(id: string): Promise<{ fatura: Fatura; itens: 
   }
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
-  const [{ data: f }, { data: itens }, { data: pagamentos }] = await Promise.all([
+  const [{ data: f }, { data: itens }, pagamentosRes] = await Promise.all([
     supabase.from("faturas").select(CAMPOS_FATURA).eq("id", id).maybeSingle(),
     supabase.from("fatura_itens").select("id, os_id, data, placa, veiculo, servicos, valor").eq("fatura_id", id).order("data"),
-    supabase.from("fatura_pagamentos").select("id, data, valor, forma, conta_id").eq("fatura_id", id).order("data"),
+    supabase.from("fatura_pagamentos").select("id, data, valor, forma, conta_id, parcelas, taxa_valor").eq("fatura_id", id).order("data"),
   ]);
+  let pagamentos: unknown[] | null = pagamentosRes.data;
+  if (pagamentosRes.error?.code === "42703")
+    ({ data: pagamentos } = await supabase.from("fatura_pagamentos").select("id, data, valor, forma, conta_id").eq("fatura_id", id).order("data"));
   if (!f) return null;
   return {
     fatura: normFatura(f as unknown as Fatura),
     itens: ((itens ?? []) as ItemFatura[]).map((i) => ({ ...i, valor: n(i.valor) })),
-    pagamentos: ((pagamentos ?? []) as PagamentoFatura[]).map((p) => ({ ...p, valor: n(p.valor) })),
+    pagamentos: ((pagamentos ?? []) as PagamentoFatura[]).map((p) => ({ ...p, valor: n(p.valor), taxa_valor: n(p.taxa_valor) })),
   };
 }
 
@@ -528,7 +539,7 @@ const DEMO = {
   ] satisfies CategoriaFinanceira[],
   lancamentos: [
     { id: "demo-l1", data: somarDias(hoje, -2), vencimento: null, tipo: "entrada", descricao: "OS #1 · BRA2E19", valor: 600, categoria_id: "demo-cat1", conta_id: "demo-k2", pago: true, pago_em: somarDias(hoje, -2), os_id: "demo-os3", fatura_id: null },
-    { id: "demo-l2", data: hoje, vencimento: somarDias(hoje, 5), tipo: "saida", descricao: "Aluguel do galpão", valor: 1800, categoria_id: "demo-cat5", conta_id: "demo-k2", pago: false, pago_em: null, os_id: null, fatura_id: null },
+    { id: "demo-l2", data: hoje, vencimento: somarDias(hoje, 5), tipo: "saida", descricao: "Aluguel do galpão", valor: 1800, categoria_id: "demo-cat5", conta_id: "demo-k2", pago: false, pago_em: null, os_id: null, fatura_id: null, grupo_id: "demo-g1", parcela: 1, total_parcelas: 12, recorrente: true },
   ] satisfies Lancamento[],
   faturas: [
     { id: "demo-f1", numero: 1, cliente_id: lojistaDemo.id, periodo_inicio: somarDias(hoje, -40), periodo_fim: somarDias(hoje, -10), emissao: somarDias(hoje, -9), vencimento: somarDias(hoje, -2), total: 480, valor_pago: 200, situacao: "parcial", observacoes: null, cliente: { id: lojistaDemo.id, nome: lojistaDemo.nome, telefone: lojistaDemo.telefone } },

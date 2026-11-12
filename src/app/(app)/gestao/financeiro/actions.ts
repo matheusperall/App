@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
-import { hojeISO } from "@/lib/garagem";
+import { hojeISO, somarMeses } from "@/lib/garagem";
 import { MAX_PARCELAS, TIPOS_CONTA, ehFormaPagamento, lerDinheiro, lerNumero } from "@/lib/gestao";
 import { createClient } from "@/lib/supabase/server";
 
@@ -57,31 +57,78 @@ export async function salvarLancamento(_: EstadoForm, form: FormData): Promise<E
   if (!isSupabaseConfigured) return DEMO;
   await exigirAdmin();
   const tipo = texto(form, "tipo");
-  const descricao = texto(form, "descricao").slice(0, 200);
+  const descricao = texto(form, "descricao").slice(0, 180);
   const valor = lerDinheiro(texto(form, "valor"));
   const data = texto(form, "data");
   const pago = texto(form, "pago") !== "nao";
   const vencimento = texto(form, "vencimento") || null;
+  const repeticao = texto(form, "repeticao") || "unica";
   if (tipo !== "entrada" && tipo !== "saida") return { erro: "Escolha entrada ou saída." };
   if (descricao.length < 2) return { erro: "Descreva o lançamento." };
   if (!valor || valor <= 0) return { erro: "Informe o valor." };
   if (!dataValida(data)) return { erro: "Informe a data." };
   if (!pago && (!vencimento || !dataValida(vencimento))) return { erro: "Informe o vencimento." };
-  const supabase = await createClient();
-  const { error } = await supabase.from("lancamentos").insert({
+  if (!["unica", "recorrente", "parcelado"].includes(repeticao)) return { erro: "Repetição inválida." };
+
+  const vezes = repeticao === "unica" ? 1 : Math.round(lerNumero(texto(form, "vezes")) ?? 0);
+  if (repeticao === "parcelado" && (vezes < 2 || vezes > 48)) return { erro: "Parcelado: de 2 a 48 parcelas." };
+  if (repeticao === "recorrente" && (vezes < 2 || vezes > 60)) return { erro: "Recorrente: de 2 a 60 meses." };
+
+  // Valor de cada lançamento (no parcelado, os centavos que sobram vão na primeira parcela)
+  const centavos = Math.round(valor * 100);
+  const porParcela = repeticao === "parcelado" ? Math.floor(centavos / vezes) : centavos;
+  const sobra = repeticao === "parcelado" ? centavos - porParcela * vezes : 0;
+  const grupo = vezes > 1 ? crypto.randomUUID() : null;
+  const base = {
     tipo,
-    descricao,
-    valor,
-    data,
-    vencimento: pago ? null : vencimento,
     categoria_id: texto(form, "categoria_id") || null,
     conta_id: texto(form, "conta_id") || null,
-    pago,
-    pago_em: pago ? data : null,
+  };
+  const linhas = Array.from({ length: vezes }, (_, i) => {
+    const primeira = i === 0;
+    const quitada = primeira && pago;
+    const venc = somarMeses(pago ? data : vencimento!, i);
+    return {
+      ...base,
+      descricao: repeticao === "parcelado" ? `${descricao} (${i + 1}/${vezes})` : descricao,
+      valor: (porParcela + (primeira ? sobra : 0)) / 100,
+      data: somarMeses(data, i),
+      vencimento: quitada ? null : venc,
+      pago: quitada,
+      pago_em: quitada ? data : null,
+      ...(grupo ? { grupo_id: grupo, parcela: i + 1, total_parcelas: vezes, recorrente: repeticao === "recorrente" } : {}),
+    };
   });
-  if (error) return { erro: "Não foi possível salvar o lançamento." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("lancamentos").insert(linhas);
+  if (error) {
+    if (error.code === "PGRST204" || error.code === "42703")
+      return { erro: "Falta atualizar o banco: rode o arquivo 0012_faturas_e_lancamentos.sql no Supabase (veja docs/GESTAO.md)." };
+    return { erro: "Não foi possível salvar o lançamento." };
+  }
   revalidatePath("/gestao", "layout");
+  if (vezes > 1)
+    return { sucesso: `${vezes} lançamentos criados (${repeticao === "parcelado" ? "parcelas" : "um por mês"}). Os próximos aparecem em “a pagar/receber”.` };
   return { sucesso: pago ? "Lançamento registrado." : "Conta registrada. Ela aparece em “a pagar/receber” até ser marcada como paga." };
+}
+
+/** Apaga os lançamentos ainda não pagos de uma série (recorrente ou parcelado), a partir deste. */
+export async function encerrarSerie(_: EstadoForm, form: FormData): Promise<EstadoForm> {
+  if (!isSupabaseConfigured) return DEMO;
+  await exigirAdmin();
+  const supabase = await createClient();
+  const { data: l } = await supabase.from("lancamentos").select("grupo_id, data").eq("id", texto(form, "id")).maybeSingle();
+  if (!l?.grupo_id) return { erro: "Este lançamento não faz parte de uma série." };
+  const { error, count } = await supabase
+    .from("lancamentos")
+    .delete({ count: "exact" })
+    .eq("grupo_id", l.grupo_id)
+    .eq("pago", false)
+    .gte("data", l.data);
+  if (error) return { erro: "Não foi possível encerrar a série." };
+  revalidatePath("/gestao", "layout");
+  return { sucesso: `${count ?? 0} lançamento(s) futuro(s) não pago(s) apagado(s).` };
 }
 
 export async function marcarPago(_: EstadoForm, form: FormData): Promise<EstadoForm> {

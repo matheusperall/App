@@ -6,7 +6,8 @@ import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { ResumoFipe, SeletorFipe, type Escolha } from "@/components/SeletorFipe";
 import { Aviso, Campo, Cartao } from "@/components/ui";
 import { CATEGORIAS, formatarValor, normalizarPlaca, placaValida, type Categoria } from "@/lib/garagem";
-import { arred, combina, lerDinheiro, valorCampo } from "@/lib/gestao";
+import { arred, combina } from "@/lib/gestao";
+import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { salvarOS, type DadosOS } from "./actions";
 
 export type OpcaoCliente = {
@@ -18,7 +19,7 @@ export type OpcaoCliente = {
 };
 export type OpcaoServico = { id: string; nome: string; preco: number; categoria: Categoria };
 
-type Item = { chave: number; catalogo_id: string | null; nome: string; preco: string; novo?: { categoria: Categoria } };
+type Item = { chave: number; catalogo_id: string | null; nome: string; preco: number; novo?: { categoria: Categoria } };
 
 export type InicialOS = {
   id?: string;
@@ -91,27 +92,27 @@ export function FormOS({
 
   // ---------------- Serviços ----------------
   const [itens, setItens] = useState<Item[]>(() =>
-    (inicial.itens ?? []).map((i) => ({ chave: proximaChave++, catalogo_id: i.catalogo_id, nome: i.nome, preco: valorCampo(i.preco) })),
+    (inicial.itens ?? []).map((i) => ({ chave: proximaChave++, catalogo_id: i.catalogo_id, nome: i.nome, preco: i.preco })),
   );
   const [buscaServico, setBuscaServico] = useState("");
-  const [cadastrando, setCadastrando] = useState<{ nome: string; preco: string; categoria: Categoria } | null>(null);
+  const [cadastrando, setCadastrando] = useState<{ nome: string; preco: number; categoria: Categoria } | null>(null);
   const servicosFiltrados = useMemo(
     () => (buscaServico.trim() ? catalogo.filter((s) => combina(s.nome, buscaServico)).slice(0, 10) : catalogo.slice(0, 8)),
     [buscaServico, catalogo],
   );
 
   function adicionar(s: { id: string | null; nome: string; preco: number; novo?: { categoria: Categoria } }) {
-    setItens((l) => [...l, { chave: proximaChave++, catalogo_id: s.id, nome: s.nome, preco: valorCampo(s.preco), novo: s.novo }]);
+    setItens((l) => [...l, { chave: proximaChave++, catalogo_id: s.id, nome: s.nome, preco: s.preco, novo: s.novo }]);
     setBuscaServico("");
   }
 
   // ---------------- Valores ----------------
-  const [desconto, setDesconto] = useState(inicial.desconto ? valorCampo(inicial.desconto) : "");
+  const [desconto, setDesconto] = useState(inicial.desconto ?? 0);
   const [data, setData] = useState(inicial.data);
   const [km, setKm] = useState(inicial.km ? String(inicial.km) : "");
   const [observacoes, setObservacoes] = useState(inicial.observacoes ?? "");
-  const subtotal = arred(itens.reduce((t, i) => t + Math.max(0, lerDinheiro(i.preco) ?? 0), 0));
-  const descontoNum = Math.min(Math.max(0, lerDinheiro(desconto) ?? 0), subtotal);
+  const subtotal = arred(itens.reduce((t, i) => t + Math.max(0, i.preco), 0));
+  const descontoNum = Math.min(Math.max(0, desconto), subtotal);
   const total = arred(subtotal - descontoNum);
 
   // ---------------- Montagem dos dados ----------------
@@ -144,7 +145,7 @@ export function FormOS({
       : veiculoId
         ? { id: veiculoId }
         : null,
-    itens: itens.map((i) => ({ catalogo_id: i.catalogo_id, nome: i.nome, preco: Math.max(0, lerDinheiro(i.preco) ?? 0), novo: i.novo })),
+    itens: itens.map((i) => ({ catalogo_id: i.catalogo_id, nome: i.nome, preco: Math.max(0, i.preco), novo: i.novo })),
     desconto: descontoNum,
     data,
     km: km ? Number(km.replace(/\D/g, "")) : null,
@@ -367,12 +368,11 @@ export function FormOS({
                 </span>
                 <label className="flex items-center gap-1 text-sm text-suave">
                   R$
-                  <input
-                    className="w-24 rounded-lg border border-borda bg-white px-2 py-1.5 text-right text-base tabular-nums text-texto outline-none focus:border-marca"
-                    inputMode="decimal"
-                    value={i.preco}
+                  <CampoDinheiro
+                    className="w-28 rounded-lg border border-borda bg-white px-2 py-1.5 text-base text-texto outline-none focus:border-marca"
+                    valor={i.preco}
                     aria-label={`Preço de ${i.nome}`}
-                    onChange={(e) => setItens((l) => l.map((x) => (x.chave === i.chave ? { ...x, preco: e.target.value } : x)))}
+                    aoMudar={(v) => setItens((l) => l.map((x) => (x.chave === i.chave ? { ...x, preco: v } : x)))}
                   />
                 </label>
                 <button
@@ -396,7 +396,7 @@ export function FormOS({
             </Campo>
             <div className="grid grid-cols-2 gap-3">
               <Campo rotulo="Preço (R$)">
-                <input className="campo" inputMode="decimal" value={cadastrando.preco} onChange={(e) => setCadastrando({ ...cadastrando, preco: e.target.value })} />
+                <CampoDinheiro valor={cadastrando.preco} aoMudar={(v) => setCadastrando({ ...cadastrando, preco: v })} />
               </Campo>
               <Campo rotulo="Categoria">
                 <select className="campo px-3" value={cadastrando.categoria} onChange={(e) => setCadastrando({ ...cadastrando, categoria: e.target.value as Categoria })}>
@@ -412,7 +412,7 @@ export function FormOS({
                 className="botao-primario flex-1 text-sm"
                 disabled={cadastrando.nome.trim().length < 2}
                 onClick={() => {
-                  adicionar({ id: null, nome: cadastrando.nome.trim(), preco: Math.max(0, lerDinheiro(cadastrando.preco) ?? 0), novo: { categoria: cadastrando.categoria } });
+                  adicionar({ id: null, nome: cadastrando.nome.trim(), preco: Math.max(0, cadastrando.preco), novo: { categoria: cadastrando.categoria } });
                   setCadastrando(null);
                 }}
               >
@@ -450,7 +450,7 @@ export function FormOS({
             <button
               type="button"
               className="botao-contorno w-full text-sm"
-              onClick={() => setCadastrando({ nome: buscaServico.trim(), preco: "", categoria: "estetica" })}
+              onClick={() => setCadastrando({ nome: buscaServico.trim(), preco: 0, categoria: "estetica" })}
             >
               + {buscaServico.trim() ? `Cadastrar “${buscaServico.trim()}” como serviço novo` : "Cadastrar serviço novo"}
             </button>
@@ -470,7 +470,7 @@ export function FormOS({
           </Campo>
         </div>
         <Campo rotulo="Desconto (R$)">
-          <input className="campo" inputMode="decimal" value={desconto} onChange={(e) => setDesconto(e.target.value)} placeholder="0,00" />
+          <CampoDinheiro valor={desconto} aoMudar={setDesconto} />
         </Campo>
         <Campo rotulo="Observações (opcional)">
           <textarea className="campo min-h-20" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Ex.: cliente pediu atenção ao banco do motorista" />

@@ -34,7 +34,17 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
    A taxa da conta para aquela forma (e parcela) é lançada como saída automaticamente.
    - **Cliente lojista não paga por OS**: as OS dele ficam em *Faturas › A faturar*.
 4. **Fim do mês dos lojistas**: *Faturas* → marque as OS → **Gerar fatura** com o vencimento →
-   **Copiar extrato** e mande no WhatsApp. Quando ele pagar (tudo ou parte), registre o pagamento.
+   **Copiar extrato** e mande no WhatsApp. Quando ele pagar (tudo ou parte), registre o pagamento:
+   igual à OS, a forma escolhida filtra as contas, o crédito pede as parcelas e a taxa entra como saída.
+5. **Despesas fixas e compras parceladas**: em *Financeiro › Novo lançamento*, escolha a repetição:
+   - **Única**: um lançamento só.
+   - **Recorrente**: o mesmo valor todo mês (ex.: aluguel), pelo número de meses que você escolher.
+   - **Parcelado**: o valor total dividido em parcelas mensais (ex.: equipamento em 10x).
+   As próximas entram como contas a pagar (ou a receber). Para parar uma recorrência, use
+   **Encerrar recorrência** na conta a pagar: apaga as próximas que ainda não foram pagas.
+
+**Campos de valor em reais** começam em 0,00 e os números "correm" como numa maquininha:
+digitar 12345 vira 123,45. A tecla de apagar tira o último número.
 
 ## Números do Início e do resultado
 
@@ -103,5 +113,11 @@ Se você já rodou o `0010_gestao.sql`, rode também **`supabase/migrations/0011
 (mesmo jeito: SQL Editor › New query › colar › Run). Ele adiciona às contas as formas de recebimento e as
 taxas (Pix, débito, crédito à vista e cada parcela). As contas que já existem começam aceitando todas as
 formas, com as taxas de débito e crédito que estavam nas configurações — depois ajuste em *Gerenciar contas*.
+
+### Atualização: faturas e lançamentos recorrentes/parcelados (arquivo 0012)
+
+Depois do 0011, rode **`supabase/migrations/0012_faturas_e_lancamentos.sql`** do mesmo jeito.
+Ele faz o pagamento de fatura usar as formas e taxas das contas (com parcelas no crédito) e permite
+lançamentos recorrentes e parcelados.
 
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.

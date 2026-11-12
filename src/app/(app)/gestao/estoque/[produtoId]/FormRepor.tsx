@@ -1,21 +1,22 @@
 "use client";
 
+import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
 import { formatarValor } from "@/lib/garagem";
-import { arred, lerDinheiro, lerNumero, type Produto } from "@/lib/gestao";
+import { arred, lerNumero, type Produto } from "@/lib/gestao";
 import { reporProduto } from "../actions";
 
 export function FormRepor({ produto, contas }: { produto: Produto; contas: { id: string; nome: string }[] }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(reporProduto, {});
   const [qtd, setQtd] = useState("");
-  const [valor, setValor] = useState("");
+  const [valor, setValor] = useState(0);
   const [lancar, setLancar] = useState(true);
   const [pago, setPago] = useState(true);
   const q = lerNumero(qtd) ?? 0;
-  const v = lerDinheiro(valor) ?? 0;
+  const v = valor;
   const novoCusto = q > 0 ? (produto.saldo > 0 ? (produto.saldo * produto.custo_medio + v) / (produto.saldo + q) : v / q) : null;
 
   return (
@@ -28,7 +29,7 @@ export function FormRepor({ produto, contas }: { produto: Produto; contas: { id:
           <input name="quantidade" inputMode="decimal" className="campo" value={qtd} onChange={(e) => setQtd(e.target.value)} required />
         </Campo>
         <Campo rotulo="Valor total pago (R$)">
-          <input name="valor" inputMode="decimal" className="campo" value={valor} onChange={(e) => setValor(e.target.value)} required />
+          <CampoDinheiro name="valor" valor={valor} aoMudar={setValor} />
         </Campo>
       </div>
       {novoCusto != null && (

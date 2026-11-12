@@ -5,12 +5,13 @@ import { Voltar } from "@/components/garagem";
 import { Dinheiro, SeloFatura } from "@/components/gestao";
 import { CopiarWhatsApp } from "@/components/gestao/Copiar";
 import { FormAcao } from "@/components/gestao/FormAcao";
-import { Aviso, Campo, Cartao } from "@/components/ui";
+import { Aviso, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, hojeISO } from "@/lib/garagem";
-import { FORMAS_PAGAMENTO, arred, extratoFaturaWhatsApp, faturaEmAberto, linkWhatsApp, valorCampo, type ItemFatura } from "@/lib/gestao";
+import { arred, rotuloForma, extratoFaturaWhatsApp, faturaEmAberto, linkWhatsApp, type ItemFatura } from "@/lib/gestao";
 import { listarContas, obterFatura } from "@/lib/gestao-dados";
-import { cancelarFatura, pagarFatura } from "../actions";
+import { cancelarFatura } from "../actions";
+import { FormPagarFatura } from "./FormPagarFatura";
 
 export const metadata: Metadata = { title: "Fatura" };
 
@@ -82,7 +83,7 @@ export default async function FaturaPage({ params, searchParams }: PageProps<"/g
           <ul className="mt-2 divide-y divide-borda text-sm">
             {pagamentos.map((p) => (
               <li key={p.id} className="flex justify-between gap-3 px-5 py-2.5">
-                <span>{formatarData(p.data)} · {p.forma ? FORMAS_PAGAMENTO[p.forma] : "—"} · {nomeConta.get(p.conta_id ?? "") ?? "—"}</span>
+                <span>{formatarData(p.data)} · {p.forma ? rotuloForma(p.forma, p.parcelas) : "—"} · {nomeConta.get(p.conta_id ?? "") ?? "—"}{p.taxa_valor ? <> · taxa <Dinheiro valor={p.taxa_valor} /></> : null}</span>
                 <Dinheiro valor={p.valor} />
               </li>
             ))}
@@ -93,26 +94,7 @@ export default async function FaturaPage({ params, searchParams }: PageProps<"/g
       {faturaEmAberto(f) && (
         <Cartao className="space-y-3">
           <h2 className="font-semibold">Registrar pagamento</h2>
-          <FormAcao acao={pagarFatura} campos={{ id: f.id }} botao="Registrar pagamento" pendente="Registrando…">
-            <div className="grid grid-cols-2 gap-3">
-              <Campo rotulo="Valor (R$)" dica="Pode ser parcial">
-                <input name="valor" defaultValue={valorCampo(saldo)} inputMode="decimal" required className="campo" />
-              </Campo>
-              <Campo rotulo="Data">
-                <input type="date" name="data" defaultValue={hojeISO()} required className="campo" />
-              </Campo>
-              <Campo rotulo="Forma">
-                <select name="forma" defaultValue="pix" className="campo px-3">
-                  {Object.entries(FORMAS_PAGAMENTO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </Campo>
-              <Campo rotulo="Conta">
-                <select name="conta_id" defaultValue={contas.find((c) => c.ativa)?.id} className="campo px-3">
-                  {contas.filter((c) => c.ativa).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </Campo>
-            </div>
-          </FormAcao>
+          <FormPagarFatura faturaId={f.id} saldo={saldo} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
         </Cartao>
       )}
 

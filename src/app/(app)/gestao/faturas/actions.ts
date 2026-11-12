@@ -47,11 +47,14 @@ export async function pagarFatura(_: EstadoForm, form: FormData): Promise<Estado
   if (!ehFormaPagamento(forma)) return { erro: "Escolha a forma de pagamento." };
   if (!conta) return { erro: "Escolha a conta." };
   if (!dataValida(data)) return { erro: "Data inválida." };
+  const parcelas = forma === "credito" ? Math.min(24, Math.max(1, Number.parseInt(texto(form, "parcelas"), 10) || 1)) : 1;
   const supabase = await createClient();
-  const { error } = await supabase.rpc("gestao_pagar_fatura", { p_fatura: texto(form, "id"), p_valor: valor, p_forma: forma, p_conta: conta, p_data: data });
+  const { error } = await supabase.rpc("gestao_pagar_fatura", { p_fatura: texto(form, "id"), p_valor: valor, p_forma: forma, p_conta: conta, p_data: data, p_parcelas: parcelas });
   if (error) {
     console.error("[faturas] pagar", error);
-    return { erro: error.message.startsWith("Valor inválido") || error.message.includes("não está em aberto") ? error.message : "Não foi possível registrar o pagamento." };
+    if (error.code === "PGRST202") return { erro: "Falta atualizar o banco: rode o arquivo 0012_faturas_e_lancamentos.sql no Supabase (veja docs/GESTAO.md)." };
+    const conhecido = ["Valor inválido", "não está em aberto", "não recebe", "não aceita"].some((t) => error.message.includes(t));
+    return { erro: conhecido ? error.message : "Não foi possível registrar o pagamento." };
   }
   revalidatePath("/gestao", "layout");
   return { sucesso: "Pagamento registrado no financeiro." };
