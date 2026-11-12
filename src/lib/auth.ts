@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { connection } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -23,8 +24,11 @@ const USUARIO_DEMO: UsuarioAtual = {
   papel: process.env.DEMO_PAPEL === "cliente" ? "cliente" : "admin",
 };
 
-/** Usuário logado, ou null. Lê a sessão (dado de requisição). */
-export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
+/**
+ * Usuário logado, ou null. Lê a sessão (dado de requisição).
+ * Guardado durante a requisição: o menu, o layout e a página usam a mesma consulta.
+ */
+export const getUsuarioAtual = cache(async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
   // Conteúdo por usuário: sempre renderizado na hora da requisição.
   await connection();
   // Sem banco conectado: usuário de demonstração, para visualizar as telas.
@@ -48,7 +52,7 @@ export async function getUsuarioAtual(): Promise<UsuarioAtual | null> {
     telefone: perfil?.telefone ?? null,
     papel: (perfil?.papel as Papel | undefined) ?? "cliente",
   };
-}
+});
 
 /** Exige login; caso contrário manda para /entrar. */
 export async function exigirUsuario(): Promise<UsuarioAtual> {
