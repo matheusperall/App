@@ -18,8 +18,8 @@ export const emailConfigurado = () => Boolean(resendChave());
  * manda notificação para os celulares inscritos e um e-mail (se configurado).
  * Nunca lança erro: falhas de envio não podem atrapalhar a ação principal.
  */
-export async function notificar(usuarioIds: string[], aviso: Aviso, siteUrl: string, opcoes: { email?: boolean } = {}) {
-  const ids = [...new Set(usuarioIds)].filter(Boolean);
+export async function notificar(usuarioIds: (string | null | undefined)[], aviso: Aviso, siteUrl: string, opcoes: { email?: boolean } = {}) {
+  const ids = [...new Set(usuarioIds)].filter((x): x is string => Boolean(x));
   const admin = createAdminClient();
   if (!admin || ids.length === 0) return;
 

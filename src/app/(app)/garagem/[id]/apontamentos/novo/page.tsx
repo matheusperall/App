@@ -4,7 +4,7 @@ import { Voltar } from "@/components/garagem";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { obterVeiculo } from "@/lib/dados";
-import { nomeVeiculo } from "@/lib/garagem";
+import { nomeVeiculo, pastaFotos } from "@/lib/garagem";
 import { FormApontamento } from "./FormApontamento";
 
 export const metadata: Metadata = { title: "Novo apontamento" };
@@ -25,7 +25,7 @@ export default async function NovoApontamentoPage({ params }: PageProps<"/garage
         </p>
       </div>
       <Cartao>
-        <FormApontamento veiculoId={veiculo.id} donoId={veiculo.dono_id} />
+        <FormApontamento veiculoId={veiculo.id} donoId={pastaFotos(veiculo)} />
       </Cartao>
     </div>
   );

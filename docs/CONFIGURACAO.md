@@ -23,6 +23,9 @@ aparecem, mas login e cadastro não funcionam.
    7. `0007_agendamentos.sql` — agendamentos
    8. `0008_km_e_comunicados.sql` — ritmo de uso (previsão por km) e comunicados
    9. `0009_uf_veiculo.sql` — estado do veículo (calendário de IPVA e licenciamento)
+   10. `0010_gestao.sql` — gestão da loja: OS, catálogo, estoque, financeiro e faturas (veja [GESTAO.md](GESTAO.md))
+   11. `0011_formas_recebimento.sql` — formas de recebimento e taxas por conta (parcelas no crédito)
+   12. `0012_faturas_e_lancamentos.sql` — pagamento de fatura com taxas e lançamentos recorrentes/parcelados
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

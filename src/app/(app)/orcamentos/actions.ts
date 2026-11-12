@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin, exigirUsuario } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
-import { CATEGORIAS, formatarValor, hojeISO, nomeVeiculo, type ItemOrcamento } from "@/lib/garagem";
+import { CATEGORIAS, formatarValor, hojeISO, nomeVeiculo, pastaFotos, type ItemOrcamento } from "@/lib/garagem";
 import { notificar, notificarEmpresa } from "@/lib/notificar";
 import { getSiteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
@@ -24,7 +24,7 @@ async function veiculoDe(veiculoId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("veiculos")
-    .select("id, dono_id, placa, marca, modelo, apelido")
+    .select("*")
     .eq("id", veiculoId)
     .maybeSingle();
   return data;
@@ -44,7 +44,7 @@ async function orcamentoBasico(id: string) {
     apontamento_id: string | null;
     situacao: string;
     valor_total: number | null;
-    veiculo: { id: string; dono_id: string; placa: string; marca: string; modelo: string; apelido: string | null } | null;
+    veiculo: { id: string; dono_id: string | null; placa: string; marca: string; modelo: string; apelido: string | null } | null;
   } | null;
 }
 
@@ -61,7 +61,7 @@ export async function pedirOrcamento(_: EstadoForm, form: FormData): Promise<Est
   const fotos = form
     .getAll("fotos")
     .map(String)
-    .filter((p) => p.startsWith(`${veiculo.dono_id}/`) && !p.includes(".."))
+    .filter((p) => p.startsWith(`${pastaFotos(veiculo)}/`) && !p.includes(".."))
     .slice(0, 8);
 
   const supabase = await createClient();

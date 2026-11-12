@@ -2,7 +2,8 @@
 
 export type Veiculo = {
   id: string;
-  dono_id: string;
+  dono_id: string | null; // conta do app (vazio = cliente sem login, só a empresa vê)
+  cliente_id?: string; // ficha do cliente na loja
   placa: string;
   marca: string;
   modelo: string;
@@ -192,6 +193,14 @@ export function formatarPlaca(placa: string) {
   return /^[A-Z]{3}[0-9]{4}$/.test(p) ? `${p.slice(0, 3)}-${p.slice(3)}` : p;
 }
 
+/**
+ * Pasta das fotos do veículo no Storage: a do dono (quem tem login)
+ * ou a da ficha do cliente ("c-<id>") quando ele ainda não tem acesso ao app.
+ */
+export function pastaFotos(v: { dono_id: string | null; cliente_id?: string | null }) {
+  return v.dono_id ?? `c-${v.cliente_id ?? "sem-cliente"}`;
+}
+
 export function nomeVeiculo(v: Pick<Veiculo, "apelido" | "marca" | "modelo">) {
   return v.apelido?.trim() || [v.marca, v.modelo].filter(Boolean).join(" ") || "Meu veículo";
 }
@@ -256,7 +265,7 @@ export type TipoDocumento = keyof typeof TIPOS_DOCUMENTO;
 
 export type Documento = {
   id: string;
-  dono_id: string;
+  dono_id: string | null;
   veiculo_id: string | null;
   tipo: TipoDocumento;
   descricao: string | null;

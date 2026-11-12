@@ -4,7 +4,7 @@ import { Voltar } from "@/components/garagem";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterVeiculo } from "@/lib/dados";
-import { hojeISO, nomeVeiculo } from "@/lib/garagem";
+import { hojeISO, nomeVeiculo, pastaFotos } from "@/lib/garagem";
 import { FormServico } from "./FormServico";
 
 export const metadata: Metadata = { title: "Registrar serviço" };
@@ -27,7 +27,7 @@ export default async function NovoServicoPage({ params }: PageProps<"/garagem/[i
       <Cartao>
         <FormServico
           veiculoId={veiculo.id}
-          donoId={veiculo.dono_id}
+          donoId={pastaFotos(veiculo)}
           kmAtual={veiculo.km_atual}
           hoje={hojeISO()}
           admin={usuario.papel === "admin"}

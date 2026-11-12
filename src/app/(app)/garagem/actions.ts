@@ -11,6 +11,7 @@ import {
   ehTipoManutencao,
   hojeISO,
   normalizarPlaca,
+  pastaFotos,
   placaValida,
 } from "@/lib/garagem";
 import { createClient } from "@/lib/supabase/server";
@@ -62,18 +63,24 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
   const km = inteiro(form, "km_atual") ?? 0;
 
   // Dono: a empresa pode cadastrar para um cliente; o cliente, só para si.
-  let donoId = usuario.id;
+  // Ficha da loja: veículo de cliente sem login (só a empresa)
+  let donoId: string | null = usuario.id;
+  let clienteId: string | null = null;
   let kmAnterior = 0;
   if (id) {
-    const { data: atual } = await supabase.from("veiculos").select("dono_id, km_atual").eq("id", id).maybeSingle();
+    const { data: atual } = await supabase.from("veiculos").select("*").eq("id", id).maybeSingle();
     if (!atual) return { erro: "Veículo não encontrado." };
     donoId = atual.dono_id;
+    clienteId = atual.cliente_id ?? null;
     kmAnterior = atual.km_atual;
+  } else if (usuario.papel === "admin" && texto(form, "cliente_id")) {
+    clienteId = texto(form, "cliente_id");
+    donoId = null;
   } else if (usuario.papel === "admin" && texto(form, "dono_id")) {
     donoId = texto(form, "dono_id");
   }
 
-  const foto = fotosDaPasta(form, donoId)[0] ?? null;
+  const foto = fotosDaPasta(form, pastaFotos({ dono_id: donoId, cliente_id: clienteId }))[0] ?? null;
   const tipo = ["carro", "moto", "caminhao"].includes(texto(form, "tipo")) ? texto(form, "tipo") : "carro";
   const basicos = {
     placa,
@@ -103,7 +110,7 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
       ? supabase.from("veiculos").update(dados).eq("id", id).select("id").single()
       : supabase
           .from("veiculos")
-          .insert({ ...dados, dono_id: donoId, criado_por: usuario.id })
+          .insert({ ...dados, ...(clienteId ? { cliente_id: clienteId } : { dono_id: donoId }), criado_por: usuario.id })
           .select("id")
           .single();
 
@@ -130,10 +137,11 @@ export async function excluirVeiculo(form: FormData) {
   await exigirUsuario();
   const id = texto(form, "id");
   const supabase = await createClient();
-  const { data: v } = await supabase.from("veiculos").select("dono_id").eq("id", id).maybeSingle();
+  const { data: v } = await supabase.from("veiculos").select("*").eq("id", id).maybeSingle();
   await supabase.from("veiculos").delete().eq("id", id);
   revalidatePath("/garagem");
-  redirect(texto(form, "voltar") === "cliente" && v ? `/painel/clientes/${v.dono_id}` : "/garagem");
+  const ficha = v?.cliente_id ?? v?.dono_id;
+  redirect(texto(form, "voltar") === "cliente" && ficha ? `/painel/clientes/${ficha}` : "/garagem");
 }
 
 export async function atualizarKm(_: EstadoForm, form: FormData): Promise<EstadoForm> {
@@ -172,7 +180,7 @@ export async function registrarServico(_: EstadoForm, form: FormData): Promise<E
   const veiculoId = texto(form, "veiculo_id");
   const { data: veiculo } = await supabase
     .from("veiculos")
-    .select("id, dono_id, km_atual")
+    .select("*")
     .eq("id", veiculoId)
     .maybeSingle();
   if (!veiculo) return { erro: "Veículo não encontrado." };
@@ -196,7 +204,7 @@ export async function registrarServico(_: EstadoForm, form: FormData): Promise<E
     km,
     valor: dinheiro(form, "valor"),
     prestador: admin ? prestador : "externo",
-    fotos: fotosDaPasta(form, veiculo.dono_id),
+    fotos: fotosDaPasta(form, pastaFotos(veiculo)),
   });
   if (error) return { erro: "Não foi possível registrar o serviço." };
 

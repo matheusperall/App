@@ -16,11 +16,14 @@ type Modo = "fipe" | "resumo" | "manual";
 export function FormVeiculo({
   veiculo,
   donoId,
+  clienteId,
   fotoUrl,
 }: {
   veiculo?: Veiculo;
   /** Dono do veículo (a empresa pode cadastrar para um cliente) */
   donoId: string;
+  /** Ficha da loja (cliente sem login): o veículo fica nela */
+  clienteId?: string;
   fotoUrl?: string;
 }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(salvarVeiculo, {});
@@ -54,7 +57,7 @@ export function FormVeiculo({
   return (
     <form action={acao} className="space-y-4">
       {veiculo && <input type="hidden" name="id" value={veiculo.id} />}
-      <input type="hidden" name="dono_id" value={donoId} />
+      {clienteId ? <input type="hidden" name="cliente_id" value={clienteId} /> : <input type="hidden" name="dono_id" value={donoId} />}
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
       <div className="grid grid-cols-[1fr_6.5rem] gap-3">

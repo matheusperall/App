@@ -112,7 +112,7 @@ export function calendarioIpvaAtual(placa: string, hoje: string) {
 // ---------------------------------------------------------------------------
 export type DocumentoAutomatico = {
   id: string;
-  dono_id: string;
+  dono_id: string | null;
   veiculo_id: string;
   tipo: "licenciamento" | "ipva";
   descricao: string;
@@ -122,7 +122,7 @@ export type DocumentoAutomatico = {
 };
 
 export function documentosAutomaticos(
-  v: { id: string; dono_id: string; placa: string; uf?: string | null },
+  v: { id: string; dono_id: string | null; placa: string; uf?: string | null },
   manuais: { veiculo_id: string | null; tipo: string }[],
   hoje: string,
 ): DocumentoAutomatico[] {

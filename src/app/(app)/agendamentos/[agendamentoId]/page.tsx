@@ -7,6 +7,7 @@ import { Aviso, Cartao } from "@/components/ui";
 import { formatarQuando, partesBrasilia } from "@/lib/agenda";
 import { exigirUsuario } from "@/lib/auth";
 import { obterAgendamento } from "@/lib/dados";
+import { osPorOrigem } from "@/lib/gestao-dados";
 import { CATEGORIAS, nomeVeiculo } from "@/lib/garagem";
 import { googleConfigurado } from "@/lib/google-agenda";
 import { cancelarAgendamento, concluirAgendamento } from "../actions";
@@ -26,6 +27,7 @@ export default async function AgendamentoPage({ params, searchParams }: PageProp
   const admin = usuario.papel === "admin";
   const cat = CATEGORIAS[a.categoria as keyof typeof CATEGORIAS] ?? CATEGORIAS.outros;
   const ativo = a.situacao === "solicitado" || a.situacao === "confirmado";
+  const osLigada = admin ? (await osPorOrigem("agendamento_id", [a.id]))[a.id] : undefined;
   const sugestao = a.preferencias[0];
 
   return (
@@ -110,9 +112,17 @@ export default async function AgendamentoPage({ params, searchParams }: PageProp
       )}
 
       {admin && a.situacao === "confirmado" && (
+        osLigada ? (
+          <Link href={`/gestao/os/${osLigada.id}`} className="botao-primario w-full">Ver OS #{osLigada.numero}</Link>
+        ) : (
+          <Link href={`/gestao/os/nova?agendamento=${a.id}`} className="botao-primario w-full">🚗 Carro chegou: abrir OS</Link>
+        )
+      )}
+
+      {admin && a.situacao === "confirmado" && !osLigada && (
         <form action={concluirAgendamento}>
           <input type="hidden" name="id" value={a.id} />
-          <button type="submit" className="botao-primario w-full">Marcar como concluído e registrar o serviço</button>
+          <button type="submit" className="botao-contorno w-full">Marcar como concluído sem OS (só registrar o serviço)</button>
         </form>
       )}
 

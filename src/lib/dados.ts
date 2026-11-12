@@ -10,11 +10,12 @@ import { TIPOS_DOCUMENTO, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, 
 
 export type Dono = { id: string; nome: string; email: string | null; telefone: string | null };
 export type VeiculoComDono = Veiculo & { dono: Dono | null };
-export type Cliente = Dono & { criado_em: string; veiculos: { id: string; placa: string; modelo: string }[] };
 
 const CAMPOS_BASICOS =
   "id, dono_id, placa, marca, modelo, ano, cor, apelido, km_atual, km_atualizado_em, foto";
 const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod, km_por_dia, uf`;
+/** Com a ficha do cliente na loja (gestão, 0010). */
+const CAMPOS_VEICULO_FICHA = `${CAMPOS_VEICULO}, cliente_id`;
 
 /** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
 const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
@@ -24,7 +25,8 @@ export async function listarVeiculos(donoId: string): Promise<Veiculo[]> {
   const supabase = await createClient();
   const consulta = (campos: string) =>
     supabase.from("veiculos").select(campos).eq("dono_id", donoId).order("criado_em");
-  let { data, error } = await consulta(CAMPOS_VEICULO);
+  let { data, error } = await consulta(CAMPOS_VEICULO_FICHA);
+  if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
   return (data as unknown as Veiculo[] | null) ?? [];
 }
@@ -42,9 +44,14 @@ export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
       .select(`${campos}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
       .eq("id", id)
       .maybeSingle();
-  let { data, error } = await consulta(CAMPOS_VEICULO);
+  let { data, error } = await consulta(`${CAMPOS_VEICULO_FICHA}, ficha:clientes (id, nome, email, telefone)`);
+  if (error) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
-  return (data as unknown as VeiculoComDono | null) ?? null;
+  const v = data as unknown as (VeiculoComDono & { ficha?: Dono | null }) | null;
+  if (!v) return null;
+  // Cliente sem login: os dados vêm da ficha da loja
+  const { ficha, ...resto } = v;
+  return { ...resto, dono: v.dono ?? ficha ?? null };
 }
 
 export async function listarServicos(veiculoId: string): Promise<Servico[]> {
@@ -98,39 +105,6 @@ export async function urlsDasFotos(caminhos: (string | null | undefined)[]): Pro
 // ---------------------------------------------------------------------------
 // Área da empresa
 // ---------------------------------------------------------------------------
-export async function listarClientes(busca: string): Promise<Cliente[]> {
-  if (!isSupabaseConfigured) {
-    return [{ ...DEMO.dono, criado_em: "2026-11-01T12:00:00Z", veiculos: DEMO.veiculos.map(({ id, placa, modelo }) => ({ id, placa, modelo })) }];
-  }
-  const supabase = await createClient();
-  const termo = busca.trim().replace(/[%,()]/g, " ").trim();
-
-  let idsPorPlaca: string[] = [];
-  if (termo) {
-    const placa = termo.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (placa.length >= 3) {
-      const { data } = await supabase.from("veiculos").select("dono_id").ilike("placa", `%${placa}%`).limit(50);
-      idsPorPlaca = (data ?? []).map((d) => d.dono_id);
-    }
-  }
-
-  let consulta = supabase
-    .from("perfis")
-    .select("id, nome, email, telefone, criado_em, veiculos!veiculos_dono_id_fkey (id, placa, modelo)")
-    .eq("papel", "cliente")
-    .order("nome")
-    .limit(100);
-
-  if (termo) {
-    const filtros = [`nome.ilike.%${termo}%`, `email.ilike.%${termo}%`, `telefone.ilike.%${termo}%`];
-    if (idsPorPlaca.length) filtros.push(`id.in.(${idsPorPlaca.join(",")})`);
-    consulta = consulta.or(filtros.join(","));
-  }
-
-  const { data } = await consulta;
-  return (data as Cliente[] | null) ?? [];
-}
-
 export async function obterCliente(id: string): Promise<Dono | null> {
   if (!isSupabaseConfigured) return id === DEMO.dono.id ? DEMO.dono : null;
   if (!ehUuid(id)) return null;
