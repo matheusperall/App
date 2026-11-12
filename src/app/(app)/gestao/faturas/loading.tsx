@@ -1,0 +1,5 @@
+import { EsqueletoLista } from "@/components/gestao/Esqueleto";
+
+export default function Carregando() {
+  return <EsqueletoLista />;
+}

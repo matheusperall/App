@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { hojeISO, somarDias } from "@/lib/garagem";
@@ -33,21 +34,13 @@ import {
 const n = (v: unknown) => (v == null ? 0 : Number(v));
 const ehUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-/** O banco ainda não recebeu a migração 0010? */
-export async function gestaoInstalada(): Promise<boolean> {
-  if (!isSupabaseConfigured) return true;
-  const supabase = await createClient();
-  const { error } = await supabase.from("gestao_config").select("id").limit(1);
-  return !error;
-}
-
-export async function obterConfig(): Promise<ConfigGestao> {
+export const obterConfig = cache(async function obterConfig(): Promise<ConfigGestao> {
   if (!isSupabaseConfigured) return CONFIG_PADRAO;
   const supabase = await createClient();
   const { data } = await supabase.from("gestao_config").select("vagas_patio, taxa_debito, taxa_credito").maybeSingle();
   if (!data) return CONFIG_PADRAO;
   return { vagas_patio: n(data.vagas_patio), taxa_debito: n(data.taxa_debito), taxa_credito: n(data.taxa_credito) };
-}
+});
 
 // ---------------------------------------------------------------------------
 // Clientes (fichas)
@@ -56,7 +49,7 @@ const CAMPOS_FICHA = "id, perfil_id, nome, telefone, email, lojista, observacoes
 const CAMPOS_VEIC = "id, placa, marca, modelo, apelido, ano, dono_id";
 
 /** Fichas da loja (sem a conta do administrador), com veículos e resumo de gastos. */
-export async function listarFichas(busca = ""): Promise<FichaComResumo[]> {
+export const listarFichas = cache(async function listarFichas(busca = ""): Promise<FichaComResumo[]> {
   if (!isSupabaseConfigured) return DEMO.fichas.filter((f) => !busca || combina(`${f.nome} ${f.veiculos.map((v) => v.placa).join(" ")}`, busca));
   const supabase = await createClient();
   const [{ data }, { data: resumo }, { data: admins }] = await Promise.all([
@@ -79,10 +72,10 @@ export async function listarFichas(busca = ""): Promise<FichaComResumo[]> {
       combina(`${f.nome} ${f.telefone ?? ""} ${f.email ?? ""}`, busca) ||
       (placa.length >= 3 && f.veiculos.some((v) => v.placa.includes(placa))),
   );
-}
+});
 
 /** Ficha pelo id dela ou pelo id da conta do app (links antigos usam a conta). */
-export async function obterFicha(id: string): Promise<(Ficha & { veiculos: VeiculoResumo[] }) | null> {
+export const obterFicha = cache(async function obterFicha(id: string): Promise<(Ficha & { veiculos: VeiculoResumo[] }) | null> {
   if (!isSupabaseConfigured) return DEMO.fichas.find((f) => f.id === id || f.perfil_id === id) ?? null;
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
@@ -91,12 +84,12 @@ export async function obterFicha(id: string): Promise<(Ficha & { veiculos: Veicu
   if (data) return data as unknown as Ficha & { veiculos: VeiculoResumo[] };
   const { data: porPerfil } = await supabase.from("clientes").select(sel).eq("perfil_id", id).maybeSingle();
   return (porPerfil as unknown as (Ficha & { veiculos: VeiculoResumo[] }) | null) ?? null;
-}
+});
 
 // ---------------------------------------------------------------------------
 // Catálogo e estoque
 // ---------------------------------------------------------------------------
-export async function listarCatalogo(): Promise<ServicoCatalogo[]> {
+export const listarCatalogo = cache(async function listarCatalogo(): Promise<ServicoCatalogo[]> {
   if (!isSupabaseConfigured) return DEMO.catalogo;
   const supabase = await createClient();
   const { data } = await supabase
@@ -108,14 +101,14 @@ export async function listarCatalogo(): Promise<ServicoCatalogo[]> {
     preco: n(s.preco),
     consumo: s.consumo.map((c) => ({ ...c, quantidade: n(c.quantidade), produto: c.produto ? { ...c.produto, custo_medio: n(c.produto.custo_medio) } : null })),
   }));
-}
+});
 
-export async function listarProdutos(): Promise<Produto[]> {
+export const listarProdutos = cache(async function listarProdutos(): Promise<Produto[]> {
   if (!isSupabaseConfigured) return DEMO.produtos;
   const supabase = await createClient();
   const { data } = await supabase.from("produtos").select("id, nome, unidade, saldo, minimo, custo_medio, ativo").order("nome");
   return ((data ?? []) as Produto[]).map((p) => ({ ...p, saldo: n(p.saldo), minimo: n(p.minimo), custo_medio: n(p.custo_medio) }));
-}
+});
 
 export async function movimentosEstoque(produtoId?: string): Promise<(MovimentoEstoque & { produto: { nome: string; unidade: Produto["unidade"] } | null })[]> {
   if (!isSupabaseConfigured) return [];
@@ -196,7 +189,7 @@ export async function listarOS(opcoes: { filtro: FiltroOS; mes: string; busca?: 
 }
 
 /** Produtos baixados do estoque por uma OS. */
-export async function consumoDaOS(osId: string): Promise<{ texto: string; custo: number }[]> {
+export const consumoDaOS = cache(async function consumoDaOS(osId: string): Promise<{ texto: string; custo: number }[]> {
   if (!isSupabaseConfigured || !ehUuid(osId)) return [];
   const supabase = await createClient();
   const { data } = await supabase
@@ -208,16 +201,16 @@ export async function consumoDaOS(osId: string): Promise<{ texto: string; custo:
     texto: `${m.produto?.nome ?? "Produto"}: ${formatarQtd(-n(m.quantidade), m.produto?.unidade ?? "un")}`,
     custo: arred(-n(m.quantidade) * n(m.custo_unitario)),
   }));
-}
+});
 
-export async function obterOS(id: string): Promise<OrdemServico | null> {
+export const obterOS = cache(async function obterOS(id: string): Promise<OrdemServico | null> {
   if (!isSupabaseConfigured) return DEMO.os.find((o) => o.id === id) ?? null;
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
   let { data, error } = await supabase.from("ordens_servico").select(`${CAMPOS_OS}, parcelas`).eq("id", id).maybeSingle();
   if (error?.code === "42703") ({ data, error } = await supabase.from("ordens_servico").select(CAMPOS_OS).eq("id", id).maybeSingle());
   return data ? normalizarOS(data as unknown as OrdemServico) : null;
-}
+});
 
 /** OS ligadas a agendamentos/orçamentos (para mostrar "OS #12" em vez de "Abrir OS"). */
 export async function osPorOrigem(campo: "agendamento_id" | "orcamento_id", ids: string[]): Promise<Record<string, { id: string; numero: number }>> {
@@ -235,7 +228,7 @@ export async function osPorOrigem(campo: "agendamento_id" | "orcamento_id", ids:
 // ---------------------------------------------------------------------------
 const TODAS_FORMAS = ["pix", "dinheiro", "debito", "credito", "transferencia"] as const;
 
-export async function listarContas(): Promise<Conta[]> {
+export const listarContas = cache(async function listarContas(): Promise<Conta[]> {
   if (!isSupabaseConfigured) return DEMO.contas;
   const supabase = await createClient();
   const consulta = (campos: string) => supabase.from("contas").select(campos).order("criado_em");
@@ -258,14 +251,14 @@ export async function listarContas(): Promise<Conta[]> {
     taxa_credito: c.taxa_credito == null ? config.taxa_credito : n(c.taxa_credito),
     taxas_parcelado: Object.fromEntries(Object.entries(c.taxas_parcelado ?? {}).map(([k, v]) => [k, n(v)])),
   }));
-}
+});
 
-export async function listarCategorias(): Promise<CategoriaFinanceira[]> {
+export const listarCategorias = cache(async function listarCategorias(): Promise<CategoriaFinanceira[]> {
   if (!isSupabaseConfigured) return DEMO.categorias;
   const supabase = await createClient();
   const { data } = await supabase.from("categorias_financeiras").select("id, nome, tipo, dre, sistema, ativa").order("nome");
   return (data ?? []) as CategoriaFinanceira[];
-}
+});
 
 const CAMPOS_LANC = "id, data, vencimento, tipo, descricao, valor, categoria_id, conta_id, pago, pago_em, os_id, fatura_id";
 /** Série (recorrente/parcelado) — migração 0012 */
@@ -314,14 +307,14 @@ export async function contasAReceberAvulsas(): Promise<Lancamento[]> {
 const CAMPOS_FATURA = "id, numero, cliente_id, periodo_inicio, periodo_fim, emissao, vencimento, total, valor_pago, situacao, observacoes, cliente:clientes (id, nome, telefone)";
 const normFatura = (f: Fatura): Fatura => ({ ...f, numero: n(f.numero), total: n(f.total), valor_pago: n(f.valor_pago) });
 
-export async function listarFaturas(clienteId?: string): Promise<Fatura[]> {
+export const listarFaturas = cache(async function listarFaturas(clienteId?: string): Promise<Fatura[]> {
   if (!isSupabaseConfigured) return DEMO.faturas;
   const supabase = await createClient();
   let q = supabase.from("faturas").select(CAMPOS_FATURA).order("emissao", { ascending: false }).order("numero", { ascending: false }).limit(300);
   if (clienteId) q = q.eq("cliente_id", clienteId);
   const { data } = await q;
   return ((data ?? []) as unknown as Fatura[]).map(normFatura);
-}
+});
 
 export async function obterFatura(id: string): Promise<{ fatura: Fatura; itens: ItemFatura[]; pagamentos: PagamentoFatura[] } | null> {
   if (!isSupabaseConfigured) {
@@ -347,7 +340,7 @@ export async function obterFatura(id: string): Promise<{ fatura: Fatura; itens: 
 }
 
 /** OS de lojistas prontas/entregues que ainda não entraram em fatura. */
-export async function osParaFaturar(): Promise<OrdemServico[]> {
+export const osParaFaturar = cache(async function osParaFaturar(): Promise<OrdemServico[]> {
   if (!isSupabaseConfigured) return DEMO.os.filter((o) => o.cliente?.lojista && !o.fatura_id && concluida(o.status) && !o.pago);
   const supabase = await createClient();
   const { data } = await supabase
@@ -358,7 +351,7 @@ export async function osParaFaturar(): Promise<OrdemServico[]> {
     .in("status", ["pronta", "entregue"])
     .order("data");
   return ((data ?? []) as unknown as OrdemServico[]).map(normalizarOS).filter((o) => o.cliente?.lojista);
-}
+});
 
 // ---------------------------------------------------------------------------
 // Painel e resultado (DRE)
@@ -378,7 +371,7 @@ export type ResumoGestao = {
 
 export async function resumoGestao(mes: string): Promise<ResumoGestao> {
   const hoje = hojeISO();
-  const [config, osMes, patio, receber, faturas, contas, lancMes, aPagar, produtos] = await Promise.all([
+  const [config, osMes, patio, receber, faturas, contas, lancMes, aPagar, produtos, categorias] = await Promise.all([
     obterConfig(),
     listarOS({ filtro: "todas", mes }),
     listarOS({ filtro: "patio", mes }),
@@ -388,8 +381,8 @@ export async function resumoGestao(mes: string): Promise<ResumoGestao> {
     lancamentosDoMes(mes),
     contasAPagar(),
     listarProdutos(),
+    listarCategorias(),
   ]);
-  const categorias = await listarCategorias();
   const fora = new Set(categorias.filter((c) => c.dre === "fora").map((c) => c.id));
 
   const concluidasMes = osMes.filter((o) => concluida(o.status));
