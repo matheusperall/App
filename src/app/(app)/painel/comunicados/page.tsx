@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { abasPainel } from "../abas";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -28,10 +29,11 @@ export default async function ComunicadosPage() {
   const { clientes, historico } = await dados();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <Voltar href="/painel">Painel</Voltar>
+    <div className="space-y-4">
+      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("comunicados")} />
+      <div className="mx-auto max-w-2xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Comunicados</h1>
+        <h2 className="text-xl font-bold">Comunicados</h2>
         <p className="text-suave">
           Envie novidades, promoções, lembretes e oportunidades para todos os clientes ({clientes}). Chega na aba Avisos
           do app{pushConfigurado() ? ", como notificação no celular" : ""}
@@ -65,6 +67,7 @@ export default async function ComunicadosPage() {
           </Cartao>
         )}
       </section>
+      </div>
     </div>
   );
 }

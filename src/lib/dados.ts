@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Agendamento } from "@/lib/agenda";
 import { documentosAutomaticos } from "@/lib/calendarios";
-import { TIPOS_DOCUMENTO, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { TIPOS_DOCUMENTO, type Anexo, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -284,6 +284,19 @@ export async function vencimentosProximos(): Promise<Vencimento[]> {
     }
   }
   return lista.sort((a, b) => Number(b.vencido) - Number(a.vencido) || (a.data ?? "9999").localeCompare(b.data ?? "9999"));
+}
+
+/** Arquivos anexados de um veículo, ou os pessoais (CNH) de quem tem conta. Com links temporários (1 hora). */
+export async function listarAnexos(filtro: { veiculoId: string } | { donoId: string }): Promise<Anexo[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  let q = supabase.from("documentos_arquivos").select("id, tipo, nome, caminho, tamanho, tipo_mime, criado_em").order("criado_em", { ascending: false }).limit(100);
+  q = "veiculoId" in filtro ? q.eq("veiculo_id", filtro.veiculoId) : q.eq("dono_id", filtro.donoId).is("veiculo_id", null);
+  const { data, error } = await q;
+  if (error || !data?.length) return [];
+  const { data: links } = await supabase.storage.from("documentos").createSignedUrls(data.map((a) => a.caminho), 3600);
+  const mapa = new Map((links ?? []).map((l) => [l.path, l.signedUrl]));
+  return data.map(({ caminho, ...a }) => ({ ...(a as Omit<Anexo, "url">), url: mapa.get(caminho) ?? undefined }));
 }
 
 export async function listarLeiturasKm(veiculoId: string): Promise<LeituraKm[]> {

@@ -10,7 +10,7 @@ export function CalendarioMes({ mes, hoje, marcados }: { mes: string; hoje: stri
   return (
     <div>
       <p className="mb-2 text-sm font-semibold">{nomeMes(mes)}</p>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs [&>*]:min-w-0">
         {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => <span key={d} className="py-1 text-suave">{d}</span>)}
         {celulas.map((d, i) => {
           if (!d) return <span key={i} />;

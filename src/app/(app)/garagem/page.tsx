@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CartaoVeiculo } from "@/components/garagem";
+import { CartaoVeiculo, contarAlertas } from "@/components/garagem";
+import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
+import { apontamentoAberto, hojeISO, ritmoDoVeiculo, somarDias } from "@/lib/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario, primeiroNome } from "@/lib/auth";
-import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
+import { listarAnexos, listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, obterCnh, urlsDasFotos } from "@/lib/dados";
+import { Anexos } from "@/components/Anexos";
+import { FormDocumento } from "@/components/FormDocumento";
+import { Bloco } from "@/components/gestao/Bloco";
 import { AtivarNotificacoes } from "@/components/AtivarNotificacoes";
 import { vapidPublica } from "@/lib/notificar";
 
@@ -13,35 +18,44 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
   const [usuario, params] = await Promise.all([exigirUsuario(), searchParams]);
   const veiculos = await listarVeiculos(usuario.id);
   const ids = veiculos.map((v) => v.id);
-  const [manutencoes, apontamentos, documentos, fotos] = await Promise.all([
+  const [manutencoes, apontamentos, documentos, fotos, cnh, anexosCnh] = await Promise.all([
     listarManutencoes(ids),
     listarApontamentos(ids),
     listarDocumentosVeiculos(ids),
     urlsDasFotos(veiculos.map((v) => v.foto)),
+    obterCnh(usuario.id),
+    listarAnexos({ donoId: usuario.id }),
   ]);
 
+  const alertas = veiculos.map((v) => contarAlertas(manutencoes.filter((m) => m.veiculo_id === v.id), v.km_atual, ritmoDoVeiculo(v)));
+  const hoje = hojeISO();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {params.senha === "ok" && <Aviso tipo="sucesso">Senha alterada com sucesso.</Aviso>}
 
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-suave">Olá, {primeiroNome(usuario.nome, usuario.email)} 👋</p>
-          <h1 className="text-2xl font-bold sm:text-3xl">Minha garagem</h1>
-        </div>
-        {veiculos.length > 0 && (
-          <Link href="/garagem/novo" className="botao-primario px-4 py-2.5 text-sm">
-            + Veículo
-          </Link>
-        )}
-      </div>
+      <Cabecalho icone="carro" titulo="Minha garagem" acao={veiculos.length > 0 ? { href: "/garagem/novo", rotulo: "Veículo" } : undefined} />
+      <p className="px-1 text-suave">Olá, {primeiroNome(usuario.nome, usuario.email)} 👋</p>
+
+      {veiculos.length > 0 && (
+        <ResumoPeriodo
+          titulo="Resumo"
+          itens={[
+            { rotulo: "Veículos", valor: veiculos.length, formato: "numero" },
+            { rotulo: "Manutenções vencidas", valor: alertas.reduce((t, a) => t + a.vencidas, 0), formato: "numero", cor: alertas.some((a) => a.vencidas) ? "vermelho" : "verde" },
+            { rotulo: "Manutenções em breve", valor: alertas.reduce((t, a) => t + a.emBreve, 0), formato: "numero", cor: "amarelo" },
+            { rotulo: "Apontamentos abertos", valor: apontamentos.filter(apontamentoAberto).length, formato: "numero", cor: apontamentos.some(apontamentoAberto) ? "amarelo" : "verde" },
+            { rotulo: "Documentos a vencer", valor: documentos.filter((d) => d.vencimento <= somarDias(hoje, 30)).length, formato: "numero", cor: "amarelo" },
+          ]}
+        />
+      )}
 
       <AtivarNotificacoes chavePublica={vapidPublica()} compacto />
 
       {usuario.papel === "admin" && (
         <Aviso>
           Aqui ficam os seus veículos pessoais. Para cuidar dos veículos dos clientes, use{" "}
-          <Link href="/painel/clientes" className="font-semibold underline">Painel › Clientes</Link>.
+          <Link href="/gestao/clientes" className="font-semibold underline">Gestão › Clientes</Link>.
         </Aviso>
       )}
 
@@ -56,7 +70,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           <Link href="/garagem/novo" className="botao-primario mt-2">Cadastrar meu veículo</Link>
         </Cartao>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:min-w-0">
           {veiculos.map((v) => (
             <CartaoVeiculo
               key={v.id}
@@ -69,6 +83,13 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           ))}
         </div>
       )}
+
+      <Bloco icone="documento" titulo="Minha CNH" className="scroll-mt-28" direita={<span className="text-xs text-suave">Avisamos antes de vencer</span>}>
+        <div id="cnh" className="space-y-3">
+          <FormDocumento tipo="cnh" atual={cnh} />
+          <Anexos anexos={anexosCnh.filter((a) => a.tipo === "cnh")} pasta={usuario.id} tipos={["cnh"]} />
+        </div>
+      </Bloco>
     </div>
   );
 }

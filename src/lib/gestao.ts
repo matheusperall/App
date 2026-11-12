@@ -295,6 +295,7 @@ export function nomeMes(mes: string) {
 export function rotuloDia(dia: string, hoje = hojeISO()) {
   if (dia === hoje) return "Hoje";
   if (dia === somarDias(hoje, -1)) return "Ontem";
+  if (dia === somarDias(hoje, 1)) return "Amanhã";
   const semana = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`));
   return `Dia ${Number(dia.slice(8, 10))}, ${semana}`;
 }
