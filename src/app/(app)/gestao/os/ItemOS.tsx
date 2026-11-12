@@ -3,7 +3,7 @@ import { Dinheiro, Selo, SeloStatus } from "@/components/gestao";
 import { formatarData } from "@/lib/garagem";
 import type { OrdemServico } from "@/lib/gestao";
 
-export function ItemOS({ os }: { os: OrdemServico }) {
+export function ItemOS({ os, comData = false }: { os: OrdemServico; comData?: boolean }) {
   const situacaoPagamento = os.status === "cancelada" ? null : os.pago ? (
     <Selo classe="bg-sucesso-claro text-sucesso">Pago</Selo>
   ) : os.cliente?.lojista ? (
@@ -22,7 +22,7 @@ export function ItemOS({ os }: { os: OrdemServico }) {
             {[os.placa, os.veiculo_nome].filter(Boolean).join(" · ")}
             {os.itens.length > 0 && ` — ${os.itens.map((i) => i.nome).join(", ")}`}
           </p>
-          <p className="text-xs text-suave">{formatarData(os.data)}</p>
+          {comData && <p className="text-xs text-suave">{formatarData(os.data)}</p>}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <Dinheiro valor={os.total} className="font-semibold" />

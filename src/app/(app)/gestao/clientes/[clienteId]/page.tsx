@@ -116,7 +116,7 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
 
       <Cartao className="p-0">
         <h2 className="px-5 pt-5 font-semibold">Histórico de OS</h2>
-        {os.length === 0 ? <Vazio>Nenhuma OS ainda.</Vazio> : <ul className="mt-2 divide-y divide-borda">{os.map((o) => <ItemOS key={o.id} os={o} />)}</ul>}
+        {os.length === 0 ? <Vazio>Nenhuma OS ainda.</Vazio> : <ul className="mt-2 divide-y divide-borda">{os.map((o) => <ItemOS key={o.id} os={o} comData />)}</ul>}
       </Cartao>
 
       <Cartao className="space-y-3">
