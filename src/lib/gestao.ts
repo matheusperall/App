@@ -283,6 +283,36 @@ export function nomeMes(mes: string) {
   return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${a}`;
 }
 
+/** "Hoje", "Ontem" ou "Dia 4, quarta-feira" */
+export function rotuloDia(dia: string, hoje = hojeISO()) {
+  if (dia === hoje) return "Hoje";
+  if (dia === somarDias(hoje, -1)) return "Ontem";
+  const semana = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`));
+  return `Dia ${Number(dia.slice(8, 10))}, ${semana}`;
+}
+
+/** Agrupa por mês e, dentro dele, por dia (do mais recente para o mais antigo). */
+export function agruparPorMesEDia<T>(lista: T[], dataDe: (x: T) => string) {
+  const ordenada = [...lista].sort((a, b) => dataDe(b).localeCompare(dataDe(a)));
+  const meses: { mes: string; dias: { dia: string; itens: T[] }[] }[] = [];
+  for (const x of ordenada) {
+    const dia = dataDe(x).slice(0, 10);
+    const mes = dia.slice(0, 7);
+    let m = meses.at(-1);
+    if (!m || m.mes !== mes) meses.push((m = { mes, dias: [] }));
+    let d = m.dias.at(-1);
+    if (!d || d.dia !== dia) m.dias.push((d = { dia, itens: [] }));
+    d.itens.push(x);
+  }
+  return meses;
+}
+
+/** "Novembro" (ou "Novembro de 2025" se for de outro ano) */
+export function tituloMes(mes: string, hoje = hojeISO()) {
+  const n = nomeMes(mes);
+  return mes.slice(0, 4) === hoje.slice(0, 4) ? n.split(" de ")[0] : n;
+}
+
 export const emSeteDias = (hoje = hojeISO()) => somarDias(hoje, 7);
 
 // ---------------------------------------------------------------------------

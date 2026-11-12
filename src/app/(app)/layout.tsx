@@ -8,7 +8,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 bg-tinta pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 [body:has(.gestao-larga)_&]:max-w-7xl">
           <Link href="/garagem" aria-label="Início">
             <Logo claro />
           </Link>
@@ -18,7 +18,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pb-10">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pb-10 [body:has(.gestao-larga)_&]:max-w-7xl">
         <div className="mb-4 empty:hidden">
           <AvisoConfiguracao />
         </div>

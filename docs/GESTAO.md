@@ -8,10 +8,10 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
 
 | Aba | Para que serve |
 |---|---|
-| **Início** | Resumo do mês: faturado, recebido, a receber, saldo nas contas, carros no pátio (vagas), agenda de hoje, o que precisa de atenção e o faturamento por dia. |
+| **Painel** | Saudação e atalhos (Nova OS, Novo lançamento, Faturas, Novo cliente), calendário do mês com os agendamentos, recebido por forma de pagamento, entradas e saídas de hoje, a receber, orçamentos, vagas no pátio, oportunidades, carros no pátio, agenda de hoje, o que precisa de atenção, faturamento por dia e top 5 clientes. |
 | **OS** | Ordens de serviço. Filtros: no pátio, a receber, lojistas, todas (por mês). Busca por placa, cliente ou número. |
 | **Faturas** | Fatura mensal dos lojistas (revendas): junta as OS do mês, recebe em partes e manda o extrato pelo WhatsApp. |
-| **Financeiro** | Contas (caixa, banco…), lançamentos do mês, contas a pagar, novo lançamento, resultado do mês (DRE) e configurações (vagas do pátio e taxas da maquininha). |
+| **Financeiro** | Três partes: **Movimentações** (resumo do mês e todos os lançamentos numa tabela, com atrasados no topo; o "⋮" de cada linha marca como pago, encerra recorrência ou apaga), **Contas** (cartões com saldo atual e previsto, formas e taxas, e a configuração de vagas do pátio) e **Resultado (DRE)**. O botão **+ Adicionar** cria um lançamento. |
 | **Estoque** | Produtos (shampoo, cera, panos…), situação (saudável, crítico, sem estoque), reposição, ajuste de saldo e histórico. |
 | **Serviços** | Catálogo do que a loja vende: preço, custo dos produtos e margem. Em cada serviço você diz quanto de cada produto ele gasta. |
 | **Clientes** | Fichas dos clientes, com ou sem acesso ao app: total gasto, última visita, histórico de OS, veículos e convite para o app. |
@@ -19,7 +19,7 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
 ## Como funciona o dia a dia
 
 1. **Carro chegou** → *OS › + Nova OS* (ou, se veio de um agendamento confirmado, o botão
-   **Carro chegou: abrir OS** no Início ou na tela do agendamento).
+   **Carro chegou: abrir OS** no Painel ou na tela do agendamento).
    - Escolha o cliente ou toque em **+ Cadastrar novo cliente** (nome, telefone e se é lojista).
    - Escolha o veículo ou cadastre um novo (placa + tabela FIPE, ou à mão).
    - Busque os serviços (não precisa de acento: "polimento tecnico" acha "Polimento técnico").
@@ -36,7 +36,7 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
 4. **Fim do mês dos lojistas**: *Faturas* → marque as OS → **Gerar fatura** com o vencimento →
    **Copiar extrato** e mande no WhatsApp. Quando ele pagar (tudo ou parte), registre o pagamento:
    igual à OS, a forma escolhida filtra as contas, o crédito pede as parcelas e a taxa entra como saída.
-5. **Despesas fixas e compras parceladas**: em *Financeiro › Novo lançamento*, escolha a repetição:
+5. **Despesas fixas e compras parceladas**: em *Financeiro › + Adicionar*, escolha a repetição:
    - **Única**: um lançamento só.
    - **Recorrente**: o mesmo valor todo mês (ex.: aluguel), pelo número de meses que você escolher.
    - **Parcelado**: o valor total dividido em parcelas mensais (ex.: equipamento em 10x).
@@ -46,7 +46,7 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
 **Campos de valor em reais** começam em 0,00 e os números "correm" como numa maquininha:
 digitar 12345 vira 123,45. A tecla de apagar tira o último número.
 
-## Números do Início e do resultado
+## Números do Painel e do resultado
 
 - **Faturado no mês**: soma das OS **prontas ou entregues** com data no mês.
 - **Recebido no mês**: dinheiro que entrou nas contas no mês (sem aportes/transferências).
@@ -99,7 +99,7 @@ O que o arquivo faz no banco:
 - protege tudo para que **só o administrador** veja e mexa nesses dados.
 
 Primeiros passos depois de instalar:
-1. *Financeiro › Gerenciar contas*: ajuste os nomes e o **saldo inicial** de cada conta (o que tem hoje) e marque
+1. *Financeiro › Contas* (abra "Editar conta, formas e taxas" em cada cartão): ajuste os nomes e o **saldo inicial** de cada conta (o que tem hoje) e marque
    as **formas de recebimento** de cada uma, com as taxas. Exemplo: "Maquininha" recebe débito e crédito
    (taxa do débito, do crédito à vista e de cada parcela: 2x, 3x… — deixe vazio as parcelas que não aceita);
    "Banco" recebe Pix e transferência; "Caixa da loja" recebe dinheiro.
@@ -112,7 +112,7 @@ Primeiros passos depois de instalar:
 Se você já rodou o `0010_gestao.sql`, rode também **`supabase/migrations/0011_formas_recebimento.sql`**
 (mesmo jeito: SQL Editor › New query › colar › Run). Ele adiciona às contas as formas de recebimento e as
 taxas (Pix, débito, crédito à vista e cada parcela). As contas que já existem começam aceitando todas as
-formas, com as taxas de débito e crédito que estavam nas configurações — depois ajuste em *Gerenciar contas*.
+formas, com as taxas de débito e crédito que estavam nas configurações — depois ajuste em *Financeiro › Contas*.
 
 ### Atualização: faturas e lançamentos recorrentes/parcelados (arquivo 0012)
 
