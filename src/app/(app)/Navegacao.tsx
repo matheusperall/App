@@ -18,7 +18,7 @@ export async function Navegacao({ local }: { local: "topo" | "barra" | "rodape" 
   ]);
 
   const principais: ItemNav[] = [
-    admin ? { href: "/painel", rotulo: "Painel", icone: "painel" } : { href: "/garagem", rotulo: "Garagem", icone: "garagem" },
+    admin ? { href: "/painel", rotulo: "Atendimento", icone: "atendimento" } : { href: "/garagem", rotulo: "Garagem", icone: "garagem" },
     ...(admin ? [{ href: "/gestao", rotulo: "Gestão", icone: "gestao" } satisfies ItemNav] : []),
     { href: "/agendamentos", rotulo: "Agenda", icone: "agenda", contador: aConfirmar },
     { href: "/orcamentos", rotulo: "Orçamentos", icone: "orcamentos", contador: aResponder },

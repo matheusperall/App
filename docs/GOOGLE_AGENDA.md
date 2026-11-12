@@ -46,7 +46,7 @@ Em **Settings → Environments → Production → Environment Variables**:
 Depois faça **Deployments → ⋯ → Redeploy**.
 
 ## 6. Testar
-No app, abra **Painel → Configurações → 📅 Google Agenda → Testar conexão**.
+No app, abra **Atendimento → Configurações → 📅 Google Agenda → Testar conexão**.
 
 ## Como o app usa a agenda
 - **Lavagem (2 horas, até 2 veículos ao mesmo tempo):** o cliente só vê horários livres (dias úteis, 8h–18h). Qualquer evento

@@ -65,7 +65,7 @@ chat, e-mail ou WhatsApp, nem para mim.
 4. Clique em **Deploy**.
 
 ## 5.1 Notificações no celular e e-mails (opcional, recomendado)
-Entre no app como administrador e abra **Painel › Configurações**. A página gera as
+Entre no app como administrador e abra **Atendimento › Configurações**. A página gera as
 chaves de notificação (`NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY`) e explica
 como ativar os e-mails de aviso (`RESEND_API_KEY` e `EMAIL_REMETENTE`). Depois de
 cadastrar na Vercel, faça Redeploy.
@@ -82,7 +82,7 @@ Veja o passo a passo em [GOOGLE_AGENDA.md](GOOGLE_AGENDA.md).
    ```sql
    update public.perfis set papel = 'admin' where email = 'seu-email@exemplo.com';
    ```
-3. Saia e entre de novo: o menu **Painel** vai aparecer.
+3. Saia e entre de novo: o menu **Atendimento** (e a **Gestão**) vai aparecer.
 
 ## Rodar no computador (para desenvolvedores)
 ```bash
