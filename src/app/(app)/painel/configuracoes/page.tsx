@@ -29,7 +29,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("configuracoes")} />
+      <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("configuracoes")} />
       <div className="mx-auto max-w-2xl space-y-5">
       <h2 className="text-xl font-bold">Configurações</h2>
 

@@ -30,7 +30,7 @@ export default async function ComunicadosPage() {
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("comunicados")} />
+      <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("comunicados")} />
       <div className="mx-auto max-w-2xl space-y-5">
       <div>
         <h2 className="text-xl font-bold">Comunicados</h2>

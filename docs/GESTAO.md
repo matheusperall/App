@@ -8,7 +8,7 @@ próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestã
 
 | Aba | Para que serve |
 |---|---|
-| **Painel** | Saudação e atalhos (Nova OS, Novo lançamento, Faturas, Novo cliente), calendário do mês com os agendamentos, recebido por forma de pagamento, entradas e saídas de hoje, a receber, orçamentos, vagas no pátio, oportunidades, carros no pátio, agenda de hoje, o que precisa de atenção, faturamento por dia e top 5 clientes. |
+| **Painel** (dentro da Gestão) | Saudação e atalhos (Nova OS, Novo lançamento, Faturas, Novo cliente), calendário do mês com os agendamentos, recebido por forma de pagamento, entradas e saídas de hoje, a receber, orçamentos, vagas no pátio, oportunidades, carros no pátio, agenda de hoje, o que precisa de atenção, faturamento por dia e top 5 clientes. |
 | **OS** | Ordens de serviço. Filtros: no pátio, a receber, lojistas, todas (por mês). Busca por placa, cliente ou número. |
 | **Faturas** | Fatura mensal dos lojistas (revendas): junta as OS do mês, recebe em partes e manda o extrato pelo WhatsApp. |
 | **Financeiro** | Três partes: **Movimentações** (resumo do mês e todos os lançamentos numa tabela, com atrasados no topo; o "⋮" de cada linha marca como pago, encerra recorrência ou apaga), **Contas** (cartões com saldo atual e previsto, formas e taxas, e a configuração de vagas do pátio) e **Resultado (DRE)**. O botão **+ Adicionar** cria um lançamento. |

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos" | "orcamentos" | "agenda" | "gestao"; contador?: number };
+export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos" | "orcamentos" | "agenda" | "gestao" | "atendimento"; contador?: number };
 
 const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   garagem: (
@@ -37,6 +37,11 @@ const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   gestao: (
     <>
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </>
+  ),
+  atendimento: (
+    <>
+      <path d="M4 5h16v11H9l-5 4z" /><path d="M8 9.5h8M8 12.5h5" />
     </>
   ),
   painel: (

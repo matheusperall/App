@@ -15,7 +15,7 @@ import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo } from "@/lib/gara
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { lembretesConfigurados } from "@/lib/env";
 
-export const metadata: Metadata = { title: "Painel da empresa" };
+export const metadata: Metadata = { title: "Atendimento" };
 
 export default async function PainelPage() {
   await exigirAdmin();
@@ -33,7 +33,7 @@ export default async function PainelPage() {
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("geral")} acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }} />
+      <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("geral")} acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }} />
 
       {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados() || !googleConfigurado()) && (
         <Aviso tipo="alerta">

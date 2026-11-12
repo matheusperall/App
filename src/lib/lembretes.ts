@@ -279,7 +279,7 @@ export async function processarLembretes(siteUrl: string, hoje = hojeISO()) {
     await notificarEmpresa(
       {
         titulo: `Lembretes de hoje: ${novos.length} para ${clientes} ${clientes === 1 ? "cliente" : "clientes"}`,
-        corpo: "Veja no Painel quem está com manutenção ou documento vencendo — boa hora para entrar em contato.",
+        corpo: "Veja no Atendimento quem está com manutenção ou documento vencendo — boa hora para entrar em contato.",
         link: "/painel#vencimentos",
       },
       siteUrl,
