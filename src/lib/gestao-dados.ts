@@ -9,6 +9,7 @@ import {
   combina,
   concluida,
   faturaEmAberto,
+  faltaReceber,
   formatarQtd,
   limitesMes,
   noPatio,
@@ -23,6 +24,7 @@ import {
   type MovimentoEstoque,
   type OrdemServico,
   type PagamentoFatura,
+  type PagamentoOS,
   type Produto,
   type ServicoCatalogo,
   type VeiculoResumo,
@@ -134,6 +136,16 @@ export async function movimentosEstoque(produtoId?: string): Promise<(MovimentoE
 const CAMPOS_OS =
   "id, numero, cliente_id, veiculo_id, placa, veiculo_nome, data, status, km, observacoes, subtotal, desconto, total, pago, pago_em, forma_pagamento, conta_id, taxa_valor, fatura_id, custo_produtos, estoque_baixado, agendamento_id, orcamento_id, pronta_em, entregue_em, criado_em, itens:os_itens (id, catalogo_id, nome, preco, ordem), cliente:clientes (id, nome, telefone, lojista, perfil_id)";
 
+/** O banco já tem os pagamentos divididos (0013)? Consultado uma vez por requisição. */
+const temPagamentosOS = cache(async function temPagamentosOS() {
+  const supabase = await createClient();
+  const { error } = await supabase.from("ordens_servico").select("valor_pago").limit(1);
+  return !error;
+});
+async function camposOS() {
+  return (await temPagamentosOS()) ? `${CAMPOS_OS}, parcelas, valor_pago` : CAMPOS_OS;
+}
+
 function normalizarOS(o: OrdemServico): OrdemServico {
   return {
     ...o,
@@ -141,6 +153,7 @@ function normalizarOS(o: OrdemServico): OrdemServico {
     subtotal: n(o.subtotal),
     desconto: n(o.desconto),
     total: n(o.total),
+    valor_pago: o.valor_pago == null ? (o.pago ? n(o.total) : 0) : n(o.valor_pago),
     taxa_valor: n(o.taxa_valor),
     custo_produtos: n(o.custo_produtos),
     itens: [...(o.itens ?? [])].map((i) => ({ ...i, preco: n(i.preco) })).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)),
@@ -156,7 +169,7 @@ export async function listarOS(opcoes: { filtro: FiltroOS; mes: string; busca?: 
     lista = DEMO.os;
   } else {
     const supabase = await createClient();
-    let q = supabase.from("ordens_servico").select(CAMPOS_OS).order("data", { ascending: false }).order("numero", { ascending: false });
+    let q = supabase.from("ordens_servico").select(await camposOS()).order("data", { ascending: false }).order("numero", { ascending: false });
     if (clienteId) q = q.eq("cliente_id", clienteId).limit(300);
     else if (busca.trim()) q = q.limit(1000);
     else if (filtro === "patio") q = q.in("status", ["aberta", "em_andamento", "pronta"]);
@@ -203,12 +216,20 @@ export const consumoDaOS = cache(async function consumoDaOS(osId: string): Promi
   }));
 });
 
+/** Pagamentos recebidos numa OS (pode ter vários). */
+export const pagamentosDaOS = cache(async function pagamentosDaOS(osId: string): Promise<PagamentoOS[]> {
+  if (!isSupabaseConfigured || !ehUuid(osId)) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("os_pagamentos").select("id, data, valor, forma, conta_id, parcelas, taxa_valor").eq("os_id", osId).order("criado_em");
+  if (error) return [];
+  return ((data ?? []) as PagamentoOS[]).map((p) => ({ ...p, valor: n(p.valor), taxa_valor: n(p.taxa_valor) }));
+});
+
 export const obterOS = cache(async function obterOS(id: string): Promise<OrdemServico | null> {
   if (!isSupabaseConfigured) return DEMO.os.find((o) => o.id === id) ?? null;
   if (!ehUuid(id)) return null;
   const supabase = await createClient();
-  let { data, error } = await supabase.from("ordens_servico").select(`${CAMPOS_OS}, parcelas`).eq("id", id).maybeSingle();
-  if (error?.code === "42703") ({ data, error } = await supabase.from("ordens_servico").select(CAMPOS_OS).eq("id", id).maybeSingle());
+  const { data } = await supabase.from("ordens_servico").select(await camposOS()).eq("id", id).maybeSingle();
   return data ? normalizarOS(data as unknown as OrdemServico) : null;
 });
 
@@ -345,7 +366,7 @@ export const osParaFaturar = cache(async function osParaFaturar(): Promise<Ordem
   const supabase = await createClient();
   const { data } = await supabase
     .from("ordens_servico")
-    .select(CAMPOS_OS)
+    .select(await camposOS())
     .is("fatura_id", null)
     .eq("pago", false)
     .in("status", ["pronta", "entregue"])
@@ -398,7 +419,7 @@ export async function resumoGestao(mes: string): Promise<ResumoGestao> {
       .filter((l) => l.tipo === "entrada" && l.pago && (l.pago_em ?? l.data).startsWith(mes) && !(l.categoria_id && fora.has(l.categoria_id)))
       .reduce((t, l) => t + l.valor, 0),
   );
-  const avulsos = arred(receber.filter((o) => !o.cliente?.lojista).reduce((t, o) => t + o.total, 0));
+  const avulsos = arred(receber.filter((o) => !o.cliente?.lojista).reduce((t, o) => t + faltaReceber(o), 0));
   const lojistasSemFatura = arred(receber.filter((o) => o.cliente?.lojista && !o.fatura_id).reduce((t, o) => t + o.total, 0));
   const abertas = faturas.filter(faturaEmAberto);
   const faturasAbertas = arred(abertas.reduce((t, f) => t + f.total - f.valor_pago, 0));

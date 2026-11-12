@@ -7,7 +7,7 @@ import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Campo, Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, nomeVeiculo } from "@/lib/garagem";
-import { arred, concluida, faturaEmAberto, linkWhatsApp, mesAtual } from "@/lib/gestao";
+import { arred, concluida, faltaReceber, faturaEmAberto, linkWhatsApp, mesAtual } from "@/lib/gestao";
 import { listarFaturas, listarOS, obterFicha } from "@/lib/gestao-dados";
 import { ItemOS } from "../../os/ItemOS";
 import { convidarFicha, salvarFicha } from "../actions";
@@ -24,7 +24,7 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
   const concluidas = os.filter((o) => concluida(o.status));
   const totalGasto = arred(concluidas.reduce((t, o) => t + o.total, 0));
   const ultima = os.find((o) => o.status !== "cancelada")?.data ?? null;
-  const emAberto = arred(os.filter((o) => concluida(o.status) && !o.pago).reduce((t, o) => t + o.total, 0));
+  const emAberto = arred(os.filter((o) => concluida(o.status) && !o.pago).reduce((t, o) => t + faltaReceber(o), 0));
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

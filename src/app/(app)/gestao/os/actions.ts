@@ -166,9 +166,9 @@ export async function salvarOS(_: EstadoForm, form: FormData): Promise<EstadoFor
   const supabase = await createClient();
 
   if (d.id) {
-    const { data: atual } = await supabase.from("ordens_servico").select("status, pago, fatura_id").eq("id", d.id).maybeSingle();
+    const { data: atual } = await supabase.from("ordens_servico").select("*").eq("id", d.id).maybeSingle();
     if (!atual) return { erro: "OS não encontrada." };
-    if (atual.pago || atual.fatura_id || !["aberta", "em_andamento"].includes(atual.status))
+    if (atual.pago || Number(atual.valor_pago ?? 0) > 0 || atual.fatura_id || !["aberta", "em_andamento"].includes(atual.status))
       return { erro: "Só dá para editar a OS antes de ficar pronta (e sem pagamento ou fatura)." };
   }
 
@@ -307,9 +307,9 @@ export async function cancelarOS(_: EstadoForm, form: FormData): Promise<EstadoF
   await exigirAdmin();
   const id = texto(form, "id");
   const supabase = await createClient();
-  const { data: os } = await supabase.from("ordens_servico").select("numero, status, pago, fatura_id").eq("id", id).maybeSingle();
+  const { data: os } = await supabase.from("ordens_servico").select("*").eq("id", id).maybeSingle();
   if (!os) return { erro: "OS não encontrada." };
-  if (os.pago) return { erro: "Esta OS já foi paga. Para devolver o dinheiro, lance uma saída no financeiro antes de cancelar." };
+  if (os.pago || Number(os.valor_pago ?? 0) > 0) return { erro: "Esta OS já tem pagamento registrado. Para devolver o dinheiro, lance uma saída no financeiro antes de cancelar." };
   if (os.fatura_id) return { erro: "Esta OS está em uma fatura. Cancele a fatura antes." };
   if (os.status === "entregue" || os.status === "cancelada") return { erro: "Não dá para cancelar esta OS." };
   const { error } = await supabase.rpc("gestao_estornar_estoque_os", { p_os: id });
@@ -320,25 +320,35 @@ export async function cancelarOS(_: EstadoForm, form: FormData): Promise<EstadoF
 }
 
 /** Recebe o pagamento de uma OS avulsa (cliente lojista vai para a fatura). */
+/** Recebe um ou mais pagamentos de uma OS avulsa (cliente lojista vai para a fatura). */
 export async function receberOS(_: EstadoForm, form: FormData): Promise<EstadoForm> {
   if (!isSupabaseConfigured) return DEMO;
   await exigirAdmin();
   const id = texto(form, "id");
-  const forma = texto(form, "forma");
-  const conta = texto(form, "conta_id");
   const data = texto(form, "data") || hojeISO();
-  if (!ehFormaPagamento(forma)) return { erro: "Escolha a forma de pagamento." };
-  if (!conta) return { erro: "Escolha a conta em que o dinheiro entrou." };
   if (!dataValida(data)) return { erro: "Data inválida." };
-  const parcelas = forma === "credito" ? Math.min(24, Math.max(1, Number.parseInt(texto(form, "parcelas"), 10) || 1)) : 1;
+  let pagamentos: { valor: number; forma: string; conta_id: string | null; parcelas: number }[];
+  try {
+    pagamentos = JSON.parse(texto(form, "pagamentos") || "[]");
+  } catch {
+    return { erro: "Dados inválidos. Recarregue a página." };
+  }
+  if (!Array.isArray(pagamentos) || pagamentos.length === 0) return { erro: "Informe pelo menos um pagamento." };
+  for (const p of pagamentos) {
+    if (!(Number(p.valor) > 0)) return { erro: "Cada pagamento precisa de um valor." };
+    if (!ehFormaPagamento(String(p.forma))) return { erro: "Escolha a forma de cada pagamento." };
+    if (!p.conta_id) return { erro: "Escolha a conta de cada pagamento." };
+    p.valor = arred(Number(p.valor));
+    p.parcelas = p.forma === "credito" ? Math.min(24, Math.max(1, Math.round(Number(p.parcelas) || 1))) : 1;
+  }
   const supabase = await createClient();
-  const { error } = await supabase.rpc("gestao_receber_os", { p_os: id, p_forma: forma, p_conta: conta, p_data: data, p_parcelas: parcelas });
+  const { error } = await supabase.rpc("gestao_receber_os_pagamentos", { p_os: id, p_pagamentos: pagamentos, p_data: data });
   if (error) {
     console.error("[os] receber", error);
-    if (error.code === "PGRST202") return { erro: "Falta atualizar o banco: rode o arquivo 0011_formas_recebimento.sql no Supabase (veja docs/GESTAO.md)." };
-    const conhecido = ["lojista", "já foi", "não recebe", "não aceita"].some((t) => error.message.includes(t));
+    if (error.code === "PGRST202") return { erro: "Falta atualizar o banco: rode o arquivo 0013_pagamentos_os.sql no Supabase (veja docs/GESTAO.md)." };
+    const conhecido = ["lojista", "já foi", "não recebe", "não aceita", "somam mais", "Escolha a conta"].some((t) => error.message.includes(t));
     return { erro: conhecido ? error.message : "Não foi possível registrar o pagamento." };
   }
   revalidatePath("/gestao", "layout");
-  return { sucesso: "Pagamento registrado no financeiro." };
+  return { sucesso: pagamentos.length > 1 ? `${pagamentos.length} pagamentos registrados no financeiro.` : "Pagamento registrado no financeiro." };
 }

@@ -106,6 +106,8 @@ export type OrdemServico = {
   pago_em: string | null;
   forma_pagamento: FormaPagamento | null;
   parcelas?: number | null;
+  /** Quanto já foi pago (pagamentos divididos, 0013) */
+  valor_pago?: number;
   conta_id: string | null;
   taxa_valor: number;
   fatura_id: string | null;
@@ -204,6 +206,12 @@ export type Fatura = {
   observacoes: string | null;
   cliente: Pick<Ficha, "id" | "nome" | "telefone"> | null;
 };
+/** Um pagamento recebido numa OS (ela pode ter vários). */
+export type PagamentoOS = { id: string; data: string; valor: number; forma: FormaPagamento; conta_id: string | null; parcelas: number | null; taxa_valor: number };
+
+/** Quanto ainda falta receber da OS. */
+export const faltaReceber = (o: Pick<OrdemServico, "total" | "valor_pago" | "pago">) => (o.pago ? 0 : arred(o.total - (o.valor_pago ?? 0)));
+
 export type ItemFatura = { id: string; os_id: string | null; data: string; placa: string | null; veiculo: string | null; servicos: string; valor: number };
 export type PagamentoFatura = { id: string; data: string; valor: number; forma: FormaPagamento | null; conta_id: string | null; parcelas?: number | null; taxa_valor?: number | null };
 
@@ -357,6 +365,7 @@ export function resumoOSWhatsApp(os: OrdemServico, empresa = "Nexus Automotive")
   if (os.desconto > 0) linhas.push(`Desconto: −${brl(os.desconto)}`);
   linhas.push(`*Total: ${brl(os.total)}*`);
   if (os.pago) linhas.push(`Pago${os.forma_pagamento ? ` (${rotuloForma(os.forma_pagamento, os.parcelas)})` : ""}. Obrigado!`);
+  else if ((os.valor_pago ?? 0) > 0) linhas.push(`Já pago: ${brl(os.valor_pago ?? 0)} · falta ${brl(arred(os.total - (os.valor_pago ?? 0)))}`);
   else if (os.cliente?.lojista) linhas.push("Valor entra na fatura do mês.");
   return linhas.filter((l, i) => l !== "" || i === 4).join("\n");
 }
