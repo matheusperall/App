@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { Bloco } from "@/components/gestao/Bloco";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
 import Link from "next/link";
 import { sair } from "@/app/(auth)/actions";
-import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { FormPerfil } from "./FormPerfil";
 import { FormDocumento } from "@/components/FormDocumento";
@@ -14,21 +15,20 @@ export default async function ContaPage() {
   const cnh = await obterCnh(usuario.id);
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <h1 className="text-2xl font-bold sm:text-3xl">Minha conta</h1>
-
-      <Cartao className="space-y-4">
-        <h2 className="font-semibold">Dados pessoais</h2>
+    <div className="space-y-4">
+      <Cabecalho icone="usuario" titulo="Minha conta" />
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <Bloco icone="usuario" titulo="Dados pessoais">
         <FormPerfil nome={usuario.nome} telefone={usuario.telefone ?? ""} email={usuario.email} />
-      </Cartao>
+      </Bloco>
 
-      <div className="space-y-2">
-        <h2 className="font-semibold">Minha CNH</h2>
+      <div className="space-y-4">
+      <Bloco icone="documento" titulo="Minha CNH">
         <FormDocumento tipo="cnh" atual={cnh} />
-      </div>
+      </Bloco>
 
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Segurança</h2>
+      <Bloco icone="chave" titulo="Segurança">
+        <div className="space-y-3">
         <Link href="/redefinir-senha" className="botao-contorno w-full">
           Alterar senha
         </Link>
@@ -37,7 +37,10 @@ export default async function ContaPage() {
             Sair da conta
           </button>
         </form>
-      </Cartao>
+        </div>
+      </Bloco>
+      </div>
+      </div>
 
       <p className="text-center text-sm text-suave">
         <Link href="/privacidade" className="hover:underline">Privacidade</Link>

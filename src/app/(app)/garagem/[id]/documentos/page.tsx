@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { abasVeiculo } from "../abas";
 import { notFound } from "next/navigation";
 import { CartaoIpva, CartaoLicenciamento } from "@/components/CalendarioDocumento";
 import { FormDocumento } from "@/components/FormDocumento";
@@ -23,10 +25,12 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
   const outros = documentos.filter((d) => d.tipo === "outro");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
+      <Cabecalho icone="carro" titulo={`${nomeVeiculo(veiculo)} · ${veiculo.placa}`} abas={abasVeiculo(id, "documentos")} />
+      <div className="mx-auto max-w-2xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Documentos e vencimentos</h1>
+        <h2 className="text-xl font-bold">Documentos e vencimentos</h2>
         <p className="text-suave">
           {sp
             ? "Licenciamento e IPVA são calculados pelo final da placa, conforme o calendário de São Paulo. "
@@ -57,6 +61,7 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
           <FormDocumento key={d.id} tipo="outro" veiculoId={id} atual={d} />
         ))}
         <FormDocumento tipo="outro" veiculoId={id} atual={null} novoOutro />
+      </div>
       </div>
     </div>
   );

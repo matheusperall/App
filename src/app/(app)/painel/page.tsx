@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Placa, SeloPrioridade } from "@/components/garagem";
-import { Aviso, Cartao } from "@/components/ui";
+import { Aviso } from "@/components/ui";
+import { Bloco, Contagem } from "@/components/gestao/Bloco";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { Icone } from "@/components/gestao/Icones";
+import { abasPainel } from "./abas";
 import { exigirAdmin } from "@/lib/auth";
 import { agendaEmpresa, caixaDeEntrada, contarOrcamentosAResponder, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
 import { ItemAgendamento } from "@/components/agendamento";
@@ -27,25 +31,9 @@ export default async function PainelPage() {
   const novos = caixa.filter((c) => c.situacao !== "agendado");
   const agendados = caixa.filter((c) => c.situacao === "agendado");
 
-  const indicadores = [
-    { rotulo: "Clientes", valor: clientes, href: "/gestao/clientes" },
-    { rotulo: "Orçamentos a responder", valor: orcamentosAResponder, href: "/orcamentos?f=responder", destaque: orcamentosAResponder > 0 },
-    { rotulo: "Apontamentos abertos", valor: abertos, href: null },
-    { rotulo: "Agendamentos a confirmar", valor: agenda.aConfirmar.length, href: "/agendamentos", destaque: agenda.aConfirmar.length > 0 },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-suave">Área da empresa</p>
-          <h1 className="text-2xl font-bold sm:text-3xl">Painel</h1>
-        </div>
-        <div className="flex gap-4 text-sm font-semibold text-marca-escura">
-          <Link href="/garagem" className="hover:underline">Minha garagem</Link>
-          <Link href="/painel/configuracoes" className="hover:underline">Configurações</Link>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("geral")} acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }} />
 
       {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados() || !googleConfigurado()) && (
         <Aviso tipo="alerta">
@@ -57,44 +45,39 @@ export default async function PainelPage() {
         </Aviso>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {indicadores.map((i) => {
-          const conteudo = (
-            <>
-              <p className="text-sm text-suave">{i.rotulo}</p>
-              <p className={`mt-1 font-titulo text-3xl font-bold ${i.destaque ? "text-marca-escura" : ""}`}>{i.valor}</p>
-            </>
-          );
-          return i.href ? (
-            <Link key={i.rotulo} href={i.href} className={`rounded-2xl border bg-white p-5 transition hover:border-marca/50 ${i.destaque ? "border-marca/50" : "border-borda"}`}>
-              {conteudo}
-            </Link>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Bloco icone="clientes" titulo="Clientes">
+          <Link href="/gestao/clientes"><Contagem n={clientes} legenda="clientes com conta no app" /></Link>
+        </Bloco>
+        <Bloco icone="orcamento" titulo="Orçamentos">
+          <Link href="/orcamentos?f=responder"><Contagem n={orcamentosAResponder} legenda="a responder" cor={orcamentosAResponder ? "text-[#b07800]" : "text-suave"} /></Link>
+        </Bloco>
+        <Bloco icone="calendario" titulo="Agendamentos">
+          <Link href="/agendamentos"><Contagem n={agenda.aConfirmar.length} legenda="a confirmar" cor={agenda.aConfirmar.length ? "text-[#b07800]" : "text-suave"} /></Link>
+        </Bloco>
+        <Bloco icone="chave" titulo="Apontamentos">
+          <Contagem n={abertos} legenda="abertos nos carros dos clientes (oportunidades)" cor={abertos ? "text-marca-escura" : "text-suave"} />
+        </Bloco>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <Link href="/gestao/clientes/novo" className="botao-primario gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="clientes" className="h-4 w-4" />Cadastrar cliente</Link>
+        <Link href="/gestao/clientes" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="carro" className="h-4 w-4" />Buscar cliente ou placa</Link>
+        <Link href="/painel/comunicados" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="megafone" className="h-4 w-4" />Enviar comunicado</Link>
+        <Link href="/gestao" className="botao-escuro gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="financeiro" className="h-4 w-4" />Gestão da loja</Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Bloco icone="calendario" titulo="Hoje na agenda" direita={<Link href="/agendamentos" className="text-xs font-semibold text-marca-escura">Ver agenda</Link>} semEspaco>
+          {deHoje.length === 0 ? (
+            <p className="p-4 text-sm text-suave">Nenhum atendimento marcado para hoje.</p>
           ) : (
-            <Cartao key={i.rotulo} className={i.destaque ? "border-marca/50" : ""}>{conteudo}</Cartao>
-          );
-        })}
+            <ul className="divide-y divide-borda">{deHoje.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
+          )}
+        </Bloco>
+        <Caixa titulo="Respostas de clientes" vazio="Nenhuma resposta nova. Quando um cliente pedir orçamento ou agendamento, aparece aqui." itens={novos} />
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Link href="/gestao/os/nova" className="botao-primario">+ Nova OS</Link>
-        <Link href="/gestao/clientes" className="botao-contorno">Buscar cliente ou placa</Link>
-        <Link href="/painel/comunicados" className="botao-escuro">📣 Enviar comunicado</Link>
-      </div>
-
-      <Cartao className="p-0">
-        <div className="flex items-center justify-between px-5 pt-5">
-          <h2 className="font-semibold">📅 Hoje na agenda</h2>
-          <Link href="/agendamentos" className="text-sm font-semibold text-marca-escura hover:underline">Ver agenda</Link>
-        </div>
-        {deHoje.length === 0 ? (
-          <p className="px-5 pt-2 pb-5 text-sm text-suave">Nenhum atendimento marcado para hoje.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-borda">{deHoje.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
-        )}
-      </Cartao>
-
-      <Caixa titulo="📥 Respostas de clientes" vazio="Nenhuma resposta nova. Quando um cliente pedir orçamento ou agendamento, aparece aqui." itens={novos} />
-      {agendados.length > 0 && <Caixa titulo="📅 Agendados" vazio="" itens={agendados} />}
+      {agendados.length > 0 && <Caixa titulo="Agendados" vazio="" itens={agendados} />}
       <Vencimentos itens={vencimentos} />
     </div>
   );
@@ -102,12 +85,11 @@ export default async function PainelPage() {
 
 function Caixa({ titulo, vazio, itens }: { titulo: string; vazio: string; itens: Awaited<ReturnType<typeof caixaDeEntrada>> }) {
   return (
-    <Cartao className="p-0">
-      <h2 className="px-5 pt-5 font-semibold">{titulo}</h2>
+    <Bloco icone="aviso" titulo={titulo} semEspaco>
       {itens.length === 0 ? (
-        <p className="px-5 pt-2 pb-5 text-sm text-suave">{vazio}</p>
+        <p className="p-4 text-sm text-suave">{vazio}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-borda">
+        <ul className="divide-y divide-borda">
           {itens.map((a) => (
             <li key={a.id}>
               <Link href={`/garagem/${a.veiculo_id}/apontamentos/${a.id}`} className="block px-5 py-4 transition hover:bg-fundo">
@@ -130,7 +112,7 @@ function Caixa({ titulo, vazio, itens }: { titulo: string; vazio: string; itens:
           ))}
         </ul>
       )}
-    </Cartao>
+    </Bloco>
   );
 }
 
@@ -142,15 +124,11 @@ function linkWhatsApp(telefone: string, texto: string) {
 function Vencimentos({ itens }: { itens: Vencimento[] }) {
   return (
     <section id="vencimentos" className="scroll-mt-20">
-      <Cartao className="p-0">
-        <div className="px-5 pt-5">
-          <h2 className="font-semibold">⏰ Vencimentos dos clientes (próximos 30 dias)</h2>
-          <p className="text-sm text-suave">Manutenções e documentos vencidos ou vencendo. Boa hora para oferecer o serviço.</p>
-        </div>
+      <Bloco icone="calendario" titulo="Vencimentos dos clientes (próximos 30 dias)" direita={<span className="text-xs text-suave">Boa hora para oferecer o serviço</span>} semEspaco>
         {itens.length === 0 ? (
-          <p className="px-5 pt-2 pb-5 text-sm text-suave">Nada vencendo nos próximos 30 dias.</p>
+          <p className="p-4 text-sm text-suave">Nada vencendo nos próximos 30 dias.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-borda">
+          <ul className="divide-y divide-borda">
             {itens.slice(0, 60).map((v) => (
               <li key={v.chave} className="flex items-start justify-between gap-3 px-5 py-3">
                 <Link href={v.veiculo ? `/garagem/${v.veiculo.id}` : v.cliente ? `/painel/clientes/${v.cliente.id}` : "#"} className="min-w-0 flex-1">
@@ -182,7 +160,7 @@ function Vencimentos({ itens }: { itens: Vencimento[] }) {
             ))}
           </ul>
         )}
-      </Cartao>
+      </Bloco>
     </section>
   );
 }

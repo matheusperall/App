@@ -66,7 +66,7 @@ function Icone({ nome }: { nome: ItemNav["icone"] }) {
   );
 }
 
-export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "topo" | "rodape" }) {
+export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "topo" | "barra" | "rodape" }) {
   const path = usePathname();
   // Depois de abrir a página de avisos, o contador zera sem precisar recarregar
   const [avisosVistos, setAvisosVistos] = useState(false);
@@ -74,21 +74,44 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
   const lista = itens.map((i) => (i.href === "/notificacoes" && avisosVistos ? { ...i, contador: 0 } : i));
   const ativo = (href: string) => path === href || path.startsWith(`${href}/`);
 
+  if (local === "barra") {
+    return (
+      <nav aria-label="Menu principal" className="hidden border-b border-borda bg-white sm:block">
+        <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6">
+          {lista.map((i) => (
+            <li key={i.href} className="shrink-0">
+              <Link
+                href={i.href}
+                aria-current={ativo(i.href) ? "page" : undefined}
+                className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+                  ativo(i.href) ? "border-marca text-marca-escura" : "border-transparent text-suave hover:text-texto"
+                }`}
+              >
+                <span className="[&_svg]:h-5 [&_svg]:w-5"><Icone nome={i.icone} /></span>
+                {i.rotulo}
+                <Contador n={i.contador} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    );
+  }
+
   if (local === "topo") {
     return (
-      <nav className="hidden items-center gap-1 sm:flex">
+      <nav aria-label="Avisos e conta" className="hidden items-center gap-1 sm:flex">
         {lista.map((i) => (
           <Link
             key={i.href}
             href={i.href}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-              ativo(i.href) ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
-            }`}
+            aria-label={i.rotulo}
+            title={i.rotulo}
+            className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${ativo(i.href) ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
           >
-            <span className="flex items-center gap-1.5">
-              {i.rotulo}
-              <Contador n={i.contador} />
-            </span>
+            <Icone nome={i.icone} />
+            <span className="hidden md:inline">{i.rotulo}</span>
+            <Contador n={i.contador} className="absolute -top-0.5 left-6" />
           </Link>
         ))}
       </nav>

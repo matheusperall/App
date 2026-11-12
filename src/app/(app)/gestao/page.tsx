@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { Dinheiro, NavMes, SeloFatura, SeloProduto, SeloStatus } from "@/components/gestao";
 import { CalendarioMes } from "@/components/gestao/Calendario";
 import { GraficoDias } from "@/components/gestao/GraficoDias";
 import { GraficoFormas } from "@/components/gestao/GraficoFormas";
-import { Icone, type NomeIcone } from "@/components/gestao/Icones";
+import { Bloco, Contagem } from "@/components/gestao/Bloco";
+import { Icone } from "@/components/gestao/Icones";
 import { exigirAdmin, primeiroNome } from "@/lib/auth";
 import { formatarQuando, partesBrasilia } from "@/lib/agenda";
 import { agendaEmpresa, contarOrcamentosAResponder, contarPainel, listarOrcamentosEmpresa } from "@/lib/dados";
@@ -14,29 +14,6 @@ import { formatarQtd, mesAtual, mesValido } from "@/lib/gestao";
 import { listarFichas, osPorOrigem, resumoGestao } from "@/lib/gestao-dados";
 
 export const metadata: Metadata = { title: "Gestão" };
-
-/** Cartão do painel: título com ícone à esquerda e um destaque à direita. */
-function Bloco({ icone, titulo, direita, children, className = "" }: { icone: NomeIcone; titulo: string; direita?: ReactNode; children: ReactNode; className?: string }) {
-  return (
-    <section className={`min-w-0 rounded-2xl border border-borda bg-white ${className}`}>
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-borda px-4 py-3 text-sm">
-        <h2 className="flex items-center gap-2 font-semibold"><Icone nome={icone} className="h-4 w-4 text-suave" />{titulo}</h2>
-        {direita && <div className="text-right">{direita}</div>}
-      </div>
-      <div className="p-4">{children}</div>
-    </section>
-  );
-}
-
-/** Número grande com legenda ao lado (ex.: "3 orçamentos pendentes"). */
-function Contagem({ n, legenda, cor = "text-marca-escura" }: { n: ReactNode; legenda: string; cor?: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`font-titulo text-2xl font-bold whitespace-nowrap tabular-nums ${cor}`}>{n}</span>
-      <span className="text-xs leading-tight text-suave">{legenda}</span>
-    </div>
-  );
-}
 
 function saudacao(hora: number) {
   return hora < 12 ? "bom dia" : hora < 18 ? "boa tarde" : "boa noite";
@@ -95,7 +72,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
       </div>
 
       {/* Linha 1: calendário · recebimentos por forma · resumo financeiro */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
         <Bloco icone="calendario" titulo="Agenda do mês" direita={<span className="text-xs text-suave">{deHoje.length ? `${deHoje.length} hoje` : "Sem agendamentos hoje"}</span>}>
           <CalendarioMes mes={mesAtual()} hoje={hoje} marcados={agendadosPorDia} />
         </Bloco>
@@ -156,7 +133,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
       </div>
 
       {/* Linha 3: pátio · agenda de hoje */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Bloco icone="carro" titulo={`No pátio · ${r.patio.length} de ${r.vagas}`} direita={<Link href="/gestao/os?f=patio" className="text-xs font-semibold text-marca-escura">Ver todos</Link>}>
           <div className="mb-3 flex gap-1.5" aria-hidden="true">
             {Array.from({ length: Math.max(r.vagas, r.patio.length) }, (_, i) => (
@@ -212,7 +189,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
       </div>
 
       {/* Linha 4: atenção · faturamento por dia */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Bloco icone="faturas" titulo={`Precisa de atenção${atencao ? ` (${atencao})` : ""}`}>
           {atencao === 0 && <p className="text-sm text-suave">Tudo em dia.</p>}
           <div className="space-y-3">

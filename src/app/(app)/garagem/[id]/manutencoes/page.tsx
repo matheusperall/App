@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { abasVeiculo } from "../abas";
 import { notFound } from "next/navigation";
 import { Voltar } from "@/components/garagem";
 import { exigirUsuario } from "@/lib/auth";
@@ -18,10 +20,12 @@ export default async function ManutencoesPage({ params }: PageProps<"/garagem/[i
   tipos.sort((a, b) => Number(!manutencoes.some((m) => m.tipo === a)) - Number(!manutencoes.some((m) => m.tipo === b)));
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
+      <Cabecalho icone="carro" titulo={`${nomeVeiculo(veiculo)} · ${veiculo.placa}`} abas={abasVeiculo(id, "lembretes")} />
+      <div className="mx-auto max-w-2xl space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Lembretes de manutenção</h1>
+        <h2 className="text-xl font-bold">Lembretes de manutenção</h2>
         <p className="text-suave">
           Os intervalos sugeridos são comuns de mercado. Ajuste conforme o manual do seu carro ou a
           recomendação da oficina. Avisamos o que vier primeiro: a data ou a quilometragem.
@@ -37,6 +41,7 @@ export default async function ManutencoesPage({ params }: PageProps<"/garagem/[i
             atual={manutencoes.find((m) => m.tipo === t) ?? null}
           />
         ))}
+      </div>
       </div>
     </div>
   );

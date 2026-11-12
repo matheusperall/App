@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ItemAgendamento } from "@/components/agendamento";
 import { Aviso, Cartao } from "@/components/ui";
+import { Bloco } from "@/components/gestao/Bloco";
+import { Cabecalho, GrupoDia, GrupoMes, ResumoPeriodo } from "@/components/gestao/Cabecalho";
+import { CalendarioMes } from "@/components/gestao/Calendario";
+import { partesBrasilia } from "@/lib/agenda";
+import { hojeISO, somarDias } from "@/lib/garagem";
+import { agruparPorMesEDia, rotuloDia, tituloMes } from "@/lib/gestao";
 import { exigirUsuario } from "@/lib/auth";
 import { agendaEmpresa, listarAgendamentos, listarVeiculos } from "@/lib/dados";
 import { googleConfigurado } from "@/lib/google-agenda";
@@ -13,36 +19,63 @@ export default async function AgendamentosPage() {
 
   if (usuario.papel === "admin") {
     const { aConfirmar, proximos } = await agendaEmpresa();
+    const hoje = hojeISO();
+    const diaDe = (iso: string | null) => (iso ? partesBrasilia(new Date(iso)).dia : "");
+    const marcados: Record<string, number> = {};
+    for (const a of proximos) marcados[diaDe(a.inicio)] = (marcados[diaDe(a.inicio)] ?? 0) + 1;
+    const grupos = agruparPorMesEDia(proximos, (a) => diaDe(a.inicio)).map((m) => ({ ...m, dias: [...m.dias].reverse() })).reverse();
     return (
-      <div className="space-y-5">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-suave">Área da empresa</p>
-            <h1 className="text-2xl font-bold sm:text-3xl">Agenda</h1>
-          </div>
-        </div>
+      <div className="space-y-4">
+        <Cabecalho icone="calendario" titulo="Agenda" />
         {!googleConfigurado() && (
           <Aviso tipo="alerta">
             A Google Agenda ainda não está conectada. Os agendamentos funcionam, mas não vão para a sua agenda.{" "}
             <Link href="/painel/configuracoes" className="font-semibold underline">Conectar</Link>
           </Aviso>
         )}
-        <Cartao className="p-0">
-          <h2 className="px-5 pt-5 font-semibold">📥 A confirmar {aConfirmar.length > 0 && <span className="text-suave">({aConfirmar.length})</span>}</h2>
-          {aConfirmar.length === 0 ? (
-            <p className="px-5 pt-2 pb-5 text-sm text-suave">Nenhum pedido aguardando confirmação.</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-borda">{aConfirmar.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
-          )}
-        </Cartao>
-        <Cartao className="p-0">
-          <h2 className="px-5 pt-5 font-semibold">📅 Próximos</h2>
-          {proximos.length === 0 ? (
-            <p className="px-5 pt-2 pb-5 text-sm text-suave">Nada agendado.</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-borda">{proximos.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
-          )}
-        </Cartao>
+        <ResumoPeriodo
+          titulo="Resumo"
+          itens={[
+            { rotulo: "A confirmar", valor: aConfirmar.length, formato: "numero", cor: aConfirmar.length ? "amarelo" : "neutro" },
+            { rotulo: "Hoje", valor: proximos.filter((a) => diaDe(a.inicio) === hoje).length, formato: "numero", cor: "verde" },
+            { rotulo: "Próximos 7 dias", valor: proximos.filter((a) => diaDe(a.inicio) <= somarDias(hoje, 7)).length, formato: "numero" },
+            { rotulo: "Lavagens agendadas", valor: proximos.filter((a) => a.tipo === "lavagem").length, formato: "numero" },
+            { rotulo: "Outros serviços", valor: proximos.filter((a) => a.tipo !== "lavagem").length, formato: "numero" },
+          ]}
+        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          <div className="min-w-0 space-y-4">
+            <Bloco icone="calendario" titulo="Mês">
+              <CalendarioMes mes={hoje.slice(0, 7)} hoje={hoje} marcados={marcados} />
+            </Bloco>
+            <Bloco icone="aviso" titulo={`A confirmar${aConfirmar.length ? ` (${aConfirmar.length})` : ""}`} semEspaco>
+              {aConfirmar.length === 0 ? (
+                <p className="p-4 text-sm text-suave">Nenhum pedido aguardando confirmação.</p>
+              ) : (
+                <ul className="divide-y divide-borda">{aConfirmar.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
+              )}
+            </Bloco>
+          </div>
+          <Bloco icone="calendario" titulo="Próximos" semEspaco>
+            {proximos.length === 0 ? (
+              <p className="p-4 text-sm text-suave">Nada agendado.</p>
+            ) : (
+              <div className="space-y-1 px-3 pb-3">
+                {grupos.map((m) => (
+                  <section key={m.mes}>
+                    <GrupoMes titulo={tituloMes(m.mes)} />
+                    {m.dias.map((d) => (
+                      <div key={d.dia}>
+                        <GrupoDia titulo={rotuloDia(d.dia)} direita={`${d.itens.length} ${d.itens.length === 1 ? "horário" : "horários"}`} />
+                        <ul className="mt-1 divide-y divide-borda overflow-hidden rounded-xl border border-borda">{d.itens.map((a) => <ItemAgendamento key={a.id} a={a} empresa />)}</ul>
+                      </div>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+          </Bloco>
+        </div>
       </div>
     );
   }
@@ -53,11 +86,8 @@ export default async function AgendamentosPage() {
   const anteriores = lista.filter((a) => !ativos.includes(a));
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="text-2xl font-bold sm:text-3xl">Agenda</h1>
-        {veiculos.length > 0 && <Link href="/agendamentos/novo" className="botao-primario px-4 py-2.5 text-sm">+ Agendar</Link>}
-      </div>
+    <div className="space-y-4">
+      <Cabecalho icone="calendario" titulo="Agenda" acao={veiculos.length > 0 ? { href: "/agendamentos/novo", rotulo: "Agendar" } : undefined} />
       {veiculos.length === 0 ? (
         <Cartao className="space-y-3 text-center">
           <p className="text-suave">Cadastre seu veículo para agendar serviços.</p>

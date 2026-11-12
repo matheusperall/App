@@ -2,7 +2,13 @@ import { getUsuarioAtual } from "@/lib/auth";
 import { contarAgendamentosAConfirmar, contarNaoLidas, contarOrcamentosAResponder } from "@/lib/dados";
 import { LinksNavegacao, type ItemNav } from "./LinksNavegacao";
 
-export async function Navegacao({ local }: { local: "topo" | "rodape" }) {
+/**
+ * Menu do app.
+ * - "barra": barra branca com ícones abaixo do topo (computador)
+ * - "topo": atalhos de Avisos e Conta no canto do topo (computador)
+ * - "rodape": barra fixa embaixo (celular)
+ */
+export async function Navegacao({ local }: { local: "topo" | "barra" | "rodape" }) {
   const usuario = await getUsuarioAtual();
   const admin = usuario?.papel === "admin";
   const [naoLidas, aResponder, aConfirmar] = await Promise.all([
@@ -11,15 +17,18 @@ export async function Navegacao({ local }: { local: "topo" | "rodape" }) {
     admin ? contarAgendamentosAConfirmar() : 0,
   ]);
 
-  const itens: ItemNav[] = [
-    // A empresa acessa a própria garagem pelo Painel (espaço na barra é limitado)
+  const principais: ItemNav[] = [
     admin ? { href: "/painel", rotulo: "Painel", icone: "painel" } : { href: "/garagem", rotulo: "Garagem", icone: "garagem" },
     ...(admin ? [{ href: "/gestao", rotulo: "Gestão", icone: "gestao" } satisfies ItemNav] : []),
     { href: "/agendamentos", rotulo: "Agenda", icone: "agenda", contador: aConfirmar },
     { href: "/orcamentos", rotulo: "Orçamentos", icone: "orcamentos", contador: aResponder },
+  ];
+  const pessoais: ItemNav[] = [
     { href: "/notificacoes", rotulo: "Avisos", icone: "avisos", contador: naoLidas },
     { href: "/conta", rotulo: "Conta", icone: "conta" },
   ];
 
-  return <LinksNavegacao itens={itens} local={local} />;
+  if (local === "barra") return <LinksNavegacao itens={admin ? [...principais, { href: "/garagem", rotulo: "Minha garagem", icone: "garagem" }] : principais} local="barra" />;
+  if (local === "topo") return <LinksNavegacao itens={pessoais} local="topo" />;
+  return <LinksNavegacao itens={[...principais, ...pessoais]} local="rodape" />;
 }

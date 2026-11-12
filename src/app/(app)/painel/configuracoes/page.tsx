@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { abasPainel } from "../abas";
 import * as webpush from "web-push";
-import { Voltar } from "@/components/garagem";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
@@ -27,9 +28,10 @@ export default async function ConfiguracoesPage() {
   const segredoCron = lembretes ? null : randomBytes(24).toString("base64url");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <Voltar href="/painel">Painel</Voltar>
-      <h1 className="text-2xl font-bold">Configurações</h1>
+    <div className="space-y-4">
+      <Cabecalho icone="painel" titulo="Painel" abas={abasPainel("configuracoes")} />
+      <div className="mx-auto max-w-2xl space-y-5">
+      <h2 className="text-xl font-bold">Configurações</h2>
 
       <Cartao className="space-y-3">
         <h2 className="font-semibold">🔔 Notificações no celular</h2>
@@ -106,6 +108,7 @@ export default async function ConfiguracoesPage() {
         )}
         <p className="text-xs text-suave">Mesmo sem e-mail ou push, todos os avisos aparecem na aba Avisos do app.</p>
       </Cartao>
+      </div>
     </div>
   );
 }

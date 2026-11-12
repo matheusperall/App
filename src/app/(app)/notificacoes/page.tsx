@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { Bloco } from "@/components/gestao/Bloco";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
 import Link from "next/link";
 import { AtivarNotificacoes } from "@/components/AtivarNotificacoes";
-import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { listarNotificacoes } from "@/lib/dados";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -26,15 +27,10 @@ export default async function NotificacoesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <h1 className="text-2xl font-bold sm:text-3xl">Avisos</h1>
-
-      <Cartao className="space-y-2">
-        <h2 className="font-semibold">🔔 Notificações no celular</h2>
-        <AtivarNotificacoes chavePublica={vapidPublica()} />
-      </Cartao>
-
-      <Cartao className="p-0">
+    <div className="space-y-4">
+      <Cabecalho icone="aviso" titulo="Avisos" />
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+      <Bloco icone="aviso" titulo={`Seus avisos${avisos.length ? ` (${avisos.length})` : ""}`} semEspaco className="lg:order-1">
         {avisos.length === 0 ? (
           <p className="p-5 text-sm text-suave">Nenhum aviso por enquanto. Quando houver novidades sobre seus veículos, elas aparecem aqui.</p>
         ) : (
@@ -64,7 +60,11 @@ export default async function NotificacoesPage() {
             })}
           </ul>
         )}
-      </Cartao>
+      </Bloco>
+      <Bloco icone="aviso" titulo="Notificações no celular" className="lg:order-2">
+        <AtivarNotificacoes chavePublica={vapidPublica()} />
+      </Bloco>
+      </div>
     </div>
   );
 }
