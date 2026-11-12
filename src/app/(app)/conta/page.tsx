@@ -5,27 +5,21 @@ import Link from "next/link";
 import { sair } from "@/app/(auth)/actions";
 import { exigirUsuario } from "@/lib/auth";
 import { FormPerfil } from "./FormPerfil";
-import { FormDocumento } from "@/components/FormDocumento";
-import { obterCnh } from "@/lib/dados";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
 export default async function ContaPage() {
   const usuario = await exigirUsuario();
-  const cnh = await obterCnh(usuario.id);
 
   return (
     <div className="space-y-4">
       <Cabecalho icone="usuario" titulo="Minha conta" />
       <div className="grid items-start gap-4 lg:grid-cols-2">
-      <Bloco icone="usuario" titulo="Dados pessoais">
+      <Bloco icone="usuario" titulo="Dados pessoais" direita={<Link href="/garagem#cnh" className="text-xs font-semibold text-marca-escura">A CNH agora fica na Minha garagem</Link>}>
         <FormPerfil nome={usuario.nome} telefone={usuario.telefone ?? ""} email={usuario.email} />
       </Bloco>
 
       <div className="space-y-4">
-      <Bloco icone="documento" titulo="Minha CNH">
-        <FormDocumento tipo="cnh" atual={cnh} />
-      </Bloco>
 
       <Bloco icone="chave" titulo="Segurança">
         <div className="space-y-3">

@@ -27,6 +27,7 @@ aparecem, mas login e cadastro não funcionam.
    11. `0011_formas_recebimento.sql` — formas de recebimento e taxas por conta (parcelas no crédito)
    12. `0012_faturas_e_lancamentos.sql` — pagamento de fatura com taxas e lançamentos recorrentes/parcelados
    13. `0013_pagamentos_os.sql` — OS paga em vários pagamentos (ou em partes)
+   14. `0014_anexos_documentos.sql` — anexos de documentos (CNH, CRLV-e, apólice e outros)
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

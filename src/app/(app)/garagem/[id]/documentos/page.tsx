@@ -8,8 +8,10 @@ import { Voltar } from "@/components/garagem";
 import { Aviso } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { calendarioIpvaAtual, finalPlaca, proximoLicenciamento, temCalendario } from "@/lib/calendarios";
-import { listarDocumentosVeiculos, obterVeiculo } from "@/lib/dados";
-import { hojeISO, nomeVeiculo } from "@/lib/garagem";
+import { listarAnexos, listarDocumentosVeiculos, obterVeiculo } from "@/lib/dados";
+import { Anexos } from "@/components/Anexos";
+import { Bloco } from "@/components/gestao/Bloco";
+import { hojeISO, nomeVeiculo, pastaFotos } from "@/lib/garagem";
 
 export const metadata: Metadata = { title: "Documentos e vencimentos" };
 
@@ -17,7 +19,7 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
   const [{ id }] = await Promise.all([params, exigirUsuario()]);
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
-  const documentos = await listarDocumentosVeiculos([id]);
+  const [documentos, anexos] = await Promise.all([listarDocumentosVeiculos([id]), listarAnexos({ veiculoId: id })]);
   const hoje = hojeISO();
   const sp = temCalendario(veiculo.uf);
   const final = finalPlaca(veiculo.placa);
@@ -62,6 +64,10 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
         ))}
         <FormDocumento tipo="outro" veiculoId={id} atual={null} novoOutro />
       </div>
+      <Bloco icone="documento" titulo={`Arquivos do veículo${anexos.length ? ` (${anexos.length})` : ""}`}>
+        <p className="mb-3 text-sm text-suave">Guarde aqui o CRLV-e, a apólice do seguro, a guia do IPVA, notas fiscais e outros documentos (PDF ou foto, até 10 MB).</p>
+        <Anexos anexos={anexos} pasta={pastaFotos(veiculo)} veiculoId={id} tipos={["crlv", "seguro", "ipva", "nota_fiscal", "outro"]} />
+      </Bloco>
       </div>
     </div>
   );

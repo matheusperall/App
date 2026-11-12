@@ -5,7 +5,10 @@ import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
 import { apontamentoAberto, hojeISO, ritmoDoVeiculo, somarDias } from "@/lib/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario, primeiroNome } from "@/lib/auth";
-import { listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, urlsDasFotos } from "@/lib/dados";
+import { listarAnexos, listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, obterCnh, urlsDasFotos } from "@/lib/dados";
+import { Anexos } from "@/components/Anexos";
+import { FormDocumento } from "@/components/FormDocumento";
+import { Bloco } from "@/components/gestao/Bloco";
 import { AtivarNotificacoes } from "@/components/AtivarNotificacoes";
 import { vapidPublica } from "@/lib/notificar";
 
@@ -15,11 +18,13 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
   const [usuario, params] = await Promise.all([exigirUsuario(), searchParams]);
   const veiculos = await listarVeiculos(usuario.id);
   const ids = veiculos.map((v) => v.id);
-  const [manutencoes, apontamentos, documentos, fotos] = await Promise.all([
+  const [manutencoes, apontamentos, documentos, fotos, cnh, anexosCnh] = await Promise.all([
     listarManutencoes(ids),
     listarApontamentos(ids),
     listarDocumentosVeiculos(ids),
     urlsDasFotos(veiculos.map((v) => v.foto)),
+    obterCnh(usuario.id),
+    listarAnexos({ donoId: usuario.id }),
   ]);
 
   const alertas = veiculos.map((v) => contarAlertas(manutencoes.filter((m) => m.veiculo_id === v.id), v.km_atual, ritmoDoVeiculo(v)));
@@ -40,7 +45,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
             { rotulo: "Manutenções vencidas", valor: alertas.reduce((t, a) => t + a.vencidas, 0), formato: "numero", cor: alertas.some((a) => a.vencidas) ? "vermelho" : "verde" },
             { rotulo: "Manutenções em breve", valor: alertas.reduce((t, a) => t + a.emBreve, 0), formato: "numero", cor: "amarelo" },
             { rotulo: "Apontamentos abertos", valor: apontamentos.filter(apontamentoAberto).length, formato: "numero", cor: apontamentos.some(apontamentoAberto) ? "amarelo" : "verde" },
-            { rotulo: "Documentos vencendo (30 dias)", valor: documentos.filter((d) => d.vencimento <= somarDias(hoje, 30)).length, formato: "numero", cor: "amarelo" },
+            { rotulo: "Documentos a vencer", valor: documentos.filter((d) => d.vencimento <= somarDias(hoje, 30)).length, formato: "numero", cor: "amarelo" },
           ]}
         />
       )}
@@ -78,6 +83,13 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           ))}
         </div>
       )}
+
+      <Bloco icone="documento" titulo="Minha CNH" className="scroll-mt-28" direita={<span className="text-xs text-suave">Avisamos antes de vencer</span>}>
+        <div id="cnh" className="space-y-3">
+          <FormDocumento tipo="cnh" atual={cnh} />
+          <Anexos anexos={anexosCnh.filter((a) => a.tipo === "cnh")} pasta={usuario.id} tipos={["cnh"]} />
+        </div>
+      </Bloco>
     </div>
   );
 }

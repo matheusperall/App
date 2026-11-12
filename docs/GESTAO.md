@@ -127,4 +127,12 @@ Depois do 0012, rode **`supabase/migrations/0013_pagamentos_os.sql`** do mesmo j
 receber a OS em vários pagamentos e deixar uma parte em aberto. Os pagamentos já feitos antes continuam
 aparecendo (o arquivo copia cada um para a nova lista de pagamentos).
 
+### Atualização: anexos de documentos (arquivo 0014)
+
+Depois do 0013, rode **`supabase/migrations/0014_anexos_documentos.sql`**. Ele cria um local privado para
+guardar PDFs e fotos de documentos (até 10 MB cada) e a lista desses arquivos:
+- **Minha garagem › Minha CNH**: vencimento da CNH e o arquivo da CNH (saiu da tela Conta).
+- **Veículo › Documentos › Arquivos do veículo**: CRLV-e, apólice do seguro, guia do IPVA, notas fiscais e outros.
+Cada cliente só vê os arquivos dele; a empresa vê todos.
+
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.

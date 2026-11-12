@@ -263,6 +263,18 @@ export const TIPOS_DOCUMENTO = {
 } as const;
 export type TipoDocumento = keyof typeof TIPOS_DOCUMENTO;
 
+/** Arquivos anexados (PDF ou foto) */
+export const TIPOS_ANEXO = {
+  cnh: { rotulo: "CNH", icone: "🪪" },
+  crlv: { rotulo: "CRLV-e", icone: "📄" },
+  seguro: { rotulo: "Apólice do seguro", icone: "🛡️" },
+  ipva: { rotulo: "IPVA (guia ou comprovante)", icone: "💰" },
+  nota_fiscal: { rotulo: "Nota fiscal", icone: "🧾" },
+  outro: { rotulo: "Outro documento", icone: "📎" },
+} as const;
+export type TipoAnexo = keyof typeof TIPOS_ANEXO;
+export type Anexo = { id: string; tipo: TipoAnexo; nome: string; tamanho: number | null; tipo_mime: string | null; criado_em: string; url?: string };
+
 export type Documento = {
   id: string;
   dono_id: string | null;
