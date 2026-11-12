@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Dinheiro, Indicador, SeloProduto, Titulo, Vazio } from "@/components/gestao";
+import { Dinheiro, SeloProduto, Vazio } from "@/components/gestao";
+import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarDataHora } from "@/lib/garagem";
@@ -22,14 +23,18 @@ export default async function EstoquePage() {
 
   return (
     <div className="space-y-4">
-      <Titulo pre="Gestão" titulo="Estoque">
-        <Link href="/gestao/estoque/novo" className="botao-primario px-4 py-2.5 text-sm">+ Produto</Link>
-      </Titulo>
+      <Cabecalho icone="estoque" titulo="Estoque" acao={{ href: "/gestao/estoque/novo", rotulo: "Novo produto" }} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <Indicador rotulo="Valor em estoque" valor={<Dinheiro valor={valorEstoque} />} detalhe="pelo custo médio" />
-        <Indicador rotulo="Críticos ou sem estoque" valor={criticos} destaque={criticos > 0} />
-      </div>
+      <ResumoPeriodo
+        titulo="Resumo do estoque"
+        itens={[
+          { rotulo: "Produtos ativos", valor: ativos.length, formato: "numero" },
+          { rotulo: "Valor em estoque", valor: valorEstoque, cor: "verde", dica: "Pelo custo médio" },
+          { rotulo: "Saudáveis", valor: ativos.length - criticos, formato: "numero", cor: "verde" },
+          { rotulo: "Críticos", valor: ativos.filter((p) => situacaoProduto(p).chave === "critico").length, formato: "numero", cor: "amarelo" },
+          { rotulo: "Sem estoque", valor: ativos.filter((p) => situacaoProduto(p).chave === "sem").length, formato: "numero", cor: "vermelho" },
+        ]}
+      />
 
       <Cartao className="p-0">
         {ativos.length === 0 ? (

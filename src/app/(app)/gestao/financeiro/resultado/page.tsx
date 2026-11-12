@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
 import { Dinheiro, NavMes } from "@/components/gestao";
+import { Cabecalho } from "@/components/gestao/Cabecalho";
+import { abasFinanceiro } from "../abas";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { mesAtual, mesValido } from "@/lib/gestao";
@@ -28,9 +29,10 @@ export default async function ResultadoPage({ searchParams }: PageProps<"/gestao
   const pct = (v: number) => (d.receita > 0 ? ` · ${Math.round((v / d.receita) * 100)}% da receita` : "");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Voltar href={`/gestao/financeiro?mes=${mes}`}>Financeiro</Voltar>
-      <h1 className="text-2xl font-bold">Resultado do mês (DRE)</h1>
+    <div className="space-y-4">
+      <Cabecalho icone="financeiro" titulo="Financeiro" abas={abasFinanceiro("resultado", mes)} acao={{ href: "/gestao/financeiro/novo", rotulo: "Adicionar" }} />
+      <div className="mx-auto max-w-2xl space-y-4">
+      <h2 className="text-xl font-bold">Resultado do mês (DRE)</h2>
       <p className="text-sm text-suave">
         Por competência: conta o serviço no mês em que foi feito (OS pronta ou entregue), mesmo que o dinheiro entre depois.
       </p>
@@ -57,6 +59,7 @@ export default async function ResultadoPage({ searchParams }: PageProps<"/gestao
           Compras de produtos no mês: <Dinheiro valor={d.comprasProdutos} />. Elas não entram como despesa porque viram estoque — o custo aparece na linha “Produtos consumidos” quando o produto é usado.
         </p>
       )}
+      </div>
     </div>
   );
 }

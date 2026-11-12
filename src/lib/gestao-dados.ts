@@ -367,6 +367,12 @@ export type ResumoGestao = {
   aPagar7dias: Lancamento[];
   estoqueCritico: Produto[];
   porDia: { dia: string; valor: number }[];
+  /** Recebido no mês por forma (OS) e por faturas de lojistas */
+  porForma: { chave: string; valor: number }[];
+  entradasHoje: number;
+  saidasHoje: number;
+  entreguesHoje: number;
+  qtdOSMes: number;
 };
 
 export async function resumoGestao(mes: string): Promise<ResumoGestao> {
@@ -403,7 +409,19 @@ export async function resumoGestao(mes: string): Promise<ResumoGestao> {
   const porDia: { dia: string; valor: number }[] = [];
   for (let d = inicio; d <= fim; d = somarDias(d, 1)) porDia.push({ dia: d, valor: arred(dias.get(d) ?? 0) });
 
+  const formas = new Map<string, number>();
+  for (const o of osMes) if (o.pago && o.forma_pagamento && (o.pago_em ?? "").startsWith(mes) && !o.fatura_id) formas.set(o.forma_pagamento, (formas.get(o.forma_pagamento) ?? 0) + o.total);
+  const recebidoFaturas = lancMes.filter((l) => l.tipo === "entrada" && l.pago && l.fatura_id && (l.pago_em ?? l.data).startsWith(mes)).reduce((t, l) => t + l.valor, 0);
+  const porForma = (["pix", "debito", "credito", "dinheiro", "transferencia"] as const).map((chave) => ({ chave: chave as string, valor: arred(formas.get(chave) ?? 0) }));
+  porForma.push({ chave: "faturas", valor: arred(recebidoFaturas) });
+  const hojePagos = lancMes.filter((l) => l.pago && (l.pago_em ?? l.data) === hoje);
+
   return {
+    porForma,
+    entradasHoje: arred(hojePagos.filter((l) => l.tipo === "entrada").reduce((t, l) => t + l.valor, 0)),
+    saidasHoje: arred(hojePagos.filter((l) => l.tipo === "saida").reduce((t, l) => t + l.valor, 0)),
+    entreguesHoje: osMes.filter((o) => o.status === "entregue" && o.entregue_em && hojeISO(new Date(o.entregue_em)) === hoje).length,
+    qtdOSMes: osMes.filter((o) => o.status !== "cancelada").length,
     faturadoMes,
     recebidoMes,
     aReceber: { avulsos, lojistasSemFatura, faturasAbertas, total: arred(avulsos + lojistasSemFatura + faturasAbertas) },

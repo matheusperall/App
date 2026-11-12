@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Dinheiro, SeloFatura, Titulo, Vazio } from "@/components/gestao";
+import { Dinheiro, SeloFatura, Vazio } from "@/components/gestao";
+import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, hojeISO, somarDias } from "@/lib/garagem";
@@ -36,7 +37,16 @@ export default async function FaturasPage({ searchParams }: PageProps<"/gestao/f
 
   return (
     <div className="space-y-5">
-      <Titulo pre="Gestão" titulo="Faturas de lojistas" />
+      <Cabecalho icone="faturas" titulo="Faturas de lojistas" />
+      <ResumoPeriodo
+        titulo="Resumo"
+        itens={[
+          { rotulo: `A faturar (${aFaturar.length} OS)`, valor: aFaturar.reduce((t, o) => t + o.total, 0), cor: "amarelo" },
+          { rotulo: `Em aberto (${faturas.filter(faturaEmAberto).length})`, valor: faturas.filter(faturaEmAberto).reduce((t, f) => t + f.total - f.valor_pago, 0), cor: "amarelo" },
+          { rotulo: `Vencidas (${faturas.filter((f) => faturaEmAberto(f) && f.vencimento < hoje).length})`, valor: faturas.filter((f) => faturaEmAberto(f) && f.vencimento < hoje).reduce((t, f) => t + f.total - f.valor_pago, 0), cor: "vermelho" },
+          { rotulo: "Recebido em faturas", valor: faturas.reduce((t, f) => t + f.valor_pago, 0), cor: "verde" },
+        ]}
+      />
 
       <Cartao className="space-y-4">
         <div>
