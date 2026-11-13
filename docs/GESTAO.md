@@ -56,6 +56,9 @@ com textos prontos. Escolha o tipo, confira (dá para mudar o texto), toque em *
 - OS: **Ordem de serviço**, **Carro pronto** (quando fica pronta), **Cobrança** (quando ficou valor em aberto) e
   **Comprovante de pagamento** (depois de receber). A mais útil para a situação da OS já vem escolhida.
 - Orçamento: **Orçamento** com os itens, total, prazo e validade (e **Combinar a data** depois de aprovado).
+  Ao montar o orçamento, a busca **Buscar serviço cadastrado** coloca o serviço com o preço do catálogo.
+  O botão **Salvar e enviar ao cliente** avisa o cliente no app e já mostra a mensagem do WhatsApp pronta para mandar;
+  num orçamento já enviado, **Salvar alterações** só guarda, sem avisar de novo.
 - Agendamento: **Lembrete do agendamento** com dia e horário.
 - O nome do cliente, a marca, o modelo e a placa do carro entram sozinhos.
 - **Editar modelo** (lápis no quadro) abre *Gestão › Mensagens de WhatsApp*: ali você muda o texto de cada mensagem,

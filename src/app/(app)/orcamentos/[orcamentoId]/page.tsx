@@ -10,7 +10,7 @@ import { exigirUsuario } from "@/lib/auth";
 import { obterOrcamento, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
 import { mensagensOrcamento } from "@/lib/mensagens";
-import { obterModelosMensagens, osPorOrigem } from "@/lib/gestao-dados";
+import { listarCatalogo, obterModelosMensagens, osPorOrigem } from "@/lib/gestao-dados";
 import { CATEGORIAS, formatarData, formatarDataHora, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
 import { excluirOrcamento } from "../actions";
 import { Decisao } from "./Decisao";
@@ -30,6 +30,8 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
   const osLigada = admin && o.situacao === "aceito" ? (await osPorOrigem("orcamento_id", [o.id]))[o.id] : undefined;
   // Mensagens prontas para o cliente, com o nome e o carro (o contato vem da conta do app ou da ficha da loja)
   const comMensagens = admin && respondido && o.situacao !== "cancelado";
+  // Serviços cadastrados, para montar os itens ao responder ou editar
+  const catalogo = admin ? (await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco }) => ({ id, nome, preco })) : [];
   const [carro, modelos] = comMensagens ? await Promise.all([obterVeiculo(o.veiculo_id), obterModelosMensagens()]) : [null, {}];
   const contato = carro?.dono ?? o.veiculo?.dono ?? null;
   const mensagens = comMensagens
@@ -41,7 +43,14 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
       {admin && <MenuGestao />}
       <Voltar href="/orcamentos">Orçamentos</Voltar>
       {sp.enviado && <Aviso tipo="sucesso">Pedido enviado! Avisaremos você assim que o orçamento estiver pronto.</Aviso>}
-      {sp.respondido && <Aviso tipo="sucesso">Orçamento enviado. O cliente foi avisado.</Aviso>}
+      {sp.salvo && <Aviso tipo="sucesso">Alterações salvas. O cliente não foi avisado de novo.</Aviso>}
+      {/* Depois de "Salvar e enviar": a mensagem de WhatsApp já pronta, em destaque */}
+      {(sp.enviar || sp.respondido) && (
+        <div className="space-y-3">
+          <Aviso tipo="sucesso">Orçamento salvo e enviado: o cliente foi avisado no app. Agora mande também pelo WhatsApp 👇</Aviso>
+          {mensagens.length > 0 && <MensagensWhatsApp mensagens={mensagens.filter((m) => m.chave === "orcamento").concat(mensagens.filter((m) => m.chave !== "orcamento"))} telefone={contato?.telefone} />}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
@@ -138,7 +147,7 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
         {/* Empresa responde / atualiza */}
         {admin && (
           <>
-            {mensagens.length > 0 && <MensagensWhatsApp mensagens={mensagens} telefone={contato?.telefone} />}
+            {mensagens.length > 0 && !(sp.enviar || sp.respondido) && <MensagensWhatsApp mensagens={mensagens} telefone={contato?.telefone} />}
             {(o.situacao === "solicitado" || o.situacao === "respondido" || vencido) && (
               <Cartao className="space-y-3">
                 <h2 className="font-semibold">{respondido ? "Editar orçamento" : "Responder com valores"}</h2>
@@ -148,6 +157,8 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
                   prazo={o.prazo_dias}
                   observacoes={o.observacoes}
                   validadePadrao={o.validade && !vencido ? o.validade : somarDias(hojeISO(), 15)}
+                  catalogo={catalogo}
+                  jaEnviado={o.situacao === "respondido" && !vencido}
                 />
               </Cartao>
             )}

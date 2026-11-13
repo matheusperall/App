@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
-import { CampoEscolha, type OpcaoBusca } from "@/components/ListaBusca";
+import { CampoEscolha, ListaBusca, type OpcaoBusca } from "@/components/ListaBusca";
 import { CATEGORIAS, formatarValor, type Categoria, type ItemOrcamento } from "@/lib/garagem";
 import { responderOrcamento } from "../actions";
 
@@ -25,6 +25,8 @@ export function FormResposta({
   observacoes,
   novo = false,
   veiculos,
+  catalogo = [],
+  jaEnviado = false,
 }: {
   id?: string;
   veiculoId?: string;
@@ -35,6 +37,10 @@ export function FormResposta({
   novo?: boolean;
   /** Novo orçamento sem veículo definido: a empresa escolhe o veículo do cliente aqui */
   veiculos?: OpcaoBusca[];
+  /** Serviços cadastrados, para montar os itens com o preço do catálogo */
+  catalogo?: { id: string; nome: string; preco: number }[];
+  /** O orçamento já foi enviado ao cliente antes (aí dá para só salvar alterações, sem avisar de novo) */
+  jaEnviado?: boolean;
 }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(responderOrcamento, {});
   const [linhas, setLinhas] = useState<Linha[]>(
@@ -45,6 +51,22 @@ export function FormResposta({
   const [categoria, setCategoria] = useState<Categoria>("estetica");
   const [veiculoEscolhido, setVeiculoEscolhido] = useState("");
   const total = linhas.reduce((s, l) => s + paraNumero(l.valor), 0);
+  const precoFmt = (v: number) => v.toFixed(2).replace(".", ",");
+  /** Coloca um serviço do catálogo: preenche a primeira linha vazia ou cria uma nova */
+  function adicionarDoCatalogo(idServico: string) {
+    const sv = catalogo.find((c) => c.id === idServico);
+    if (!sv) return;
+    setLinhas((ls) => {
+      const vazia = ls.find((l) => !l.descricao.trim() && !l.valor.trim());
+      if (vazia) return ls.map((l) => (l === vazia ? { ...l, descricao: sv.nome, valor: precoFmt(sv.preco) } : l));
+      return [...ls, { chave: Math.max(0, ...ls.map((x) => x.chave)) + 1, descricao: sv.nome, valor: precoFmt(sv.preco) }];
+    });
+  }
+  /** Ao escrever o nome exato de um serviço cadastrado, já traz o preço (se o valor estiver vazio) */
+  function mudarDescricao(chave: number, v: string) {
+    const sv = catalogo.find((c) => c.nome.toLowerCase() === v.trim().toLowerCase());
+    setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, descricao: v, valor: sv && !l.valor.trim() ? precoFmt(sv.preco) : l.valor } : l)));
+  }
   const atualizar = (chave: number, campo: "descricao" | "valor", v: string) =>
     setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, [campo]: v } : l)));
 
@@ -81,12 +103,21 @@ export function FormResposta({
 
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm font-medium">Itens do orçamento<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></legend>
+        {catalogo.length > 0 && (
+          <ListaBusca
+            opcoes={catalogo.map((c) => ({ id: c.id, titulo: c.nome, extra: <span className="tabular-nums text-suave">{formatarValor(c.preco)}</span> }))}
+            aoEscolher={adicionarDoCatalogo}
+            placeholder="Buscar serviço cadastrado (ex.: polimento)"
+            rotuloAcessivel="Buscar serviço cadastrado para o orçamento"
+            vazio="Nenhum serviço com esse nome. Escreva o item à mão abaixo."
+          />
+        )}
         {linhas.map((l, n) => (
           <div key={l.chave} className="flex gap-2">
             <input
               name="item_descricao"
               value={l.descricao}
-              onChange={(e) => atualizar(l.chave, "descricao", e.target.value)}
+              onChange={(e) => mudarDescricao(l.chave, e.target.value)}
               className="campo min-w-0 flex-1 py-2.5"
               placeholder={n === 0 ? "Ex.: Polimento técnico 3 etapas" : "Serviço ou peça"}
               aria-label={`Descrição do item ${n + 1}`}
@@ -132,7 +163,20 @@ export function FormResposta({
         <textarea name="observacoes" rows={3} defaultValue={observacoes ?? ""} className="campo" />
       </Campo>
 
-      <BotaoEnviar pendente="Enviando…">{novo ? "Enviar orçamento ao cliente" : id && itens.length ? "Atualizar orçamento" : "Enviar resposta ao cliente"}</BotaoEnviar>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        {jaEnviado && (
+          <BotaoEnviar pendente="Salvando…" className="botao-contorno sm:min-w-56" name="enviar" value="nao">
+            Salvar alterações
+          </BotaoEnviar>
+        )}
+        <BotaoEnviar pendente="Salvando…" className="botao-primario sm:min-w-64" name="enviar" value="sim">
+          Salvar e enviar ao cliente
+        </BotaoEnviar>
+      </div>
+      <p className="-mt-2 text-right text-xs text-suave">
+        Ao enviar, o cliente é avisado no app e a mensagem de WhatsApp fica pronta para você mandar.
+        {jaEnviado ? " “Salvar alterações” só guarda, sem avisar de novo." : ""}
+      </p>
     </form>
   );
 }

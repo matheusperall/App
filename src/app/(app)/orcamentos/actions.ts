@@ -106,6 +106,8 @@ export async function responderOrcamento(_: EstadoForm, form: FormData): Promise
   if (!dataValida(validade)) return { erro: "Informe até quando o orçamento é válido." };
   if (validade < hojeISO()) return { erro: "A validade não pode estar no passado." };
 
+  // "Salvar alterações" só guarda (sem avisar de novo); "Salvar e enviar" avisa o cliente
+  const enviar = texto(form, "enviar") !== "nao";
   const resposta = {
     itens,
     valor_total: total,
@@ -113,7 +115,7 @@ export async function responderOrcamento(_: EstadoForm, form: FormData): Promise
     validade,
     observacoes: texto(form, "observacoes").slice(0, 2000) || null,
     situacao: "respondido",
-    respondido_em: new Date().toISOString(),
+    ...(enviar ? { respondido_em: new Date().toISOString() } : {}),
     motivo_recusa: null,
     decidido_em: null,
   };
@@ -136,7 +138,7 @@ export async function responderOrcamento(_: EstadoForm, form: FormData): Promise
     id = data.id;
   }
 
-  const o = await orcamentoBasico(id);
+  const o = enviar ? await orcamentoBasico(id) : null;
   if (o?.veiculo) {
     await notificar(
       [o.veiculo.dono_id],
@@ -150,7 +152,7 @@ export async function responderOrcamento(_: EstadoForm, form: FormData): Promise
   }
 
   revalidatePath(`/orcamentos/${id}`);
-  redirect(`/orcamentos/${id}?respondido=1`);
+  redirect(`/orcamentos/${id}?${enviar ? "enviar=1" : "salvo=1"}`);
 }
 
 /** Cliente aprova ou recusa; ou cancela o pedido antes da resposta. */
