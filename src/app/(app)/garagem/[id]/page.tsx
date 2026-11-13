@@ -66,14 +66,14 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
 
       <div className="overflow-hidden rounded-2xl border border-borda bg-white sm:grid sm:grid-cols-[12rem_1fr] lg:grid-cols-[15rem_1fr] [&>*]:min-w-0">
         {/* Computador/tablet: foto numa coluna estreita ao lado das informações */}
-        <div className="hidden sm:block">
-          <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="h-full min-h-40 w-full" />
+        <div className="hidden p-4 pr-0 sm:block">
+          <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="aspect-square w-full rounded-xl" />
         </div>
         <div className="space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
             {/* Celular: miniatura ao lado do nome */}
             <div className="shrink-0 overflow-hidden rounded-xl sm:hidden">
-              <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="h-16 w-20" />
+              <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="h-16 w-16" />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold sm:text-2xl">{nomeVeiculo(veiculo)}</h1>

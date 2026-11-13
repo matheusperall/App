@@ -7,11 +7,12 @@ import { Cabecalho } from "@/components/gestao/Cabecalho";
 import { Icone } from "@/components/gestao/Icones";
 import { abasPainel } from "./abas";
 import { exigirAdmin } from "@/lib/auth";
-import { agendaEmpresa, caixaDeEntrada, contarOrcamentosAResponder, contarPainel, vencimentosProximos, type Vencimento } from "@/lib/dados";
+import { agendaEmpresa, caixaDeEntrada, contarOrcamentosAResponder, contarPainel, listarAgendamentos, listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarOrcamentos, obterVeiculo, vencimentosProximos, type Vencimento } from "@/lib/dados";
+import { documentosAutomaticos } from "@/lib/calendarios";
 import { ItemAgendamento } from "@/components/agendamento";
-import { partesBrasilia } from "@/lib/agenda";
+import { formatarQuando, partesBrasilia } from "@/lib/agenda";
 import { googleConfigurado } from "@/lib/google-agenda";
-import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo, normalizarPlaca } from "@/lib/garagem";
+import { SITUACOES_APONTAMENTO, TIPOS_DOCUMENTO, apontamentoAberto, formatarData, formatarDataHora, hojeISO, nomeVeiculo, normalizarPlaca, orcamentoVencido, ritmoDoVeiculo, rotuloManutencao, situacaoDocumento, situacaoManutencao } from "@/lib/garagem";
 import { combina, type FichaComResumo, type VeiculoResumo } from "@/lib/gestao";
 import { listarFichas } from "@/lib/gestao-dados";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
@@ -112,7 +113,7 @@ export default async function PainelPage({ searchParams }: PageProps<"/painel">)
 }
 
 type Resultado =
-  | { tipo: "veiculo"; itens: { veiculo: VeiculoResumo; ficha: FichaComResumo }[] }
+  | { tipo: "veiculo"; itens: { veiculo: VeiculoResumo; ficha: FichaComResumo; previa: Previa }[] }
   | { tipo: "cliente"; itens: FichaComResumo[] };
 
 async function buscarAtendimento(busca: string, tipo: "veiculo" | "cliente"): Promise<Resultado> {
@@ -122,7 +123,99 @@ async function buscarAtendimento(busca: string, tipo: "veiculo" | "cliente"): Pr
     .flatMap((ficha) => ficha.veiculos.map((veiculo) => ({ veiculo, ficha })))
     .filter(({ veiculo }) => (placa.length >= 2 && veiculo.placa.includes(placa)) || combina(`${veiculo.marca} ${veiculo.modelo} ${veiculo.apelido ?? ""}`, busca))
     .slice(0, 20);
-  return { tipo, itens };
+  const previas = await previasDosVeiculos(itens.map((i) => i.veiculo.id));
+  return { tipo, itens: itens.map((i) => ({ ...i, previa: previas[i.veiculo.id] ?? PREVIA_VAZIA })) };
+}
+
+/** Resumo do que está pendente em cada veículo (para a prévia da busca). */
+type Previa = {
+  apontamentos: number;
+  orcamentos: { id: string; numero: number; aResponder: boolean }[];
+  aConfirmar: { id: string }[];
+  proximoAgendamento: { id: string; inicio: string; servico: string } | null;
+  vencidos: number;
+  emBreve: number;
+  proximoVencimento: { titulo: string; data: string } | null;
+};
+const PREVIA_VAZIA: Previa = { apontamentos: 0, orcamentos: [], aConfirmar: [], proximoAgendamento: null, vencidos: 0, emBreve: 0, proximoVencimento: null };
+
+async function previasDosVeiculos(ids: string[]): Promise<Record<string, Previa>> {
+  if (ids.length === 0) return {};
+  const hoje = hojeISO();
+  const [apontamentos, orcamentos, agendamentos, manutencoes, documentos, veiculos] = await Promise.all([
+    listarApontamentos(ids),
+    listarOrcamentos(ids),
+    listarAgendamentos(ids),
+    listarManutencoes(ids),
+    listarDocumentosVeiculos(ids),
+    Promise.all(ids.map((id) => obterVeiculo(id))),
+  ]);
+  const agora = new Date().toISOString();
+  const mapa: Record<string, Previa> = {};
+  for (const v of veiculos) {
+    if (!v) continue;
+    const ritmo = ritmoDoVeiculo(v);
+    // Lembretes: manutenções (data/km) e documentos (inclui IPVA e licenciamento pelo calendário)
+    const itens: { titulo: string; data: string | null; situacao: string }[] = [
+      ...manutencoes
+        .filter((m) => m.veiculo_id === v.id)
+        .map((m) => ({ titulo: rotuloManutencao(m.tipo), data: m.proxima_data, situacao: situacaoManutencao(m, v.km_atual, hoje, ritmo).situacao })),
+      ...[...documentosAutomaticos(v, documentos, hoje), ...documentos.filter((d) => d.veiculo_id === v.id)].map((d) => ({
+        titulo: d.tipo === "outro" && d.descricao ? d.descricao : TIPOS_DOCUMENTO[d.tipo].rotulo,
+        data: d.vencimento,
+        situacao: situacaoDocumento(d.vencimento, hoje).situacao,
+      })),
+    ];
+    const alerta = itens.filter((i) => i.situacao === "vencida" || i.situacao === "em_breve").sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999"));
+    const proxAg = agendamentos
+      .filter((a) => a.veiculo_id === v.id && a.situacao === "confirmado" && a.inicio && a.inicio >= agora)
+      .sort((a, b) => (a.inicio ?? "").localeCompare(b.inicio ?? ""))[0];
+    mapa[v.id] = {
+      apontamentos: apontamentos.filter((a) => a.veiculo_id === v.id && apontamentoAberto(a)).length,
+      orcamentos: orcamentos
+        .filter((o) => o.veiculo_id === v.id && (o.situacao === "solicitado" || o.situacao === "respondido") && !orcamentoVencido(o))
+        .map((o) => ({ id: o.id, numero: o.numero, aResponder: o.situacao === "solicitado" })),
+      aConfirmar: agendamentos.filter((a) => a.veiculo_id === v.id && a.situacao === "solicitado").map((a) => ({ id: a.id })),
+      proximoAgendamento: proxAg ? { id: proxAg.id, inicio: proxAg.inicio!, servico: proxAg.servico } : null,
+      vencidos: itens.filter((i) => i.situacao === "vencida").length,
+      emBreve: itens.filter((i) => i.situacao === "em_breve").length,
+      proximoVencimento: alerta[0] ? { titulo: alerta[0].titulo, data: alerta[0].data ?? "" } : null,
+    };
+  }
+  return mapa;
+}
+
+function PreviaVeiculo({ p, veiculoId }: { p: Previa; veiculoId: string }) {
+  const chip = "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold";
+  const nada = !p.apontamentos && !p.orcamentos.length && !p.aConfirmar.length && !p.proximoAgendamento && !p.vencidos && !p.emBreve;
+  if (nada) return <p className="mt-2 text-xs font-semibold text-sucesso">✓ Nada pendente</p>;
+  const aResponder = p.orcamentos.filter((o) => o.aResponder).length;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {p.apontamentos > 0 && (
+        <Link href={`/garagem/${veiculoId}`} className={`${chip} bg-tinta text-white`}>📍 {p.apontamentos} {p.apontamentos === 1 ? "apontamento" : "apontamentos"}</Link>
+      )}
+      {p.orcamentos.length > 0 && (
+        <Link href={`/orcamentos/${p.orcamentos[0].id}`} className={`${chip} bg-marca-clara text-marca-escura`}>
+          🧾 {p.orcamentos.length === 1 ? `Orçamento #${p.orcamentos[0].numero}` : `${p.orcamentos.length} orçamentos`} {aResponder ? "a responder" : "aguardando cliente"}
+        </Link>
+      )}
+      {p.aConfirmar.length > 0 && (
+        <Link href={`/agendamentos/${p.aConfirmar[0].id}`} className={`${chip} bg-alerta-claro text-[#8a5a00]`}>📅 {p.aConfirmar.length === 1 ? "Agendamento a confirmar" : `${p.aConfirmar.length} agendamentos a confirmar`}</Link>
+      )}
+      {p.proximoAgendamento && (
+        <Link href={`/agendamentos/${p.proximoAgendamento.id}`} className={`${chip} bg-sucesso-claro text-sucesso`}>📅 {p.proximoAgendamento.servico} · {formatarQuando(p.proximoAgendamento.inicio)}</Link>
+      )}
+      {p.vencidos > 0 && (
+        <Link href={`/garagem/${veiculoId}/documentos`} className={`${chip} bg-perigo-claro text-perigo`}>⏰ {p.vencidos} {p.vencidos === 1 ? "vencido" : "vencidos"}</Link>
+      )}
+      {p.emBreve > 0 && (
+        <Link href={`/garagem/${veiculoId}`} className={`${chip} bg-alerta-claro text-[#8a5a00]`}>
+          ⏰ {p.emBreve === 1 && p.proximoVencimento ? `${p.proximoVencimento.titulo}${p.proximoVencimento.data ? ` · ${formatarData(p.proximoVencimento.data)}` : ""}` : `${p.emBreve} vencem em breve`}
+        </Link>
+      )}
+    </div>
+  );
 }
 
 function ResultadoBusca({ resultado, busca }: { resultado: Resultado; busca: string }) {
@@ -139,16 +232,19 @@ function ResultadoBusca({ resultado, busca }: { resultado: Resultado; busca: str
   return (
     <ul className="mt-3 divide-y divide-borda overflow-hidden rounded-xl border border-borda">
       {resultado.tipo === "veiculo"
-        ? resultado.itens.map(({ veiculo, ficha }) => (
-            <li key={veiculo.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <Link href={`/garagem/${veiculo.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
-                <span className="shrink-0"><Placa placa={veiculo.placa} tamanho="sm" /></span>
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{nomeVeiculo(veiculo)}{veiculo.ano ? ` · ${veiculo.ano}` : ""}</span>
-                  <span className="block truncate text-sm text-suave">{ficha.nome}{ficha.telefone ? ` · ${ficha.telefone}` : ""}</span>
-                </span>
-              </Link>
-              <Link href={`/gestao/clientes/${ficha.id}`} className="shrink-0 text-xs font-semibold text-marca-escura">Ficha</Link>
+        ? resultado.itens.map(({ veiculo, ficha, previa }) => (
+            <li key={veiculo.id} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <Link href={`/garagem/${veiculo.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
+                  <span className="shrink-0"><Placa placa={veiculo.placa} tamanho="sm" /></span>
+                  <span className="min-w-0">
+                    <span className="line-clamp-2 block font-medium">{nomeVeiculo(veiculo)}{veiculo.ano ? ` · ${veiculo.ano}` : ""}</span>
+                    <span className="line-clamp-2 block text-sm text-suave">{ficha.nome}{ficha.telefone ? ` · ${ficha.telefone}` : ""}</span>
+                  </span>
+                </Link>
+                <Link href={`/gestao/clientes/${ficha.id}`} className="shrink-0 text-xs font-semibold text-marca-escura">Ficha</Link>
+              </div>
+              <PreviaVeiculo p={previa} veiculoId={veiculo.id} />
             </li>
           ))
         : resultado.itens.map((f) => (
