@@ -32,7 +32,7 @@ export default async function FaturaPage({ params, searchParams }: PageProps<"/g
   const extrato = extratoFaturaWhatsApp(f, itens);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Voltar href="/gestao/faturas">Faturas</Voltar>
       {sp.nova && <Aviso tipo="sucesso">Fatura gerada! Copie o extrato e envie ao lojista.</Aviso>}
 
@@ -55,64 +55,70 @@ export default async function FaturaPage({ params, searchParams }: PageProps<"/g
         {f.observacoes && <p className="text-sm">{f.observacoes}</p>}
       </Cartao>
 
-      <Cartao className="p-0">
-        <h2 className="px-5 pt-5 font-semibold">Extrato por veículo</h2>
-        {[...porVeiculo].map(([veiculo, lista]) => (
-          <div key={veiculo} className="mt-3 border-t border-borda">
-            <div className="flex justify-between bg-fundo px-5 py-2 text-sm font-semibold">
-              <span>{veiculo} {lista[0].placa && lista[0].veiculo}</span>
-              <Dinheiro valor={arred(lista.reduce((t, i) => t + i.valor, 0))} />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+        <Cartao className="p-0">
+          <h2 className="px-5 pt-5 font-semibold">Extrato por veículo</h2>
+          {[...porVeiculo].map(([veiculo, lista]) => (
+            <div key={veiculo} className="mt-3 border-t border-borda">
+              <div className="flex justify-between bg-fundo px-5 py-2 text-sm font-semibold">
+                <span>{veiculo} {lista[0].placa && lista[0].veiculo}</span>
+                <Dinheiro valor={arred(lista.reduce((t, i) => t + i.valor, 0))} />
+              </div>
+              <ul className="divide-y divide-borda text-sm">
+                {lista.map((i) => (
+                  <li key={i.id} className="flex justify-between gap-3 px-5 py-2.5">
+                    <span className="min-w-0">
+                      {formatarData(i.data)} · {i.os_id ? <Link href={`/gestao/os/${i.os_id}`} className="hover:underline">{i.servicos}</Link> : i.servicos}
+                    </span>
+                    <Dinheiro valor={i.valor} />
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="divide-y divide-borda text-sm">
-              {lista.map((i) => (
-                <li key={i.id} className="flex justify-between gap-3 px-5 py-2.5">
-                  <span className="min-w-0">
-                    {formatarData(i.data)} · {i.os_id ? <Link href={`/gestao/os/${i.os_id}`} className="hover:underline">{i.servicos}</Link> : i.servicos}
-                  </span>
-                  <Dinheiro valor={i.valor} />
+          ))}
+        </Cartao>
+        {pagamentos.length > 0 && (
+          <Cartao className="p-0">
+            <h2 className="px-5 pt-5 font-semibold">Pagamentos</h2>
+            <ul className="mt-2 divide-y divide-borda text-sm">
+              {pagamentos.map((p) => (
+                <li key={p.id} className="flex justify-between gap-3 px-5 py-2.5">
+                  <span>{formatarData(p.data)} · {p.forma ? rotuloForma(p.forma, p.parcelas) : "—"} · {nomeConta.get(p.conta_id ?? "") ?? "—"}{p.taxa_valor ? <> · taxa <Dinheiro valor={p.taxa_valor} /></> : null}</span>
+                  <Dinheiro valor={p.valor} />
                 </li>
               ))}
             </ul>
-          </div>
-        ))}
-      </Cartao>
+          </Cartao>
+        )}
 
-      {pagamentos.length > 0 && (
-        <Cartao className="p-0">
-          <h2 className="px-5 pt-5 font-semibold">Pagamentos</h2>
-          <ul className="mt-2 divide-y divide-borda text-sm">
-            {pagamentos.map((p) => (
-              <li key={p.id} className="flex justify-between gap-3 px-5 py-2.5">
-                <span>{formatarData(p.data)} · {p.forma ? rotuloForma(p.forma, p.parcelas) : "—"} · {nomeConta.get(p.conta_id ?? "") ?? "—"}{p.taxa_valor ? <> · taxa <Dinheiro valor={p.taxa_valor} /></> : null}</span>
-                <Dinheiro valor={p.valor} />
-              </li>
-            ))}
-          </ul>
-        </Cartao>
-      )}
+        </div>
+        <div className="min-w-0 space-y-4">
+        {faturaEmAberto(f) && (
+          <Cartao className="space-y-3">
+            <h2 className="font-semibold">Registrar pagamento</h2>
+            <FormPagarFatura faturaId={f.id} saldo={saldo} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
+          </Cartao>
+        )}
 
-      {faturaEmAberto(f) && (
         <Cartao className="space-y-3">
-          <h2 className="font-semibold">Registrar pagamento</h2>
-          <FormPagarFatura faturaId={f.id} saldo={saldo} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} />
+          <h2 className="font-semibold">Enviar ao lojista</h2>
+          <CopiarWhatsApp texto={extrato} rotulo="Copiar extrato" link={f.cliente?.telefone ? linkWhatsApp(f.cliente.telefone, extrato) : undefined} />
         </Cartao>
-      )}
+        {faturaEmAberto(f) && f.valor_pago === 0 && (
+          <FormAcao
+            acao={cancelarFatura}
+            campos={{ id: f.id }}
+            botao="Cancelar fatura"
+            pendente="Cancelando…"
+            classeBotao="botao w-full border border-perigo/30 text-perigo hover:bg-perigo-claro"
+            confirmar="Cancelar esta fatura? As OS voltam para a lista de “a faturar”."
+          />
+        )}
+        </div>
+      </div>
 
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Enviar ao lojista</h2>
-        <CopiarWhatsApp texto={extrato} rotulo="Copiar extrato" link={f.cliente?.telefone ? linkWhatsApp(f.cliente.telefone, extrato) : undefined} />
-      </Cartao>
 
-      {faturaEmAberto(f) && f.valor_pago === 0 && (
-        <FormAcao
-          acao={cancelarFatura}
-          campos={{ id: f.id }}
-          botao="Cancelar fatura"
-          pendente="Cancelando…"
-          classeBotao="botao w-full border border-perigo/30 text-perigo hover:bg-perigo-claro"
-          confirmar="Cancelar esta fatura? As OS voltam para a lista de “a faturar”."
-        />
-      )}
     </div>
   );
 }

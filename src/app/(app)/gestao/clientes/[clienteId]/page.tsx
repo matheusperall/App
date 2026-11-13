@@ -27,7 +27,7 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
   const emAberto = arred(os.filter((o) => concluida(o.status) && !o.pago).reduce((t, o) => t + faltaReceber(o), 0));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="space-y-4">
       <Voltar href="/gestao/clientes">Clientes</Voltar>
       {sp.novo && <Aviso tipo="sucesso">Cliente cadastrado! Agora você já pode abrir uma OS para ele.</Aviso>}
       {sp.aviso === "sem-email" && <Aviso tipo="alerta">Para enviar o convite, informe o e-mail do cliente abaixo.</Aviso>}
@@ -59,18 +59,9 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
         <Indicador compacto rotulo="Em aberto" valor={<Dinheiro valor={emAberto} />} destaque={emAberto > 0} />
       </div>
 
-      {!f.perfil_id && (
-        <Cartao className="space-y-2">
-          <h2 className="font-semibold">Dar acesso ao app</h2>
-          <p className="text-sm text-suave">O cliente recebe um e-mail para criar a senha e passa a ver os veículos e o histórico desta ficha na garagem digital. Nada é duplicado.</p>
-          <FormAcao acao={convidarFicha} campos={{ id: f.id }} botao="Enviar convite" pendente="Enviando…" classeBotao="botao-escuro w-full">
-            <Campo rotulo="E-mail do cliente">
-              <input name="email" type="email" defaultValue={f.email ?? ""} required className="campo" />
-            </Campo>
-          </FormAcao>
-        </Cartao>
-      )}
 
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Veículos</h2>
         <Link href={`/garagem/novo?cliente=${f.id}`} className="botao-contorno px-4 py-2 text-sm">+ Veículo</Link>
@@ -119,12 +110,27 @@ export default async function FichaPage({ params, searchParams }: PageProps<"/ge
         {os.length === 0 ? <Vazio>Nenhuma OS ainda.</Vazio> : <ul className="mt-2 divide-y divide-borda">{os.map((o) => <ItemOS key={o.id} os={o} comData />)}</ul>}
       </Cartao>
 
+        </div>
+        <div className="min-w-0 space-y-4">
+      {!f.perfil_id && (
+        <Cartao className="space-y-2">
+          <h2 className="font-semibold">Dar acesso ao app</h2>
+          <p className="text-sm text-suave">O cliente recebe um e-mail para criar a senha e passa a ver os veículos e o histórico desta ficha na garagem digital. Nada é duplicado.</p>
+          <FormAcao acao={convidarFicha} campos={{ id: f.id }} botao="Enviar convite" pendente="Enviando…" classeBotao="botao-escuro w-full">
+            <Campo rotulo="E-mail do cliente">
+              <input name="email" type="email" defaultValue={f.email ?? ""} required className="campo" />
+            </Campo>
+          </FormAcao>
+        </Cartao>
+      )}
       <Cartao className="space-y-3">
         <h2 className="font-semibold">Editar dados</h2>
         <FormAcao acao={salvarFicha} campos={{ id: f.id }} botao="Salvar" classeBotao="botao-contorno w-full">
           <CamposFicha f={f} />
         </FormAcao>
       </Cartao>
+        </div>
+      </div>
     </div>
   );
 }

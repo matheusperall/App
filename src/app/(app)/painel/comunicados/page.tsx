@@ -31,7 +31,7 @@ export default async function ComunicadosPage() {
   return (
     <div className="space-y-4">
       <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("comunicados")} />
-      <div className="mx-auto max-w-2xl space-y-5">
+      <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold">Comunicados</h2>
         <p className="text-suave">
@@ -40,33 +40,39 @@ export default async function ComunicadosPage() {
           {emailConfigurado() ? " e, se você marcar, por e-mail" : ""}.
         </p>
       </div>
-      <Cartao>
-        <FormComunicado clientes={clientes} emailDisponivel={emailConfigurado()} />
-      </Cartao>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="min-w-0 space-y-4">
+        <Cartao>
+          <FormComunicado clientes={clientes} emailDisponivel={emailConfigurado()} />
+        </Cartao>
+        </div>
+        <div className="min-w-0 space-y-4">
+        <section className="space-y-2">
+          <h2 className="font-semibold">Enviados</h2>
+          {historico.length === 0 ? (
+            <p className="text-sm text-suave">Nenhum comunicado enviado ainda.</p>
+          ) : (
+            <Cartao className="p-0">
+              <ul className="divide-y divide-borda">
+                {historico.map((c) => (
+                  <li key={c.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-medium">{TIPOS_COMUNICADO[c.tipo]?.icone} {c.titulo}</p>
+                      <span className="shrink-0 text-xs text-suave">{formatarDataHora(c.criado_em)}</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-suave">{c.mensagem}</p>
+                    <p className="mt-1 text-xs text-suave">
+                      {c.destinatarios} {c.destinatarios === 1 ? "cliente" : "clientes"}{c.por_email ? " · com e-mail" : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </Cartao>
+          )}
+        </section>
+        </div>
+      </div>
 
-      <section className="space-y-2">
-        <h2 className="font-semibold">Enviados</h2>
-        {historico.length === 0 ? (
-          <p className="text-sm text-suave">Nenhum comunicado enviado ainda.</p>
-        ) : (
-          <Cartao className="p-0">
-            <ul className="divide-y divide-borda">
-              {historico.map((c) => (
-                <li key={c.id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium">{TIPOS_COMUNICADO[c.tipo]?.icone} {c.titulo}</p>
-                    <span className="shrink-0 text-xs text-suave">{formatarDataHora(c.criado_em)}</span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-suave">{c.mensagem}</p>
-                  <p className="mt-1 text-xs text-suave">
-                    {c.destinatarios} {c.destinatarios === 1 ? "cliente" : "clientes"}{c.por_email ? " · com e-mail" : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </Cartao>
-        )}
-      </section>
       </div>
     </div>
   );

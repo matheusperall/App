@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MenuGestao } from "@/components/gestao/MenuGestao";
 import { notFound } from "next/navigation";
 import { Aviso, Cartao } from "@/components/ui";
 import { horariosDisponiveis } from "@/lib/agenda-servidor";
@@ -41,6 +42,7 @@ export default async function NovoAgendamentoPage({ searchParams }: PageProps<"/
 
   return (
     <PaginaFicha
+      menu={usuario.papel === "admin" ? <MenuGestao /> : undefined}
       voltar={{ href: "/agendamentos", rotulo: "Agenda" }}
       icone="calendario"
       titulo={usuario.papel === "admin" ? "Novo agendamento" : "Agendar"}

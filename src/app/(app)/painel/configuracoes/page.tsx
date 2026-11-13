@@ -30,8 +30,8 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="space-y-4">
       <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("configuracoes")} />
-      <div className="mx-auto max-w-2xl space-y-5">
-      <h2 className="text-xl font-bold">Configurações</h2>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <h2 className="text-xl font-bold lg:col-span-2">Configurações</h2>
 
       <Cartao className="space-y-3">
         <h2 className="font-semibold">🔔 Notificações no celular</h2>

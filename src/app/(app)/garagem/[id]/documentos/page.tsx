@@ -30,7 +30,7 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
     <div className="space-y-4">
       <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
       <Cabecalho icone="carro" titulo={`${nomeVeiculo(veiculo)} · ${veiculo.placa}`} abas={abasVeiculo(id, "documentos")} />
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold">Documentos e vencimentos</h2>
         <p className="text-suave">
@@ -46,28 +46,34 @@ export default async function DocumentosPage({ params }: PageProps<"/garagem/[id
           abaixo.
         </Aviso>
       )}
-      <div className="space-y-3">
-        {sp ? (
-          <>
-            <CartaoLicenciamento veiculoId={id} final={final} calendario={proximoLicenciamento(veiculo.placa, hoje)} manual={doc("licenciamento")} />
-            <CartaoIpva veiculoId={id} final={final} calendario={calendarioIpvaAtual(veiculo.placa, hoje)} manual={doc("ipva")} hoje={hoje} />
-          </>
-        ) : (
-          <>
-            <FormDocumento tipo="licenciamento" veiculoId={id} atual={doc("licenciamento")} />
-            <FormDocumento tipo="ipva" veiculoId={id} atual={doc("ipva")} />
-          </>
-        )}
-        <FormDocumento tipo="seguro" veiculoId={id} atual={doc("seguro")} />
-        {outros.map((d) => (
-          <FormDocumento key={d.id} tipo="outro" veiculoId={id} atual={d} />
-        ))}
-        <FormDocumento tipo="outro" veiculoId={id} atual={null} novoOutro />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="min-w-0 space-y-4">
+        <div className="space-y-3">
+          {sp ? (
+            <>
+              <CartaoLicenciamento veiculoId={id} final={final} calendario={proximoLicenciamento(veiculo.placa, hoje)} manual={doc("licenciamento")} />
+              <CartaoIpva veiculoId={id} final={final} calendario={calendarioIpvaAtual(veiculo.placa, hoje)} manual={doc("ipva")} hoje={hoje} />
+            </>
+          ) : (
+            <>
+              <FormDocumento tipo="licenciamento" veiculoId={id} atual={doc("licenciamento")} />
+              <FormDocumento tipo="ipva" veiculoId={id} atual={doc("ipva")} />
+            </>
+          )}
+          <FormDocumento tipo="seguro" veiculoId={id} atual={doc("seguro")} />
+          {outros.map((d) => (
+            <FormDocumento key={d.id} tipo="outro" veiculoId={id} atual={d} />
+          ))}
+          <FormDocumento tipo="outro" veiculoId={id} atual={null} novoOutro />
+        </div>
+        </div>
+        <div className="min-w-0 space-y-4">
+        <Bloco icone="documento" titulo={`Arquivos do veículo${anexos.length ? ` (${anexos.length})` : ""}`}>
+          <p className="mb-3 text-sm text-suave">Guarde aqui o CRLV-e, a apólice do seguro, a guia do IPVA, notas fiscais e outros documentos (PDF ou foto, até 10 MB).</p>
+          <Anexos anexos={anexos} pasta={pastaFotos(veiculo)} veiculoId={id} tipos={["crlv", "seguro", "ipva", "nota_fiscal", "outro"]} />
+        </Bloco>
+        </div>
       </div>
-      <Bloco icone="documento" titulo={`Arquivos do veículo${anexos.length ? ` (${anexos.length})` : ""}`}>
-        <p className="mb-3 text-sm text-suave">Guarde aqui o CRLV-e, a apólice do seguro, a guia do IPVA, notas fiscais e outros documentos (PDF ou foto, até 10 MB).</p>
-        <Anexos anexos={anexos} pasta={pastaFotos(veiculo)} veiculoId={id} tipos={["crlv", "seguro", "ipva", "nota_fiscal", "outro"]} />
-      </Bloco>
       </div>
     </div>
   );

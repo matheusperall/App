@@ -36,12 +36,12 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
   const resumo = resumoOSWhatsApp(os);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Voltar href="/gestao/os">Ordens de serviço</Voltar>
       {sp.nova && <Aviso tipo="sucesso">OS aberta! Avance as etapas conforme o serviço andar.</Aviso>}
 
-      <Cartao className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
+      <header className="rounded-2xl border border-borda bg-white px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-suave">OS #{os.numero} · {formatarData(os.data)}</p>
             <h1 className="text-2xl font-bold">
@@ -49,8 +49,27 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
             </h1>
             {os.cliente?.lojista && <p className="text-sm font-semibold text-marca-escura">Lojista · paga por fatura</p>}
           </div>
-          <SeloStatus status={os.status} />
+          <div className="flex items-center gap-2">
+            {editavel && (
+              <Link href={`/gestao/os/${os.id}/editar`} className="botao-contorno rounded-full px-4 py-2 text-sm">
+                ✏️ Editar
+              </Link>
+            )}
+            <SeloStatus status={os.status} />
+          </div>
         </div>
+        <p className="mt-2 text-xs text-suave">
+          Aberta em {formatarDataHora(os.criado_em)}
+          {os.pronta_em && ` · pronta em ${formatarDataHora(os.pronta_em)}`}
+          {os.entregue_em && ` · entregue em ${formatarDataHora(os.entregue_em)}`}
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        {/* Esquerda: veículo, serviços e custos */}
+        <div className="min-w-0 space-y-4">
+      <Cartao className="space-y-3">
+        <h2 className="font-semibold">Veículo</h2>
         {(os.placa || os.veiculo_nome) && (
           <div className="flex items-center justify-between gap-3 rounded-xl bg-fundo px-4 py-3">
             <div className="min-w-0 text-sm">
@@ -68,8 +87,8 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
         {os.veiculo_id && os.status !== "entregue" && os.status !== "cancelada" && <AtencaoPreferencias preferencias={preferencias[os.veiculo_id]} />}
         {os.observacoes && <p className="text-sm whitespace-pre-line">{os.observacoes}</p>}
       </Cartao>
-
       <Cartao className="p-0">
+        <h2 className="px-5 pt-4 font-semibold">Serviços</h2>
         <ul className="divide-y divide-borda">
           {os.itens.map((i, n) => (
             <li key={i.id ?? n} className="flex justify-between gap-3 px-5 py-3 text-sm">
@@ -88,17 +107,6 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           <div className="flex justify-between text-lg font-bold"><dt>Total</dt><dd><Dinheiro valor={os.total} /></dd></div>
         </dl>
       </Cartao>
-
-      {/* Próxima etapa */}
-      {s.proximo && (
-        <Cartao className="space-y-2">
-          {s.proximo === "pronta" && <p className="text-sm text-suave">Ao marcar como pronta, os produtos usados nos serviços saem do estoque automaticamente.</p>}
-          {s.proximo === "entregue" && <p className="text-sm text-suave">Ao entregar, o serviço vai para o histórico do veículo{os.cliente?.perfil_id ? " e o cliente recebe um aviso no app" : ""}.</p>}
-          <FormAcao acao={avancarStatus} campos={{ id: os.id, para: s.proximo }} botao={s.acao} pendente="Atualizando…" />
-          {editavel && <Link href={`/gestao/os/${os.id}/editar`} className="botao-contorno w-full text-sm">✏️ Editar serviços, desconto ou km</Link>}
-        </Cartao>
-      )}
-
       {/* Custos e margem */}
       {os.estoque_baixado && (
         <Cartao className="space-y-2">
@@ -118,7 +126,19 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           </dl>
         </Cartao>
       )}
+        </div>
 
+        {/* Direita: próxima etapa, pagamento e envio */}
+        <div className="min-w-0 space-y-4">
+      {/* Próxima etapa */}
+      {s.proximo && (
+        <Cartao className="space-y-2">
+          <h2 className="font-semibold">Próxima etapa</h2>
+          {s.proximo === "pronta" && <p className="text-sm text-suave">Ao marcar como pronta, os produtos usados nos serviços saem do estoque automaticamente.</p>}
+          {s.proximo === "entregue" && <p className="text-sm text-suave">Ao entregar, o serviço vai para o histórico do veículo{os.cliente?.perfil_id ? " e o cliente recebe um aviso no app" : ""}.</p>}
+          <FormAcao acao={avancarStatus} campos={{ id: os.id, para: s.proximo }} botao={s.acao} pendente="Atualizando…" />
+        </Cartao>
+      )}
       {/* Pagamento */}
       {os.status !== "cancelada" && (
         <Cartao className="space-y-3">
@@ -167,12 +187,10 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           )}
         </Cartao>
       )}
-
       <Cartao className="space-y-3">
         <h2 className="font-semibold">Enviar ao cliente</h2>
         <CopiarWhatsApp texto={resumo} rotulo="Copiar resumo da OS" link={os.cliente?.telefone ? linkWhatsApp(os.cliente.telefone, resumo) : undefined} />
       </Cartao>
-
       {cancelavel && (
         <FormAcao
           acao={cancelarOS}
@@ -183,11 +201,8 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           confirmar="Cancelar esta OS? Os produtos que saíram do estoque voltam."
         />
       )}
-      <p className="text-center text-xs text-suave">
-        Aberta em {formatarDataHora(os.criado_em)}
-        {os.pronta_em && ` · pronta em ${formatarDataHora(os.pronta_em)}`}
-        {os.entregue_em && ` · entregue em ${formatarDataHora(os.entregue_em)}`}
-      </p>
+        </div>
+      </div>
     </div>
   );
 }

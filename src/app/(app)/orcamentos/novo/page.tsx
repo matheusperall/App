@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MenuGestao } from "@/components/gestao/MenuGestao";
 import { notFound } from "next/navigation";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
@@ -21,6 +22,7 @@ export default async function NovoOrcamentoPage({ searchParams }: PageProps<"/or
     if (veiculoParam && !veiculo) notFound();
     return (
       <PaginaFicha
+        menu={<MenuGestao />}
         voltar={veiculo ? { href: `/garagem/${veiculo.id}`, rotulo: nomeVeiculo(veiculo) } : { href: "/orcamentos", rotulo: "Orçamentos" }}
         icone="orcamento"
         titulo="Novo orçamento"
