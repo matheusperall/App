@@ -13,7 +13,7 @@ import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
 import { STATUS_OS, arred, faltaReceber, rotuloForma } from "@/lib/gestao";
 import { consumoDaOS, listarContas, obterModelosMensagens, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
-import { avancarStatus, cancelarOS } from "../actions";
+import { avancarStatus, cancelarOS, voltarStatus } from "../actions";
 import { FormReceber } from "./FormReceber";
 
 export const metadata: Metadata = { title: "Ordem de serviço" };
@@ -132,13 +132,32 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
 
         {/* Direita: próxima etapa, pagamento e envio */}
         <div className="min-w-0 space-y-4">
-      {/* Próxima etapa */}
-      {s.proximo && (
+      {/* Etapas: avançar e, se precisar, voltar uma */}
+      {(s.proximo || s.anterior) && (
         <Cartao className="space-y-2">
-          <h2 className="font-semibold">Próxima etapa</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">{s.proximo ? "Próxima etapa" : "Etapa"}</h2>
+            <SeloStatus status={os.status} />
+          </div>
           {s.proximo === "pronta" && <p className="text-sm text-suave">Ao marcar como pronta, os produtos usados nos serviços saem do estoque automaticamente.</p>}
           {s.proximo === "entregue" && <p className="text-sm text-suave">Ao entregar, o serviço vai para o histórico do veículo{os.cliente?.perfil_id ? " e o cliente recebe um aviso no app" : ""}.</p>}
-          <FormAcao acao={avancarStatus} campos={{ id: os.id, para: s.proximo }} botao={s.acao} pendente="Atualizando…" />
+          {s.proximo && s.acao && <FormAcao acao={avancarStatus} campos={{ id: os.id, para: s.proximo }} botao={s.acao} pendente="Atualizando…" />}
+          {s.anterior && (
+            <FormAcao
+              acao={voltarStatus}
+              campos={{ id: os.id, para: s.anterior }}
+              botao={`↩ Voltar para “${STATUS_OS[s.anterior].rotulo}”`}
+              pendente="Voltando…"
+              classeBotao="botao-contorno w-full text-sm"
+              confirmar={
+                os.status === "pronta"
+                  ? `Voltar a OS para “${STATUS_OS[s.anterior].rotulo}”? Os produtos usados voltam para o estoque.`
+                  : os.status === "entregue"
+                    ? `Voltar a OS para “${STATUS_OS[s.anterior].rotulo}”? O serviço sai do histórico do veículo.`
+                    : `Voltar a OS para “${STATUS_OS[s.anterior].rotulo}”?`
+              }
+            />
+          )}
         </Cartao>
       )}
       {/* Pagamento */}

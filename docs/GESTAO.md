@@ -32,6 +32,8 @@ o cliente continua vendo a Agenda e os Orçamentos dele no menu do app.
    - Ao marcar **pronta**, os produtos que o serviço gasta saem do estoque e a OS mostra o
      custo dos produtos e a margem. Se o cliente tem o app, ele recebe "Seu carro está pronto".
    - Ao **entregar**, o serviço vai para o histórico do veículo (com valor e km) e o cliente com app recebe um aviso.
+   - Errou a etapa? **↩ Voltar** volta uma etapa. De "pronta" para "em andamento", os produtos voltam ao estoque;
+     de "entregue" para "pronta", o serviço sai do histórico do veículo.
 3. **Receber**: na OS, preencha o **1º pagamento**: valor, forma (Pix, dinheiro, débito, crédito ou
    transferência), conta (aparecem só as que recebem nessa forma; se for uma só, já vem escolhida) e, no
    crédito, as parcelas. Para dividir (ex.: parte no Pix, parte no cartão), toque em **+ Adicionar 2º pagamento**.
@@ -181,5 +183,10 @@ para cada veículo (ex.: "Não mexer nos bancos", "Não passar cheirinho", "Pret
 Depois do 0017, rode **`supabase/migrations/0018_modelos_mensagens.sql`**. Ele guarda os textos das mensagens de
 WhatsApp que você editar em *Gestão › Mensagens de WhatsApp*. Sem ele, as mensagens funcionam com o texto padrão,
 mas não dá para salvar mudanças.
+
+### Atualização: voltar etapa da OS (arquivo 0019)
+
+Depois do 0018, rode **`supabase/migrations/0019_voltar_etapa_os.sql`**. Ele faz a devolução de produtos ao estoque
+contar certo quando a OS vai e volta de "pronta" mais de uma vez.
 
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
