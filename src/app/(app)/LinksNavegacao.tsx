@@ -83,20 +83,20 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
 
   if (local === "barra") {
     return (
-      // Menu principal: faixa escura junto do topo, letras em negrito e o item ativo em destaque.
+      // Menu principal: na faixa escura do topo, ao lado do logo, com o item ativo em destaque.
       // Assim não se confunde com os submenus das telas, que são brancos e sublinhados.
-      <nav aria-label="Menu principal" className="hidden border-t border-white/10 bg-tinta-2 sm:block">
-        <ul className="mx-auto flex max-w-7xl gap-1.5 overflow-x-auto px-4 py-2 sm:px-6">
+      <nav aria-label="Menu principal" className="hidden min-w-0 flex-1 sm:block">
+        <ul className="flex gap-1 overflow-x-auto">
           {lista.map((i) => (
             <li key={i.href} className="shrink-0">
               <Link
                 href={i.href}
                 aria-current={ativo(i.href) ? "page" : undefined}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                   ativo(i.href) ? "bg-marca text-white shadow-sm" : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <span className="[&_svg]:h-5 [&_svg]:w-5"><Icone nome={i.icone} /></span>
+                <span className="[&_svg]:h-4 [&_svg]:w-4"><Icone nome={i.icone} /></span>
                 {i.rotulo}
                 <Contador n={i.contador} />
               </Link>
@@ -109,18 +109,18 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
 
   if (local === "topo") {
     return (
-      <nav aria-label="Avisos e conta" className="hidden items-center gap-1 sm:flex">
+      <nav aria-label="Avisos e conta" className="ml-auto hidden shrink-0 items-center gap-0.5 sm:flex">
         {lista.map((i) => (
           <Link
             key={i.href}
             href={i.href}
             aria-label={i.rotulo}
             title={i.rotulo}
-            className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${ativo(i.href) ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+            className={`relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition [&_svg]:h-5 [&_svg]:w-5 ${ativo(i.href) ? "bg-white/15 text-white" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
           >
             <Icone nome={i.icone} />
-            <span className="hidden md:inline">{i.rotulo}</span>
-            <Contador n={i.contador} className="absolute -top-0.5 left-6" />
+            <span className="hidden lg:inline">{i.rotulo}</span>
+            <Contador n={i.contador} />
           </Link>
         ))}
       </nav>

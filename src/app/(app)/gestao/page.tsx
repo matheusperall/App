@@ -16,6 +16,17 @@ import { listarFichas, osPorOrigem, resumoGestao } from "@/lib/gestao-dados";
 
 export const metadata: Metadata = { title: "Gestão" };
 
+/** Título de cada parte do painel, com uma linha e um resumo à direita. */
+function Secao({ titulo, direita }: { titulo: string; direita?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 px-1 pt-3">
+      <h2 className="shrink-0 text-xs font-bold tracking-wider text-suave uppercase">{titulo}</h2>
+      <span className="h-px flex-1 bg-borda" aria-hidden="true" />
+      {direita && <div className="shrink-0 text-xs text-suave">{direita}</div>}
+    </div>
+  );
+}
+
 function saudacao(hora: number) {
   return hora < 12 ? "bom dia" : hora < 18 ? "boa tarde" : "boa noite";
 }
@@ -75,69 +86,9 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         </div>
       </div>
 
-      {/* Linha 1: calendário · resumo financeiro · recebimentos por forma */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Bloco icone="calendario" titulo="Agenda do mês" direita={<span className="text-xs text-suave">{deHoje.length ? `${deHoje.length} hoje` : "Sem agendamentos hoje"}</span>}>
-          <CalendarioMes mes={mesCalendario} hoje={hoje} marcados={agendadosPorDia} />
-        </Bloco>
-        <Bloco icone="financeiro" titulo="Resumo financeiro" direita={<span className="text-xs"><strong className={r.saldoContas < 0 ? "text-perigo" : "text-sucesso"}>{formatarValor(r.saldoContas)}</strong> <span className="text-suave">de saldo</span></span>}>
-          <div className="grid grid-cols-2 gap-2 text-center">
-            <Link href="/gestao/financeiro" className="rounded-xl bg-sucesso-claro p-3">
-              <p className="text-xs text-suave">Entradas hoje</p>
-              <p className="font-titulo text-lg font-bold text-sucesso tabular-nums">▲ {formatarValor(r.entradasHoje)}</p>
-            </Link>
-            <Link href="/gestao/financeiro" className="rounded-xl bg-perigo-claro p-3">
-              <p className="text-xs text-suave">Saídas hoje</p>
-              <p className="font-titulo text-lg font-bold text-perigo tabular-nums">▼ {formatarValor(r.saidasHoje)}</p>
-            </Link>
-            <Link href="/gestao/os?f=receber" className="col-span-2 flex items-center justify-between rounded-xl bg-alerta-claro p-3 text-left">
-              <span className="text-xs text-suave">A receber<br />(avulsos, lojistas e faturas)</span>
-              <span className="font-titulo text-lg font-bold text-[#b07800] tabular-nums">{formatarValor(r.aReceber.total)}</span>
-            </Link>
-            <div className="col-span-2 grid grid-cols-2 gap-2 text-left">
-              <div className="rounded-xl bg-fundo p-3">
-                <p className="text-xs text-suave">Faturado no mês</p>
-                <p className="font-semibold tabular-nums">{formatarValor(r.faturadoMes)}</p>
-              </div>
-              <div className="rounded-xl bg-fundo p-3">
-                <p className="text-xs text-suave">Recebido no mês</p>
-                <p className="font-semibold tabular-nums">{formatarValor(r.recebidoMes)}</p>
-              </div>
-            </div>
-          </div>
-        </Bloco>
-        <Bloco icone="cartao" titulo="Recebido por forma" direita={<span className="text-xs"><strong className="text-sucesso">{formatarValor(recebidoMes)}</strong> <span className="text-suave">no mês</span></span>}>
-          <GraficoFormas dados={r.porForma} />
-        </Bloco>
-      </div>
-
-      {/* Linha 2: contadores */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Bloco icone="os" titulo="Orçamentos">
-          <div className="flex gap-6">
-            <Link href="/orcamentos?f=responder"><Contagem n={aResponder} legenda="a responder" cor={aResponder ? "text-[#b07800]" : "text-suave"} /></Link>
-            <Contagem n={orcamentosSemOS.length} legenda="aceitos sem OS" cor={orcamentosSemOS.length ? "text-sucesso" : "text-suave"} />
-          </div>
-        </Bloco>
-        <Bloco icone="carro" titulo="Vagas no pátio hoje" direita={<EditarVagas vagas={r.vagas} />}>
-          <div className="flex gap-6">
-            <Contagem n={<>{r.patio.length}<span className="text-base text-suave"> / {r.vagas}</span></>} legenda="vagas ocupadas" cor={r.patio.length >= r.vagas ? "text-perigo" : "text-[#b07800]"} />
-            <Contagem n={r.entreguesHoje} legenda="entregues hoje" cor="text-sucesso" />
-          </div>
-        </Bloco>
-        <Bloco icone="clientes" titulo="Oportunidades">
-          <Link href="/painel"><Contagem n={abertos} legenda="apontamentos pendentes nos carros dos clientes" cor={abertos ? "text-marca-escura" : "text-suave"} /></Link>
-        </Bloco>
-        <Bloco icone="faturas" titulo="Faturas e contas">
-          <div className="flex gap-6">
-            <Link href="/gestao/faturas"><Contagem n={r.faturasAbertas.length} legenda="faturas em aberto" cor={r.faturasAbertas.length ? "text-[#b07800]" : "text-suave"} /></Link>
-            <Link href="/gestao/financeiro"><Contagem n={r.aPagar7dias.length + r.cartoes7dias.length} legenda="contas e faturas de cartão a pagar em 7 dias" cor={r.aPagar7dias.length + r.cartoes7dias.length ? "text-perigo" : "text-suave"} /></Link>
-          </div>
-        </Bloco>
-      </div>
-
-      {/* Linha 3: pátio · agenda de hoje */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* ─── Hoje na loja ─── */}
+      <Secao titulo="Hoje na loja" direita={<span><strong className={r.patio.length >= r.vagas ? "text-perigo" : "text-texto"}>{r.patio.length} de {r.vagas}</strong> vagas ocupadas · <strong className="text-sucesso">{r.entreguesHoje}</strong> {r.entreguesHoje === 1 ? "entregue" : "entregues"} hoje</span>} />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Bloco icone="carro" titulo={`No pátio · ${r.patio.length} de ${r.vagas}`} direita={<div className="flex items-center gap-2"><Link href="/gestao/os?f=patio" className="text-xs font-semibold text-marca-escura">Ver todos</Link><EditarVagas vagas={r.vagas} /></div>}>
           <div className="mb-3 flex gap-1.5" aria-hidden="true">
             {Array.from({ length: Math.max(r.vagas, r.patio.length) }, (_, i) => (
@@ -192,80 +143,130 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         </Bloco>
       </div>
 
-      {/* Linha 4: atenção · faturamento por dia */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Bloco icone="faturas" titulo={`Precisa de atenção${atencao ? ` (${atencao})` : ""}`}>
-          {atencao === 0 && <p className="text-sm text-suave">Tudo em dia.</p>}
-          <div className="space-y-3">
-            {r.faturasAbertas.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold tracking-wide text-suave uppercase">Faturas em aberto</h3>
-                <ul className="divide-y divide-borda">
-                  {r.faturasAbertas.slice(0, 6).map((f) => (
-                    <li key={f.id}>
-                      <Link href={`/gestao/faturas/${f.id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
-                        <span className="min-w-0 truncate">#{f.numero} · {f.cliente?.nome} · vence {formatarData(f.vencimento)}</span>
-                        <span className="flex shrink-0 items-center gap-2"><Dinheiro valor={f.total - f.valor_pago} /><SeloFatura f={f} /></span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+      {/* ─── Precisa de atenção ─── */}
+      <Secao titulo="Precisa de atenção" direita={<span>{atencao ? <strong className="text-perigo">{atencao} {atencao === 1 ? "item" : "itens"}</strong> : <strong className="text-sucesso">Tudo em dia</strong>}</span>} />
+      {atencao > 0 && (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,19rem),1fr))] items-start gap-4">
+          {r.faturasAbertas.length > 0 && (
+            <Bloco icone="faturas" titulo={`Faturas de lojistas · ${r.faturasAbertas.length}`} direita={<Link href="/gestao/faturas" className="text-xs font-semibold text-marca-escura">Ver faturas</Link>}>
+              <ul className="divide-y divide-borda">
+                                {r.faturasAbertas.slice(0, 6).map((f) => (
+                                  <li key={f.id}>
+                                    <Link href={`/gestao/faturas/${f.id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                                      <span className="min-w-0 truncate">#{f.numero} · {f.cliente?.nome} · vence {formatarData(f.vencimento)}</span>
+                                      <span className="flex shrink-0 items-center gap-2"><Dinheiro valor={f.total - f.valor_pago} /><SeloFatura f={f} /></span>
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+            </Bloco>
+          )}
+          {r.cartoes7dias.length > 0 && (
+            <Bloco icone="cartao" titulo={`Faturas de cartão · ${r.cartoes7dias.length}`} direita={<Link href="/gestao/financeiro/contas#cartoes" className="text-xs font-semibold text-marca-escura">Ver cartões</Link>}>
+              <ul className="divide-y divide-borda">
+                                {r.cartoes7dias.map((f) => (
+                                  <li key={`${f.cartao.id}-${f.fatura_mes}`}>
+                                    <Link href={`/gestao/financeiro/cartoes/${f.cartao.id}?fatura=${f.fatura_mes}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                                      <span className="min-w-0 truncate">💳 {f.cartao.nome} · <span className={f.vencimento < hoje ? "font-semibold text-perigo" : ""}>vence {formatarData(f.vencimento)}</span></span>
+                                      <Dinheiro valor={f.em_aberto} />
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+            </Bloco>
+          )}
+          {r.aPagar7dias.length > 0 && (
+            <Bloco icone="saida" titulo={`Contas a pagar (7 dias) · ${r.aPagar7dias.length}`} direita={<Link href="/gestao/financeiro" className="text-xs font-semibold text-marca-escura">Ver financeiro</Link>}>
+              <ul className="divide-y divide-borda">
+                                {r.aPagar7dias.slice(0, 6).map((l) => (
+                                  <li key={l.id}>
+                                    <Link href="/gestao/financeiro" className="flex items-center justify-between gap-3 py-2 text-sm">
+                                      <span className="min-w-0 truncate">{l.descricao} · <span className={(l.vencimento ?? l.data) < hoje ? "font-semibold text-perigo" : ""}>{formatarData(l.vencimento ?? l.data)}</span></span>
+                                      <Dinheiro valor={l.valor} />
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+            </Bloco>
+          )}
+          {r.estoqueCritico.length > 0 && (
+            <Bloco icone="estoque" titulo={`Estoque crítico · ${r.estoqueCritico.length}`} direita={<Link href="/gestao/estoque" className="text-xs font-semibold text-marca-escura">Ver estoque</Link>}>
+              <ul className="divide-y divide-borda">
+                                {r.estoqueCritico.map((p) => (
+                                  <li key={p.id}>
+                                    <Link href={`/gestao/estoque/${p.id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                                      <span className="min-w-0 truncate">{p.nome} · {formatarQtd(p.saldo, p.unidade)}</span>
+                                      <SeloProduto p={p} />
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+            </Bloco>
+          )}
+        </div>
+      )}
+
+      {/* ─── Agenda e vendas ─── */}
+      <Secao titulo="Agenda e vendas" />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <Bloco icone="calendario" titulo="Agenda do mês" direita={<span className="text-xs text-suave">{deHoje.length ? `${deHoje.length} hoje` : "Sem agendamentos hoje"}</span>}>
+          <CalendarioMes mes={mesCalendario} hoje={hoje} marcados={agendadosPorDia} />
+        </Bloco>
+        <div className="grid min-w-0 gap-4">
+          <Bloco icone="os" titulo="Orçamentos">
+            <div className="flex gap-6">
+              <Link href="/orcamentos?f=responder"><Contagem n={aResponder} legenda="a responder" cor={aResponder ? "text-[#b07800]" : "text-suave"} /></Link>
+              <Contagem n={orcamentosSemOS.length} legenda="aceitos sem OS" cor={orcamentosSemOS.length ? "text-sucesso" : "text-suave"} />
+            </div>
+          </Bloco>
+
+          <Bloco icone="clientes" titulo="Oportunidades">
+            <Link href="/painel"><Contagem n={abertos} legenda="apontamentos pendentes nos carros dos clientes" cor={abertos ? "text-marca-escura" : "text-suave"} /></Link>
+          </Bloco>
+
+        </div>
+      </div>
+
+      {/* ─── Financeiro ─── */}
+      <Secao titulo="Financeiro" />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <Bloco icone="financeiro" titulo="Resumo financeiro" direita={<span className="text-xs"><strong className={r.saldoContas < 0 ? "text-perigo" : "text-sucesso"}>{formatarValor(r.saldoContas)}</strong> <span className="text-suave">de saldo</span></span>}>
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <Link href="/gestao/financeiro" className="rounded-xl bg-sucesso-claro p-3">
+              <p className="text-xs text-suave">Entradas hoje</p>
+              <p className="font-titulo text-lg font-bold text-sucesso tabular-nums">▲ {formatarValor(r.entradasHoje)}</p>
+            </Link>
+            <Link href="/gestao/financeiro" className="rounded-xl bg-perigo-claro p-3">
+              <p className="text-xs text-suave">Saídas hoje</p>
+              <p className="font-titulo text-lg font-bold text-perigo tabular-nums">▼ {formatarValor(r.saidasHoje)}</p>
+            </Link>
+            <Link href="/gestao/os?f=receber" className="col-span-2 flex items-center justify-between rounded-xl bg-alerta-claro p-3 text-left">
+              <span className="text-xs text-suave">A receber<br />(avulsos, lojistas e faturas)</span>
+              <span className="font-titulo text-lg font-bold text-[#b07800] tabular-nums">{formatarValor(r.aReceber.total)}</span>
+            </Link>
+            <div className="col-span-2 grid grid-cols-2 gap-2 text-left">
+              <div className="rounded-xl bg-fundo p-3">
+                <p className="text-xs text-suave">Faturado no mês</p>
+                <p className="font-semibold tabular-nums">{formatarValor(r.faturadoMes)}</p>
               </div>
-            )}
-            {r.cartoes7dias.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold tracking-wide text-suave uppercase">Faturas de cartão</h3>
-                <ul className="divide-y divide-borda">
-                  {r.cartoes7dias.map((f) => (
-                    <li key={`${f.cartao.id}-${f.fatura_mes}`}>
-                      <Link href={`/gestao/financeiro/cartoes/${f.cartao.id}?fatura=${f.fatura_mes}`} className="flex items-center justify-between gap-3 py-2 text-sm">
-                        <span className="min-w-0 truncate">💳 {f.cartao.nome} · <span className={f.vencimento < hoje ? "font-semibold text-perigo" : ""}>vence {formatarData(f.vencimento)}</span></span>
-                        <Dinheiro valor={f.em_aberto} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+              <div className="rounded-xl bg-fundo p-3">
+                <p className="text-xs text-suave">Recebido no mês</p>
+                <p className="font-semibold tabular-nums">{formatarValor(r.recebidoMes)}</p>
               </div>
-            )}
-            {r.aPagar7dias.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold tracking-wide text-suave uppercase">Contas a pagar em até 7 dias</h3>
-                <ul className="divide-y divide-borda">
-                  {r.aPagar7dias.slice(0, 6).map((l) => (
-                    <li key={l.id}>
-                      <Link href="/gestao/financeiro" className="flex items-center justify-between gap-3 py-2 text-sm">
-                        <span className="min-w-0 truncate">{l.descricao} · <span className={(l.vencimento ?? l.data) < hoje ? "font-semibold text-perigo" : ""}>{formatarData(l.vencimento ?? l.data)}</span></span>
-                        <Dinheiro valor={l.valor} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {r.estoqueCritico.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold tracking-wide text-suave uppercase">Estoque crítico</h3>
-                <ul className="divide-y divide-borda">
-                  {r.estoqueCritico.map((p) => (
-                    <li key={p.id}>
-                      <Link href={`/gestao/estoque/${p.id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
-                        <span className="min-w-0 truncate">{p.nome} · {formatarQtd(p.saldo, p.unidade)}</span>
-                        <SeloProduto p={p} />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            </div>
           </div>
         </Bloco>
-        <Bloco icone="financeiro" titulo="Faturamento por dia" direita={<div className="w-64"><NavMes mes={mes} base="/gestao" /></div>}>
+        <Bloco icone="cartao" titulo="Recebido por forma" direita={<span className="text-xs"><strong className="text-sucesso">{formatarValor(recebidoMes)}</strong> <span className="text-suave">no mês</span></span>}>
+          <GraficoFormas dados={r.porForma} />
+        </Bloco>
+      </div>
+      <Bloco icone="financeiro" titulo="Faturamento por dia" direita={<div className="w-64"><NavMes mes={mes} base="/gestao" /></div>}>
           <GraficoDias dias={r.porDia} hoje={hoje} />
           <p className="mt-2 text-xs text-suave">{r.qtdOSMes} OS no mês · faturado <strong className="text-texto">{formatarValor(r.faturadoMes)}</strong></p>
         </Bloco>
-      </div>
 
-      {/* Top 5 clientes */}
+      {/* ─── Clientes ─── */}
+      {top.length > 0 && <Secao titulo="Clientes" />}
       {top.length > 0 && (
         <Bloco icone="clientes" titulo="Top 5 clientes" direita={<Link href="/gestao/clientes" className="text-xs font-semibold text-marca-escura">{fichas.length} clientes</Link>}>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">

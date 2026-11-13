@@ -25,7 +25,7 @@ export function AbasGestao({ contadores = {} }: { contadores?: Record<string, nu
       <Link
         href={a.href}
         aria-current={ativa(a.href) ? "page" : undefined}
-        className={`flex items-center gap-1.5 border-b-2 px-2.5 py-3 text-sm font-medium transition ${
+        className={`flex items-center gap-1.5 border-b-2 px-2.5 py-2 text-sm font-medium transition ${
           ativa(a.href) ? "border-marca text-marca-escura" : "border-transparent text-suave hover:text-texto"
         }`}
       >
@@ -43,8 +43,8 @@ export function AbasGestao({ contadores = {} }: { contadores?: Record<string, nu
     <nav aria-label="Gestão" className="-mx-4 border-y border-borda bg-white sm:mx-0 sm:rounded-2xl sm:border">
       <div className="flex items-center">
         {/* Nome da seção, no mesmo padrão de Atendimento, Agenda e Orçamentos */}
-        <Link href="/gestao" className="flex shrink-0 items-center gap-2 py-3 pr-3 pl-4 text-lg font-bold sm:pl-5 sm:text-xl lg:border-r lg:border-borda">
-          <Icone nome="financeiro" className="h-6 w-6 text-marca-escura" />
+        <Link href="/gestao" className="flex shrink-0 items-center gap-2 py-2 pr-3 pl-4 text-base font-bold sm:pl-5 sm:text-lg lg:border-r lg:border-borda">
+          <Icone nome="financeiro" className="h-5 w-5 text-marca-escura" />
           Gestão
         </Link>
         <ul className="hidden gap-1 overflow-x-auto px-3 lg:flex">{links}</ul>

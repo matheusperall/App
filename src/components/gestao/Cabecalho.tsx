@@ -23,10 +23,10 @@ export function Cabecalho({
 }) {
   return (
     <header className="rounded-2xl border border-borda bg-white">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 sm:px-5">
         <div className="flex min-w-0 items-center gap-4">
-          <h1 className="flex shrink-0 items-center gap-2 text-lg font-bold sm:text-xl">
-            <Icone nome={icone} className="h-6 w-6 text-marca-escura" />
+          <h1 className="flex shrink-0 items-center gap-2 text-base font-bold sm:text-lg">
+            <Icone nome={icone} className="h-5 w-5 text-marca-escura" />
             {titulo}
           </h1>
           {abas.length > 0 && (
@@ -38,7 +38,7 @@ export function Cabecalho({
         <div className="flex shrink-0 items-center gap-2">
           {extra}
           {acao && (
-            <Link href={acao.href} className="botao-primario gap-1.5 rounded-full px-4 py-2 text-sm sm:px-5">
+            <Link href={acao.href} className="botao-primario gap-1.5 rounded-full px-4 py-1.5 text-sm">
               <Icone nome="mais" className="h-4 w-4" />
               {acao.rotulo}
             </Link>
