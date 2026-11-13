@@ -9,6 +9,7 @@ import { FormPedido } from "./FormPedido";
 import { FormResposta } from "../[orcamentoId]/FormResposta";
 import { opcoesDeVeiculos } from "@/components/EscolherVeiculo";
 import { PaginaFicha } from "@/components/PaginaFicha";
+import { listarCatalogo } from "@/lib/gestao-dados";
 
 export const metadata: Metadata = { title: "Orçamento" };
 
@@ -36,6 +37,7 @@ export default async function NovoOrcamentoPage({ searchParams }: PageProps<"/or
           <FormResposta
             veiculoId={veiculo?.id}
             veiculos={veiculo ? undefined : await opcoesDeVeiculos()}
+            catalogo={(await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco }) => ({ id, nome, preco }))}
             validadePadrao={somarDias(hojeISO(), 15)}
             novo
           />

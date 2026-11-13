@@ -89,3 +89,20 @@ h1, h2, h3 {
     min-width: 16rem;
   }
 }
+
+/* Caixas de seleção e de data com a mesma altura e aparência dos outros campos
+   (o celular desenhava menores). Fora da camada para valer sobre o padding do campo. */
+select.campo {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1.1rem;
+  padding-right: 2.5rem;
+}
+select.campo,
+input.campo[type="date"],
+input.campo[type="time"] {
+  min-height: 3.125rem;
+}
