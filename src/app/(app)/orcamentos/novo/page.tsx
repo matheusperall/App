@@ -3,7 +3,7 @@ import { MenuGestao } from "@/components/gestao/MenuGestao";
 import { notFound } from "next/navigation";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { listarVeiculos, obterVeiculo } from "@/lib/dados";
+import { listarVeiculos, obterVeiculo, portesDosVeiculos } from "@/lib/dados";
 import { hojeISO, nomeVeiculo, pastaFotos, somarDias } from "@/lib/garagem";
 import { FormPedido } from "./FormPedido";
 import { FormResposta } from "../[orcamentoId]/FormResposta";
@@ -37,7 +37,9 @@ export default async function NovoOrcamentoPage({ searchParams }: PageProps<"/or
           <FormResposta
             veiculoId={veiculo?.id}
             veiculos={veiculo ? undefined : await opcoesDeVeiculos()}
-            catalogo={(await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco }) => ({ id, nome, preco }))}
+            catalogo={(await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco, precos_porte }) => ({ id, nome, preco, precos_porte }))}
+            porte={veiculo?.porte ?? null}
+            portes={veiculo ? {} : await portesDosVeiculos()}
             validadePadrao={somarDias(hojeISO(), 15)}
             novo
           />

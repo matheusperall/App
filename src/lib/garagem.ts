@@ -26,7 +26,21 @@ export type Veiculo = {
   uf?: string | null;
   /** Preferências do cliente (ex.: "Não mexer nos bancos"), mostradas como ponto de atenção na OS */
   preferencias?: string[];
+  /** Tamanho do veículo (define o preço dos serviços que variam por tamanho) */
+  porte?: Porte | null;
 };
+
+/** Tamanhos de veículo, do menor para o maior (o preço sobe nessa ordem) */
+export const PORTES = { pequeno: "Pequeno", medio: "Médio", grande: "Grande", extra: "Extra" } as const;
+export type Porte = keyof typeof PORTES;
+export const ehPorte = (v: unknown): v is Porte => typeof v === "string" && v in PORTES;
+export type PrecosPorte = Partial<Record<Porte, number>>;
+
+/** Preço do serviço para o tamanho do carro (sem preço para o tamanho, usa o preço normal) */
+export function precoParaPorte(s: { preco: number; precos_porte?: PrecosPorte | null }, porte?: Porte | null) {
+  const v = porte ? s.precos_porte?.[porte] : undefined;
+  return typeof v === "number" && v > 0 ? v : s.preco;
+}
 
 /** Sugestões para a área de preferências do veículo */
 export const SUGESTOES_PREFERENCIAS = [

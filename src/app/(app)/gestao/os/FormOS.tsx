@@ -5,7 +5,7 @@ import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { ResumoFipe, SeletorFipe, type Escolha } from "@/components/SeletorFipe";
 import { Aviso, Campo, Cartao } from "@/components/ui";
-import { CATEGORIAS, formatarValor, normalizarPlaca, placaValida, type Categoria } from "@/lib/garagem";
+import { CATEGORIAS, PORTES, formatarValor, normalizarPlaca, placaValida, precoParaPorte, type Categoria, type Porte, type PrecosPorte } from "@/lib/garagem";
 import { arred } from "@/lib/gestao";
 import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { ListaBusca } from "@/components/ListaBusca";
@@ -17,11 +17,12 @@ export type OpcaoCliente = {
   nome: string;
   telefone: string | null;
   lojista: boolean;
-  veiculos: { id: string; placa: string; nome: string; preferencias?: string[] }[];
+  veiculos: { id: string; placa: string; nome: string; preferencias?: string[]; porte?: Porte | null }[];
 };
-export type OpcaoServico = { id: string; nome: string; preco: number; categoria: Categoria };
+export type OpcaoServico = { id: string; nome: string; preco: number; categoria: Categoria; precos_porte?: PrecosPorte };
 
-type Item = { chave: number; catalogo_id: string | null; nome: string; preco: number; novo?: { categoria: Categoria } };
+/** manual: o preço foi digitado (ou veio do orçamento) e não muda sozinho com o tamanho do carro */
+type Item = { chave: number; catalogo_id: string | null; nome: string; preco: number; novo?: { categoria: Categoria }; manual?: boolean };
 
 export type InicialOS = {
   id?: string;
@@ -86,6 +87,9 @@ export function FormOS({
   const [veiculoId, setVeiculoId] = useState<string | null>(inicial.veiculoId ?? null);
   const [novoVeiculo, setNovoVeiculo] = useState(false);
   const [placa, setPlaca] = useState("");
+  const [porteNovo, setPorteNovo] = useState<Porte | "">("");
+  // Tamanho do carro escolhido: define o preço dos serviços que variam por tamanho
+  const porteAtual: Porte | null = novoVeiculo ? porteNovo || null : (cliente?.veiculos.find((v) => v.id === veiculoId)?.porte ?? null);
   const [escolhaFipe, setEscolhaFipe] = useState<Escolha | null>(null);
   const [modoVeiculo, setModoVeiculo] = useState<"fipe" | "manual">("fipe");
   const [manual, setManual] = useState({ marca: "", modelo: "", ano: "" });
@@ -110,13 +114,22 @@ export function FormOS({
 
   // ---------------- Serviços ----------------
   const [itens, setItens] = useState<Item[]>(() =>
-    (inicial.itens ?? []).map((i) => ({ chave: proximaChave++, catalogo_id: i.catalogo_id, nome: i.nome, preco: i.preco })),
+    (inicial.itens ?? []).map((i) => ({ chave: proximaChave++, catalogo_id: i.catalogo_id, nome: i.nome, preco: i.preco, manual: true })),
   );
   const [cadastrando, setCadastrando] = useState<{ nome: string; preco: number; categoria: Categoria } | null>(null);
-  const opcoesServicos = useMemo(
-    () => catalogo.map((c) => ({ id: c.id, titulo: c.nome, detalhe: CATEGORIAS[c.categoria]?.rotulo, extra: <span className="tabular-nums text-suave">{formatarValor(c.preco)}</span> })),
-    [catalogo],
-  );
+  const opcoesServicos = catalogo.map((c) => ({
+    id: c.id,
+    titulo: c.nome,
+    detalhe: CATEGORIAS[c.categoria]?.rotulo,
+    extra: <span className="tabular-nums text-suave">{formatarValor(precoParaPorte(c, porteAtual))}</span>,
+  }));
+
+  // Serviços do catálogo seguem o tamanho do carro escolhido (se trocar o carro, o preço acompanha),
+  // menos os que tiveram o preço digitado à mão ou vieram de um orçamento
+  const precoDe = (i: Item) => {
+    const sv = i.catalogo_id && !i.manual ? catalogo.find((c) => c.id === i.catalogo_id) : null;
+    return sv ? precoParaPorte(sv, porteAtual) : i.preco;
+  };
 
   function adicionar(s: { id: string | null; nome: string; preco: number; novo?: { categoria: Categoria } }) {
     setItens((l) => [...l, { chave: proximaChave++, catalogo_id: s.id, nome: s.nome, preco: s.preco, novo: s.novo }]);
@@ -127,7 +140,7 @@ export function FormOS({
   const [data, setData] = useState(inicial.data);
   const [km, setKm] = useState(inicial.km ? String(inicial.km) : "");
   const [observacoes, setObservacoes] = useState(inicial.observacoes ?? "");
-  const subtotal = arred(itens.reduce((t, i) => t + Math.max(0, i.preco), 0));
+  const subtotal = arred(itens.reduce((t, i) => t + Math.max(0, precoDe(i)), 0));
   const descontoNum = Math.min(Math.max(0, desconto), subtotal);
   const total = arred(subtotal - descontoNum);
 
@@ -161,7 +174,7 @@ export function FormOS({
       : veiculoId
         ? { id: veiculoId }
         : null,
-    itens: itens.map((i) => ({ catalogo_id: i.catalogo_id, nome: i.nome, preco: Math.max(0, i.preco), novo: i.novo })),
+    itens: itens.map((i) => ({ catalogo_id: i.catalogo_id, nome: i.nome, preco: Math.max(0, precoDe(i)), novo: i.novo })),
     desconto: descontoNum,
     data,
     km: km ? Number(km.replace(/\D/g, "")) : null,
@@ -169,6 +182,9 @@ export function FormOS({
     agendamento_id: inicial.agendamento_id ?? null,
     orcamento_id: inicial.orcamento_id ?? null,
   };
+
+  // Carro novo: leva o tamanho escolhido
+  if (dados.veiculo && "novo" in dados.veiculo && porteNovo) dados.veiculo.novo.porte = porteNovo;
 
   const temCliente = Boolean(novoCliente ? novoCliente.nome.trim().length >= 2 : clienteId);
   const temVeiculo = novoVeiculo ? veiculoNovoPronto : Boolean(veiculoId);
@@ -277,7 +293,7 @@ export function FormOS({
                       className={`rounded-xl border px-3 py-2 text-left text-sm transition ${veiculoId === v.id && !novoVeiculo ? "border-marca bg-marca-clara" : "border-borda bg-white hover:border-marca/50"}`}
                     >
                       <span className="block font-mono font-semibold tracking-wider">{v.placa}</span>
-                      <span className="block text-xs text-suave">{v.nome}</span>
+                      <span className="block text-xs text-suave">{v.nome}{v.porte ? ` · ${PORTES[v.porte]}` : ""}</span>
                     </button>
                   ))}
                   <button
@@ -314,6 +330,12 @@ export function FormOS({
                     </div>
                   </Campo>
                   {avisoPlaca && <Aviso tipo="alerta">{avisoPlaca}</Aviso>}
+                  <Campo rotulo="Tamanho" dica="Define o preço dos serviços que mudam por tamanho">
+                    <select className="campo" value={porteNovo} onChange={(e) => setPorteNovo(e.target.value as Porte | "")}>
+                      <option value="">Não informado</option>
+                      {(Object.keys(PORTES) as Porte[]).map((p) => <option key={p} value={p}>{PORTES[p]}</option>)}
+                    </select>
+                  </Campo>
 
                   {modoVeiculo === "fipe" ? (
                     d ? (
@@ -367,9 +389,9 @@ export function FormOS({
                   R$
                   <CampoDinheiro
                     className="w-28 rounded-lg border border-borda bg-white px-2 py-1.5 text-base text-texto outline-none focus:border-marca"
-                    valor={i.preco}
+                    valor={precoDe(i)}
                     aria-label={`Preço de ${i.nome}`}
-                    aoMudar={(v) => setItens((l) => l.map((x) => (x.chave === i.chave ? { ...x, preco: v } : x)))}
+                    aoMudar={(v) => setItens((l) => l.map((x) => (x.chave === i.chave ? { ...x, preco: v, manual: true } : x)))}
                   />
                 </label>
                 <button
@@ -426,7 +448,7 @@ export function FormOS({
               opcoes={opcoesServicos}
               aoEscolher={(id) => {
                 const sv = catalogo.find((c) => c.id === id);
-                if (sv) adicionar(sv);
+                if (sv) adicionar({ ...sv, preco: precoParaPorte(sv, porteAtual) });
               }}
               placeholder="Digite o serviço (ex.: lavagem, polimento)"
               rotuloAcessivel="Buscar serviço no catálogo"

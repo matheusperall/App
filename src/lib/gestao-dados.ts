@@ -107,13 +107,18 @@ export const obterFicha = cache(async function obterFicha(id: string): Promise<(
 export const listarCatalogo = cache(async function listarCatalogo(): Promise<ServicoCatalogo[]> {
   if (!isSupabaseConfigured) return DEMO.catalogo;
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("catalogo_servicos")
-    .select("id, nome, preco, categoria, ativo, consumo:catalogo_consumo (produto_id, quantidade, produto:produtos (nome, unidade, custo_medio))")
-    .order("nome");
+  const consulta = (extra: string) =>
+    supabase
+      .from("catalogo_servicos")
+      .select(`id, nome, preco, categoria, ativo${extra}, consumo:catalogo_consumo (produto_id, quantidade, produto:produtos (nome, unidade, custo_medio))`)
+      .order("nome");
+  // Preços por tamanho (0020); sem a migração, consulta sem eles
+  const comPorte = await consulta(", precos_porte");
+  const { data } = comPorte.error ? await consulta("") : comPorte;
   return ((data ?? []) as unknown as ServicoCatalogo[]).map((s) => ({
     ...s,
     preco: n(s.preco),
+    precos_porte: s.precos_porte ?? {},
     consumo: s.consumo.map((c) => ({ ...c, quantidade: n(c.quantidade), produto: c.produto ? { ...c.produto, custo_medio: n(c.produto.custo_medio) } : null })),
   }));
 });
@@ -593,7 +598,7 @@ const produtosDemo: Produto[] = [
   { id: "demo-p3", nome: "Pano de microfibra", unidade: "un", saldo: 0, minimo: 5, custo_medio: 6.5, ativo: true },
 ];
 const catalogoDemo: ServicoCatalogo[] = [
-  { id: "demo-c1", nome: "Lavagem completa", preco: 80, categoria: "estetica", ativo: true, consumo: [{ produto_id: "demo-p1", quantidade: 80, produto: produtosDemo[0] }] },
+  { id: "demo-c1", nome: "Lavagem completa", preco: 80, precos_porte: { pequeno: 80, medio: 90, grande: 110, extra: 140 }, categoria: "estetica", ativo: true, consumo: [{ produto_id: "demo-p1", quantidade: 80, produto: produtosDemo[0] }] },
   { id: "demo-c2", nome: "Enceramento", preco: 120, categoria: "estetica", ativo: true, consumo: [{ produto_id: "demo-p2", quantidade: 40, produto: produtosDemo[1] }] },
   { id: "demo-c3", nome: "Polimento técnico", preco: 650, categoria: "estetica", ativo: true, consumo: [] },
   { id: "demo-c4", nome: "Higienização interna", preco: 350, categoria: "estetica", ativo: true, consumo: [] },

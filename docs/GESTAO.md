@@ -189,6 +189,15 @@ mas não dá para salvar mudanças.
 Depois do 0018, rode **`supabase/migrations/0019_voltar_etapa_os.sql`**. Ele faz a devolução de produtos ao estoque
 contar certo quando a OS vai e volta de "pronta" mais de uma vez.
 
+### Atualização: tamanho do veículo e preço por tamanho (arquivo 0020)
+
+Depois do 0019 (e da importação da CERA), rode **`supabase/migrations/0020_tamanho_veiculo.sql`**. Ele:
+- cria o **Tamanho** do veículo (Pequeno, Médio, Grande, Extra), no cadastro e na edição do carro;
+- cria o **preço por tamanho** nos serviços (*Serviços › abrir o serviço › Preço por tamanho do veículo*);
+- coloca a tabela da Limpeza padrão: R$ 140 / 150 / 170 / 200;
+- preenche o tamanho dos carros pelo histórico (a Limpeza padrão mais recente, de julho/2026 em diante).
+Na Nova OS e no orçamento, o preço do serviço vem pelo tamanho do carro escolhido. Preço digitado à mão não muda.
+
 ### Limpar os dados de teste (antes de importar a CERA)
 
 O arquivo **`supabase/manutencao/limpar_testes.sql`** apaga todo o movimento de teste e deixa o sistema pronto para os dados reais.

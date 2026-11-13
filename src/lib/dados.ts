@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Agendamento } from "@/lib/agenda";
 import { documentosAutomaticos } from "@/lib/calendarios";
-import { TIPOS_DOCUMENTO, type Anexo, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo } from "@/lib/garagem";
+import { TIPOS_DOCUMENTO, type Anexo, ritmoDoVeiculo, hojeISO, rotuloManutencao, somarDias, somarMeses, situacaoManutencao, type Apontamento, type Documento, type LeituraKm, type Orcamento, type Manutencao, type Servico, type Veiculo, type Porte } from "@/lib/garagem";
 
 // Todas as leituras passam pelo Supabase com a sessão do usuário,
 // então as regras de segurança do banco (RLS) decidem o que cada um vê.
@@ -18,6 +18,8 @@ const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor
 const CAMPOS_VEICULO_FICHA = `${CAMPOS_VEICULO}, cliente_id`;
 /** Com as preferências do cliente (0017). */
 const CAMPOS_VEICULO_PREF = `${CAMPOS_VEICULO_FICHA}, preferencias`;
+/** Com o tamanho do veículo (0020). */
+const CAMPOS_VEICULO_PORTE = `${CAMPOS_VEICULO_PREF}, porte`;
 
 /** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
 const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
@@ -27,11 +29,24 @@ export async function listarVeiculos(donoId: string): Promise<Veiculo[]> {
   const supabase = await createClient();
   const consulta = (campos: string) =>
     supabase.from("veiculos").select(campos).eq("dono_id", donoId).order("criado_em");
-  let { data, error } = await consulta(CAMPOS_VEICULO_PREF);
+  let { data, error } = await consulta(CAMPOS_VEICULO_PORTE);
+  if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO_PREF));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO_FICHA));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
   return (data as unknown as Veiculo[] | null) ?? [];
+}
+
+/** Tamanho de cada veículo (id → porte). Sem a migração 0020, volta vazio. */
+export async function portesDosVeiculos(ids?: string[]): Promise<Record<string, Porte>> {
+  if (!isSupabaseConfigured) return Object.fromEntries(DEMO.veiculos.filter((v) => v.porte).map((v) => [v.id, v.porte as Porte]));
+  if (ids && ids.length === 0) return {};
+  const supabase = await createClient();
+  let q = supabase.from("veiculos").select("id, porte").not("porte", "is", null);
+  if (ids) q = q.in("id", ids.filter(ehUuid));
+  const { data, error } = await q;
+  if (error) return {};
+  return Object.fromEntries(((data ?? []) as { id: string; porte: Porte }[]).map((v) => [v.id, v.porte]));
 }
 
 /** Preferências de cada veículo (id → lista). Sem a migração 0017, volta vazio. */
@@ -59,7 +74,8 @@ export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
       .select(`${campos}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
       .eq("id", id)
       .maybeSingle();
-  let { data, error } = await consulta(`${CAMPOS_VEICULO_PREF}, ficha:clientes (id, nome, email, telefone)`);
+  let { data, error } = await consulta(`${CAMPOS_VEICULO_PORTE}, ficha:clientes (id, nome, email, telefone)`);
+  if (error) ({ data, error } = await consulta(`${CAMPOS_VEICULO_PREF}, ficha:clientes (id, nome, email, telefone)`));
   if (error) ({ data, error } = await consulta(`${CAMPOS_VEICULO_FICHA}, ficha:clientes (id, nome, email, telefone)`));
   if (error) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
@@ -506,6 +522,7 @@ const DEMO = {
       foto: null,
       km_por_dia: 27.0,
       preferencias: ["Não mexer nos bancos", "Pretinho semi brilho"],
+      porte: "medio" as Porte,
     },
   ] satisfies Veiculo[],
   servicos: [

@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
-import { CATEGORIAS, formatarValor, type Categoria } from "@/lib/garagem";
+import { CATEGORIAS, formatarValor, type Categoria, PORTES, type Porte } from "@/lib/garagem";
 import { arred, lerNumero, type Produto, type ServicoCatalogo } from "@/lib/gestao";
 import { salvarServicoCatalogo } from "./actions";
 
@@ -41,6 +41,20 @@ export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; 
             {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => <option key={c} value={c}>{CATEGORIAS[c].rotulo}</option>)}
           </select>
         </Campo>
+      <fieldset className="space-y-2 rounded-xl border border-borda p-3">
+        <legend className="px-1 text-sm font-medium">Preço por tamanho do veículo (opcional)</legend>
+        <p className="text-xs text-suave">
+          Preencha só se o preço muda com o tamanho do carro. Tamanho sem valor usa o preço acima. Na OS e no orçamento,
+          o preço vem sozinho pelo tamanho cadastrado no veículo.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(Object.keys(PORTES) as Porte[]).map((p) => (
+            <Campo key={p} rotulo={PORTES[p]}>
+              <CampoDinheiro name={`preco_${p}`} valorInicial={servico?.precos_porte?.[p] ?? null} />
+            </Campo>
+          ))}
+        </div>
+      </fieldset>
       {servico && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ativo" defaultChecked={servico.ativo} className="h-4 w-4 accent-marca" /> Ativo (aparece na hora de abrir OS)
