@@ -51,6 +51,13 @@ o cliente continua vendo a Agenda e os Orçamentos dele no menu do app.
 como uma ficha larga, com os campos em branco. Os campos marcados com \* são obrigatórios. Onde é preciso escolher
 algo (cliente, veículo, serviço), é só começar a digitar que a lista aparece; a setinha ▾ abre a lista completa.
 
+**Mensagens para o cliente (WhatsApp)**: na OS, no orçamento e no agendamento há o quadro **💬 Enviar ao cliente**
+com textos prontos. Escolha o tipo, confira (dá para mudar o texto), toque em **Copiar texto** ou **Enviar no WhatsApp**:
+- OS: **Ordem de serviço**, **Carro pronto** (quando fica pronta), **Cobrança** (quando ficou valor em aberto) e
+  **Comprovante de pagamento** (depois de receber). A mais útil para a situação da OS já vem escolhida.
+- Orçamento: **Orçamento** com os itens, total, prazo e validade (e **Combinar a data** depois de aprovado).
+- Agendamento: **Lembrete do agendamento** com dia e horário.
+
 **Campos de valor em reais** começam em 0,00 e os números "correm" como numa maquininha:
 digitar 12345 vira 123,45. A tecla de apagar tira o último número.
 

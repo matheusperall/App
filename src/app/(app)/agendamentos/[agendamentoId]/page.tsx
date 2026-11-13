@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { MenuGestao } from "@/components/gestao/MenuGestao";
 import Link from "next/link";
+import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
+import { EMPRESA, mensagemLembreteAgendamento, type Mensagem } from "@/lib/mensagens";
 import { notFound } from "next/navigation";
 import { SeloAgendamento, descreverPreferencias } from "@/components/agendamento";
 import { Placa, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
 import { formatarQuando, partesBrasilia } from "@/lib/agenda";
 import { exigirUsuario } from "@/lib/auth";
-import { obterAgendamento } from "@/lib/dados";
+import { obterAgendamento, obterVeiculo } from "@/lib/dados";
 import { osPorOrigem } from "@/lib/gestao-dados";
 import { CATEGORIAS, nomeVeiculo } from "@/lib/garagem";
 import { googleConfigurado } from "@/lib/google-agenda";
@@ -16,17 +18,25 @@ import { ConfirmarAgendamento } from "./ConfirmarAgendamento";
 
 export const metadata: Metadata = { title: "Agendamento" };
 
-function linkWhatsApp(telefone: string, texto: string) {
-  const n = telefone.replace(/\D/g, "");
-  return `https://wa.me/${n.length <= 11 ? `55${n}` : n}?text=${encodeURIComponent(texto)}`;
-}
-
 export default async function AgendamentoPage({ params, searchParams }: PageProps<"/agendamentos/[agendamentoId]">) {
   const [{ agendamentoId }, sp, usuario] = await Promise.all([params, searchParams, exigirUsuario()]);
   const a = await obterAgendamento(agendamentoId);
   if (!a) notFound();
   const admin = usuario.papel === "admin";
   const cat = CATEGORIAS[a.categoria as keyof typeof CATEGORIAS] ?? CATEGORIAS.outros;
+  // Mensagens prontas para o cliente (o contato vem da conta do app ou da ficha da loja)
+  const ativoAgora = a.situacao === "solicitado" || a.situacao === "confirmado";
+  const contato = admin && ativoAgora ? (await obterVeiculo(a.veiculo_id))?.dono ?? a.veiculo?.dono ?? null : null;
+  const mensagens: Mensagem[] = [];
+  if (admin && ativoAgora) {
+    const veiculo = a.veiculo ? nomeVeiculo(a.veiculo) : null;
+    if (a.situacao === "confirmado" && a.inicio) mensagens.push(mensagemLembreteAgendamento({ ...a, cliente: contato?.nome, veiculo, placa: a.veiculo?.placa }));
+    mensagens.push({
+      chave: "conversa",
+      rotulo: "Falar sobre o agendamento",
+      texto: `Olá${contato?.nome ? `, ${contato.nome.split(" ")[0]}` : ""}! Aqui é da *${EMPRESA}*, sobre o agendamento de ${a.servico}${veiculo ? ` do seu ${veiculo}` : ""}.`,
+    });
+  }
   const ativo = a.situacao === "solicitado" || a.situacao === "confirmado";
   const osLigada = admin ? (await osPorOrigem("agendamento_id", [a.id]))[a.id] : undefined;
   const sugestao = a.preferencias[0];
@@ -105,16 +115,7 @@ export default async function AgendamentoPage({ params, searchParams }: PageProp
           </Cartao>
         )}
 
-        {admin && a.veiculo?.dono?.telefone && ativo && (
-          <a
-            href={linkWhatsApp(a.veiculo.dono.telefone, `Olá, ${a.veiculo.dono.nome?.split(" ")[0] ?? ""}! Aqui é da Sempre Zero, sobre o agendamento de ${a.servico} do seu ${nomeVeiculo(a.veiculo)}.`)}
-            target="_blank"
-            rel="noreferrer"
-            className="botao-contorno w-full text-sm"
-          >
-            Falar com o cliente no WhatsApp
-          </a>
-        )}
+        {mensagens.length > 0 && <MensagensWhatsApp mensagens={mensagens} telefone={contato?.telefone} />}
 
         {admin && a.situacao === "confirmado" && (
           osLigada ? (
