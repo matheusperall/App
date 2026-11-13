@@ -104,8 +104,11 @@ export function CartaoVeiculo({
       href={`/garagem/${veiculo.id}`}
       className="group block overflow-hidden rounded-2xl border border-borda bg-white transition hover:border-marca/50 hover:shadow-lg hover:shadow-tinta/5"
     >
-      <FotoVeiculo url={fotoUrl} className="h-28 w-full sm:h-32" />
-      <div className="space-y-3 p-4">
+      <div className="flex gap-3 p-4">
+      <div className="shrink-0 overflow-hidden rounded-xl">
+        <FotoVeiculo url={fotoUrl} className="h-20 w-20 sm:h-24 sm:w-24" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-lg font-semibold">{nomeVeiculo(veiculo)}</h3>
@@ -136,6 +139,7 @@ export function CartaoVeiculo({
         ) : (
           <p className="text-xs font-semibold text-sucesso">✓ Tudo em dia</p>
         )}
+      </div>
       </div>
     </Link>
   );
