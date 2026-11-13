@@ -53,7 +53,7 @@ export function FormServico({
   const sugestao = calcularProxima(data || null, kmNum, meses ? Number(meses) : null, intervaloKm ? Number(intervaloKm) : null);
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       <input type="hidden" name="veiculo_id" value={veiculoId} />
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
@@ -70,7 +70,7 @@ export function FormServico({
         <input name="titulo" required value={titulo} onChange={(e) => setTitulo(e.target.value)} className="campo" placeholder="Ex.: Polimento técnico" />
       </Campo>
 
-      <Campo rotulo="Categoria">
+      <Campo rotulo="Categoria" largo>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {Object.entries(CATEGORIAS).map(([k, v]) => (
             <label
@@ -86,14 +86,12 @@ export function FormServico({
         </div>
       </Campo>
 
-      <div className="grid grid-cols-2 gap-3">
         <Campo rotulo="Data">
           <input name="data" type="date" required max={hoje} value={data} onChange={(e) => setData(e.target.value)} className="campo" />
         </Campo>
         <Campo rotulo="Quilometragem">
           <input name="km" inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value)} className="campo" placeholder="Ex.: 45000" />
         </Campo>
-      </div>
 
       {tipo && (
         <fieldset className="space-y-3 rounded-xl border border-marca/30 bg-marca-clara/50 p-4">
@@ -123,7 +121,6 @@ export function FormServico({
         <textarea name="descricao" rows={3} className="campo" />
       </Campo>
 
-      <div className={`grid gap-3 ${admin ? "grid-cols-2" : ""}`}>
         <Campo rotulo="Valor (R$)" dica="Opcional.">
           <input name="valor" inputMode="decimal" className="campo" placeholder="0,00" />
         </Campo>
@@ -135,9 +132,8 @@ export function FormServico({
             </select>
           </Campo>
         )}
-      </div>
 
-      <Campo rotulo="Fotos" dica="Até 8 fotos (antes e depois, nota, peças).">
+      <Campo rotulo="Fotos" dica="Até 8 fotos (antes e depois, nota, peças)." largo>
         <EnviarFotos pasta={`${donoId}/${veiculoId}`} maximo={8} />
       </Campo>
 

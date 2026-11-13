@@ -55,12 +55,12 @@ export function FormVeiculo({
   const d: DetalheFipe | undefined = escolha?.detalhe;
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {veiculo && <input type="hidden" name="id" value={veiculo.id} />}
       {clienteId ? <input type="hidden" name="cliente_id" value={clienteId} /> : <input type="hidden" name="dono_id" value={donoId} />}
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
-      <div className="grid grid-cols-[1fr_6.5rem] gap-3">
+      <div className="meia grid grid-cols-[1fr_6.5rem] gap-3">
         <Campo rotulo="Placa">
           <input
             name="placa"
@@ -82,7 +82,7 @@ export function FormVeiculo({
 
       {/* Marca, modelo e ano */}
       <fieldset className="space-y-3">
-        <legend className="mb-1.5 text-sm font-medium">Veículo</legend>
+        <legend className="mb-1.5 text-sm font-medium">Veículo<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></legend>
 
         {modo === "fipe" && (
           <>
@@ -158,14 +158,12 @@ export function FormVeiculo({
         )}
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-3">
         <Campo rotulo="Cor">
           <input name="cor" defaultValue={veiculo?.cor ?? ""} className="campo" placeholder="Ex.: Prata" />
         </Campo>
         <Campo rotulo="Quilometragem atual">
           <input name="km_atual" inputMode="numeric" defaultValue={veiculo?.km_atual ?? ""} className="campo" placeholder="Ex.: 45000" />
         </Campo>
-      </div>
       <Campo rotulo="Apelido" dica="Opcional. Ex.: “Carro da família”.">
         <input name="apelido" defaultValue={veiculo?.apelido ?? ""} className="campo" />
       </Campo>

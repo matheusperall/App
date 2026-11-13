@@ -57,3 +57,35 @@ h1, h2, h3 {
 @utility botao-contorno {
   @apply botao border border-borda bg-white text-texto hover:border-marca hover:text-marca-escura;
 }
+
+/*
+ * Ficha de cadastro: com espaço, os campos ficam em duas colunas (o form decide pela própria largura,
+ * então no celular ou dentro de um cartão estreito fica uma coluna só).
+ * Textos longos (textarea), grupos, avisos e botões ocupam a linha inteira.
+ */
+@layer components {
+  .ficha {
+    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, max(17rem, calc(50% - 0.625rem))), 1fr));
+    gap: 1rem 1.25rem;
+    align-items: start;
+  }
+  .ficha > * {
+    grid-column: 1 / -1;
+  }
+  .ficha > label.block:not(:has(textarea)):not(.inteira),
+  .ficha > .meia {
+    grid-column: auto;
+  }
+}
+
+/* Com espaço, o botão de salvar da ficha fica à direita, em vez de ocupar a linha inteira
+   (fora da camada para valer sobre o w-full do botão) */
+@container (width >= 40rem) {
+  .ficha > button[type="submit"] {
+    justify-self: end;
+    width: auto;
+    min-width: 16rem;
+  }
+}

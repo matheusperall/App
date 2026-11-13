@@ -35,7 +35,7 @@ export function FormLancamento({
   const noCartao = (cartaoFixo || tipo === "saida") && pagoCom.startsWith("cartao:");
   const cats = categorias.filter((c) => c.tipo === tipo && c.ativa && !c.sistema?.match(/^(os|fatura|taxa)$/));
   return (
-    <form action={acao} className="space-y-3" key={estado.sucesso}>
+    <form action={acao} className="ficha" key={estado.sucesso}>
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
       {estado.sucesso && <Aviso tipo="sucesso">{estado.sucesso}</Aviso>}
       {cartaoFixo ? <input type="hidden" name="tipo" value="saida" /> : (
@@ -51,15 +51,12 @@ export function FormLancamento({
       <Campo rotulo="Descrição">
         <input name="descricao" required className="campo" placeholder={tipo === "saida" ? "Ex.: Conta de luz" : "Ex.: Venda de acessório"} />
       </Campo>
-      <div className="grid grid-cols-2 gap-3">
-        <Campo rotulo={repeticao === "parcelado" ? "Valor total (R$)" : repeticao === "recorrente" ? "Valor por mês (R$)" : "Valor (R$)"}>
+        <Campo obrigatorio rotulo={repeticao === "parcelado" ? "Valor total (R$)" : repeticao === "recorrente" ? "Valor por mês (R$)" : "Valor (R$)"}>
           <CampoDinheiro name="valor" valor={valor} aoMudar={setValor} />
         </Campo>
         <Campo rotulo={noCartao ? "Data da compra" : "Mês de referência"} dica={noCartao ? "Define em qual fatura a compra entra" : "Data em que a despesa conta no resultado"}>
           <input name="data" type="date" defaultValue={hoje} required className="campo" />
         </Campo>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
         <Campo rotulo="Categoria">
           <select name="categoria_id" className="campo px-3">
             {cats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -83,7 +80,6 @@ export function FormLancamento({
           </Campo>
         )}
         {!cartaoFixo && (noCartao ? <input type="hidden" name="cartao_id" value={pagoCom.slice(7)} /> : <input type="hidden" name="conta_id" value={pagoCom.startsWith("conta:") ? pagoCom.slice(6) : (contas[0]?.id ?? "")} />)}
-      </div>
       <fieldset className="space-y-2">
         <legend className="mb-1.5 text-sm font-medium">Repetição</legend>
         <div className="grid grid-cols-3 gap-2 text-sm">

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { obterVeiculo } from "@/lib/dados";
@@ -15,18 +15,15 @@ export default async function NovoApontamentoPage({ params }: PageProps<"/garage
   if (!veiculo) notFound();
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
-      <div>
-        <h1 className="text-2xl font-bold">Novo apontamento</h1>
-        <p className="text-suave">
-          {veiculo.dono?.nome ?? "O cliente"} recebe um aviso no celular e por e-mail, e pode pedir orçamento ou
-          agendamento direto pelo app.
-        </p>
-      </div>
+    <PaginaFicha
+      voltar={{ href: `/garagem/${id}`, rotulo: nomeVeiculo(veiculo) }}
+      icone="aviso"
+      titulo="Novo apontamento"
+      descricao={`${veiculo.dono?.nome ?? "O cliente"} recebe um aviso no celular e por e-mail, e pode pedir orçamento ou agendamento direto pelo app.`}
+    >
       <Cartao>
         <FormApontamento veiculoId={veiculo.id} donoId={pastaFotos(veiculo)} />
       </Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

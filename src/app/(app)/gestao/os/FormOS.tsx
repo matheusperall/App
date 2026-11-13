@@ -6,8 +6,9 @@ import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { ResumoFipe, SeletorFipe, type Escolha } from "@/components/SeletorFipe";
 import { Aviso, Campo, Cartao } from "@/components/ui";
 import { CATEGORIAS, formatarValor, normalizarPlaca, placaValida, type Categoria } from "@/lib/garagem";
-import { arred, combina } from "@/lib/gestao";
+import { arred } from "@/lib/gestao";
 import { CampoDinheiro } from "@/components/CampoDinheiro";
+import { ListaBusca } from "@/components/ListaBusca";
 import { salvarOS, type DadosOS } from "./actions";
 
 export type OpcaoCliente = {
@@ -54,15 +55,31 @@ export function FormOS({
   // ---------------- Cliente ----------------
   const [clienteId, setClienteId] = useState<string | null>(inicial.clienteId ?? null);
   const [novoCliente, setNovoCliente] = useState<{ nome: string; telefone: string; lojista: boolean } | null>(null);
-  const [buscaCliente, setBuscaCliente] = useState("");
   const cliente = clientes.find((c) => c.id === clienteId) ?? null;
-  const clientesFiltrados = useMemo(() => {
-    if (!buscaCliente.trim()) return clientes.slice(0, 6);
-    const placa = normalizarPlaca(buscaCliente);
-    return clientes
-      .filter((c) => combina(`${c.nome} ${c.telefone ?? ""}`, buscaCliente) || (placa.length >= 3 && c.veiculos.some((v) => v.placa.includes(placa))))
-      .slice(0, 8);
-  }, [buscaCliente, clientes]);
+  const opcoesClientes = useMemo(
+    () =>
+      clientes.map((c) => ({
+        id: c.id,
+        titulo: `${c.nome || "Sem nome"}${c.lojista ? " · lojista" : ""}`,
+        detalhe: [c.telefone, ...c.veiculos.map((v) => v.placa)].filter(Boolean).join(" · "),
+        busca: c.veiculos.map((v) => `${v.placa} ${v.nome}`).join(" "),
+      })),
+    [clientes],
+  );
+  function escolherCliente(id: string) {
+    const c = clientes.find((x) => x.id === id);
+    if (!c) return;
+    setClienteId(c.id);
+    setVeiculoId(c.veiculos.length === 1 ? c.veiculos[0].id : null);
+    setNovoVeiculo(c.veiculos.length === 0);
+  }
+  function cadastrarCliente(texto: string) {
+    setNovoCliente({ nome: texto && !placaValida(texto) ? texto : "", telefone: "", lojista: false });
+    setClienteId(null);
+    setVeiculoId(null);
+    setNovoVeiculo(true);
+    if (placaValida(texto)) setPlaca(normalizarPlaca(texto));
+  }
 
   // ---------------- Veículo ----------------
   const [veiculoId, setVeiculoId] = useState<string | null>(inicial.veiculoId ?? null);
@@ -94,16 +111,14 @@ export function FormOS({
   const [itens, setItens] = useState<Item[]>(() =>
     (inicial.itens ?? []).map((i) => ({ chave: proximaChave++, catalogo_id: i.catalogo_id, nome: i.nome, preco: i.preco })),
   );
-  const [buscaServico, setBuscaServico] = useState("");
   const [cadastrando, setCadastrando] = useState<{ nome: string; preco: number; categoria: Categoria } | null>(null);
-  const servicosFiltrados = useMemo(
-    () => (buscaServico.trim() ? catalogo.filter((s) => combina(s.nome, buscaServico)).slice(0, 10) : catalogo.slice(0, 8)),
-    [buscaServico, catalogo],
+  const opcoesServicos = useMemo(
+    () => catalogo.map((c) => ({ id: c.id, titulo: c.nome, detalhe: CATEGORIAS[c.categoria]?.rotulo, extra: <span className="tabular-nums text-suave">{formatarValor(c.preco)}</span> })),
+    [catalogo],
   );
 
   function adicionar(s: { id: string | null; nome: string; preco: number; novo?: { categoria: Categoria } }) {
     setItens((l) => [...l, { chave: proximaChave++, catalogo_id: s.id, nome: s.nome, preco: s.preco, novo: s.novo }]);
-    setBuscaServico("");
   }
 
   // ---------------- Valores ----------------
@@ -165,9 +180,10 @@ export function FormOS({
       <input type="hidden" name="dados" value={JSON.stringify(dados)} />
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 [&>*]:min-w-0">
       {/* 1. Cliente */}
       <Cartao className="space-y-3">
-        <h2 className="font-semibold">1. Cliente</h2>
+        <h2 className="font-semibold">1. Cliente<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></h2>
         {editando || (cliente && !novoCliente) ? (
           <div className="flex items-center justify-between gap-3 rounded-xl bg-fundo px-4 py-3">
             <div className="min-w-0">
@@ -193,7 +209,7 @@ export function FormOS({
         ) : novoCliente ? (
           <div className="space-y-3 rounded-xl border border-marca/30 bg-marca-clara/40 p-4">
             <p className="text-sm font-semibold text-marca-escura">Novo cliente</p>
-            <Campo rotulo="Nome">
+            <Campo rotulo="Nome" obrigatorio>
               <input className="campo" value={novoCliente.nome} onChange={(e) => setNovoCliente({ ...novoCliente, nome: e.target.value })} autoFocus />
             </Campo>
             <Campo rotulo="Celular (WhatsApp)">
@@ -209,47 +225,26 @@ export function FormOS({
           </div>
         ) : (
           <>
-            <input
-              type="search"
-              className="campo"
-              placeholder="Buscar por nome, telefone ou placa"
-              value={buscaCliente}
-              onChange={(e) => setBuscaCliente(e.target.value)}
-              aria-label="Buscar cliente"
+            <ListaBusca
+              opcoes={opcoesClientes}
+              aoEscolher={escolherCliente}
+              placeholder="Digite o nome, o telefone ou a placa"
+              rotuloAcessivel="Buscar cliente"
+              vazio="Nenhum cliente encontrado."
+              rodape={(texto, fechar) => (
+                <button
+                  type="button"
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-marca-escura hover:bg-white"
+                  onClick={() => {
+                    cadastrarCliente(texto);
+                    fechar();
+                  }}
+                >
+                  + {texto && !placaValida(texto) ? `Cadastrar “${texto}” como cliente novo` : "Cadastrar novo cliente"}
+                </button>
+              )}
             />
-            <ul className="divide-y divide-borda overflow-hidden rounded-xl border border-borda">
-              {clientesFiltrados.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-fundo"
-                    onClick={() => {
-                      setClienteId(c.id);
-                      setVeiculoId(c.veiculos.length === 1 ? c.veiculos[0].id : null);
-                      setNovoVeiculo(c.veiculos.length === 0);
-                    }}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{c.nome || "Sem nome"}{c.lojista && <span className="text-xs text-marca-escura"> · lojista</span>}</span>
-                      <span className="block truncate text-xs text-suave">{[c.telefone, ...c.veiculos.map((v) => v.placa)].filter(Boolean).join(" · ")}</span>
-                    </span>
-                    <span className="text-sm font-semibold text-marca-escura">Escolher</span>
-                  </button>
-                </li>
-              ))}
-              {clientesFiltrados.length === 0 && <li className="px-4 py-3 text-sm text-suave">Nenhum cliente encontrado.</li>}
-            </ul>
-            <button
-              type="button"
-              className="botao-contorno w-full text-sm"
-              onClick={() => {
-                setNovoCliente({ nome: buscaCliente.trim() && !placaValida(buscaCliente) ? buscaCliente.trim() : "", telefone: "", lojista: false });
-                setClienteId(null);
-                setVeiculoId(null);
-                setNovoVeiculo(true);
-                if (placaValida(buscaCliente)) setPlaca(normalizarPlaca(buscaCliente));
-              }}
-            >
+            <button type="button" className="text-sm font-semibold text-marca-escura hover:underline" onClick={() => cadastrarCliente("")}>
               + Cadastrar novo cliente
             </button>
           </>
@@ -258,7 +253,7 @@ export function FormOS({
 
       {/* 2. Veículo */}
       <Cartao className="space-y-3">
-          <h2 className="font-semibold">2. Veículo</h2>
+          <h2 className="font-semibold">2. Veículo<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></h2>
           {!temCliente ? (
             <p className="text-sm text-suave">Escolha ou cadastre o cliente primeiro.</p>
           ) : editando && !novoVeiculo ? (
@@ -299,7 +294,7 @@ export function FormOS({
 
               {novoVeiculo && (
                 <div className="space-y-3">
-                  <Campo rotulo="Placa" dica={placa && !placaOk ? "Formato ABC1234 ou ABC1D23" : undefined}>
+                  <Campo rotulo="Placa" obrigatorio dica={placa && !placaOk ? "Formato ABC1234 ou ABC1D23" : undefined}>
                     <div className="flex gap-2">
                       <input
                         className="campo font-mono uppercase tracking-wider"
@@ -356,7 +351,7 @@ export function FormOS({
 
       {/* 3. Serviços */}
       <Cartao className="space-y-3">
-        <h2 className="font-semibold">3. Serviços</h2>
+        <h2 className="font-semibold">3. Serviços<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></h2>
 
         {itens.length > 0 && (
           <ul className="space-y-2">
@@ -391,7 +386,7 @@ export function FormOS({
         {cadastrando ? (
           <div className="space-y-3 rounded-xl border border-marca/30 bg-marca-clara/40 p-4">
             <p className="text-sm font-semibold text-marca-escura">Novo serviço (entra no catálogo)</p>
-            <Campo rotulo="Nome do serviço">
+            <Campo rotulo="Nome do serviço" obrigatorio>
               <input className="campo" value={cadastrando.nome} onChange={(e) => setCadastrando({ ...cadastrando, nome: e.target.value })} autoFocus />
             </Campo>
             <div className="grid grid-cols-2 gap-3">
@@ -425,34 +420,30 @@ export function FormOS({
           </div>
         ) : (
           <>
-            <input
-              type="search"
-              className="campo"
-              placeholder="Buscar serviço (ex.: lavagem, polimento)"
-              value={buscaServico}
-              onChange={(e) => setBuscaServico(e.target.value)}
-              aria-label="Buscar serviço no catálogo"
+            <ListaBusca
+              opcoes={opcoesServicos}
+              aoEscolher={(id) => {
+                const sv = catalogo.find((c) => c.id === id);
+                if (sv) adicionar(sv);
+              }}
+              placeholder="Digite o serviço (ex.: lavagem, polimento)"
+              rotuloAcessivel="Buscar serviço no catálogo"
+              vazio="Nenhum serviço com esse nome no catálogo."
+              rodape={(texto, fechar) => (
+                <button
+                  type="button"
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-marca-escura hover:bg-white"
+                  onClick={() => {
+                    setCadastrando({ nome: texto, preco: 0, categoria: "estetica" });
+                    fechar();
+                  }}
+                >
+                  + {texto ? `Cadastrar “${texto}” como serviço novo` : "Cadastrar serviço novo"}
+                </button>
+              )}
             />
-            <ul className="divide-y divide-borda overflow-hidden rounded-xl border border-borda">
-              {servicosFiltrados.map((s) => (
-                <li key={s.id}>
-                  <button type="button" className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-fundo" onClick={() => adicionar(s)}>
-                    <span className="min-w-0 truncate text-sm">{s.nome}</span>
-                    <span className="flex shrink-0 items-center gap-3 text-sm">
-                      <span className="tabular-nums text-suave">{formatarValor(s.preco)}</span>
-                      <span className="font-semibold text-marca-escura">+<span className="hidden sm:inline"> Adicionar</span></span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {servicosFiltrados.length === 0 && <li className="px-4 py-3 text-sm text-suave">Nenhum serviço com esse nome no catálogo.</li>}
-            </ul>
-            <button
-              type="button"
-              className="botao-contorno w-full text-sm"
-              onClick={() => setCadastrando({ nome: buscaServico.trim(), preco: 0, categoria: "estetica" })}
-            >
-              + {buscaServico.trim() ? `Cadastrar “${buscaServico.trim()}” como serviço novo` : "Cadastrar serviço novo"}
+            <button type="button" className="text-sm font-semibold text-marca-escura hover:underline" onClick={() => setCadastrando({ nome: "", preco: 0, categoria: "estetica" })}>
+              + Cadastrar serviço novo
             </button>
           </>
         )}
@@ -483,8 +474,10 @@ export function FormOS({
         </dl>
       </Cartao>
 
+      </div>
+
       {faltando && <p className="text-center text-sm text-suave">{faltando} para continuar.</p>}
-      <BotaoEnviar pendente="Salvando…" className={`botao-primario w-full ${faltando ? "pointer-events-none opacity-50" : ""}`}>
+      <BotaoEnviar pendente="Salvando…" className={`botao-primario w-full lg:ml-auto lg:flex lg:w-80 ${faltando ? "pointer-events-none opacity-50" : ""}`}>
         {editando ? "Salvar alterações" : "Abrir OS"}
       </BotaoEnviar>
     </form>

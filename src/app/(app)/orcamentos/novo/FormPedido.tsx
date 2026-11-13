@@ -21,7 +21,7 @@ export function FormPedido({
   const veiculo = veiculos.find((v) => v.id === veiculoId) ?? veiculos[0];
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
       {veiculos.length > 1 ? (
         <Campo rotulo="Veículo">
@@ -33,7 +33,7 @@ export function FormPedido({
         <input type="hidden" name="veiculo_id" value={veiculo.id} />
       )}
 
-      <Campo rotulo="Tipo de serviço">
+      <Campo rotulo="Tipo de serviço" largo>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {Object.entries(CATEGORIAS).map(([k, v]) => (
             <label
@@ -53,7 +53,7 @@ export function FormPedido({
         <textarea name="pedido" required rows={4} className="campo" placeholder="Ex.: Quero polir o carro e aplicar vitrificação. Tem alguns riscos leves no capô (fotos)." />
       </Campo>
 
-      <Campo rotulo="Fotos" dica="Fotos ajudam a gente a passar um valor mais preciso. Até 8.">
+      <Campo rotulo="Fotos" dica="Fotos ajudam a gente a passar um valor mais preciso. Até 8." largo>
         <EnviarFotos key={veiculo.id} pasta={`${veiculo.donoId}/${veiculo.id}`} maximo={8} />
       </Campo>
 

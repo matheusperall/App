@@ -4,12 +4,15 @@ import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
+import { CampoEscolha, type OpcaoBusca } from "@/components/ListaBusca";
 import { PERIODOS, formatarDiaSemana, type Periodo } from "@/lib/agenda";
 import { CATEGORIAS, somarDias, type Categoria } from "@/lib/garagem";
 import { agendarLavagem, pedirAgendamento } from "../actions";
 
 type Props = {
-  veiculos: { id: string; nome: string }[];
+  veiculos: OpcaoBusca[];
+  /** Empresa: escolhe o veículo do cliente com busca (placa, modelo, nome ou telefone) */
+  escolherComBusca?: boolean;
   veiculoInicial: string;
   dias: { dia: string; horarios: string[] }[];
   hoje: string;
@@ -19,19 +22,32 @@ type Props = {
   apontamentoId?: string;
 };
 
-function SeletorVeiculo({ veiculos, valor, mudar, travado }: { veiculos: Props["veiculos"]; valor: string; mudar: (v: string) => void; travado: boolean }) {
+function SeletorVeiculo({ veiculos, valor, mudar, travado, busca }: { veiculos: Props["veiculos"]; valor: string; mudar: (v: string) => void; travado: boolean; busca?: boolean }) {
+  if (busca) {
+    return (
+      <CampoEscolha
+        rotulo="Cliente e veículo"
+        nome="veiculo_id"
+        opcoes={veiculos}
+        valor={valor}
+        mudar={mudar}
+        placeholder="Digite a placa, o modelo, o nome ou o telefone"
+        vazio="Nenhum veículo encontrado. Cadastre o cliente em Gestão › Clientes."
+      />
+    );
+  }
   if (veiculos.length === 1 || travado) {
     return (
       <>
         <input type="hidden" name="veiculo_id" value={valor} />
-        <p className="text-sm text-suave">Veículo: <strong className="text-texto">{veiculos.find((v) => v.id === valor)?.nome}</strong></p>
+        <p className="text-sm text-suave">Veículo: <strong className="text-texto">{veiculos.find((v) => v.id === valor)?.titulo}</strong></p>
       </>
     );
   }
   return (
     <Campo rotulo="Veículo">
-      <select name="veiculo_id" value={valor} onChange={(e) => mudar(e.target.value)} className="campo">
-        {veiculos.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+      <select name="veiculo_id" value={valor} onChange={(e) => mudar(e.target.value)} required className="campo">
+        {veiculos.map((v) => <option key={v.id} value={v.id}>{v.titulo}</option>)}
       </select>
     </Campo>
   );
@@ -84,14 +100,14 @@ function FormLavagem(p: Props & { veiculoId: string; setVeiculoId: (v: string) =
   }
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
-      <SeletorVeiculo veiculos={p.veiculos} valor={p.veiculoId} mudar={p.setVeiculoId} travado={false} />
+      <SeletorVeiculo veiculos={p.veiculos} valor={p.veiculoId} mudar={p.setVeiculoId} travado={false} busca={p.escolherComBusca} />
       <input type="hidden" name="dia" value={dia} />
       <input type="hidden" name="hora" value={hora} />
 
       <div className="space-y-1.5">
-        <span className="text-sm font-medium">Dia</span>
+        <span className="text-sm font-medium">Dia<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></span>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           {p.dias.map((d) => (
             <button
@@ -113,8 +129,8 @@ function FormLavagem(p: Props & { veiculoId: string; setVeiculoId: (v: string) =
       </div>
 
       <div className="space-y-1.5">
-        <span className="text-sm font-medium">Horário</span>
-        <div className="grid grid-cols-4 gap-2">
+        <span className="text-sm font-medium">Horário<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></span>
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
           {horarios.map((h) => (
             <button
               key={h}
@@ -128,7 +144,7 @@ function FormLavagem(p: Props & { veiculoId: string; setVeiculoId: (v: string) =
         </div>
       </div>
 
-      <Campo rotulo="Observações" dica="Opcional.">
+      <Campo rotulo="Observações" dica="Opcional." largo>
         <input name="observacoes" className="campo" placeholder="Ex.: carro com bastante barro" />
       </Campo>
 
@@ -147,23 +163,23 @@ function FormServico(p: Props & { veiculoId: string; setVeiculoId: (v: string) =
   const [categoria, setCategoria] = useState<Categoria>((p.categoriaInicial in CATEGORIAS ? p.categoriaInicial : "outros") as Categoria);
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
       {p.orcamentoId && <input type="hidden" name="orcamento_id" value={p.orcamentoId} />}
       {p.apontamentoId && <input type="hidden" name="apontamento_id" value={p.apontamentoId} />}
-      <SeletorVeiculo veiculos={p.veiculos} valor={p.veiculoId} mudar={p.setVeiculoId} travado={p.travado} />
+      <SeletorVeiculo veiculos={p.veiculos} valor={p.veiculoId} mudar={p.setVeiculoId} travado={p.travado} busca={p.escolherComBusca && !p.travado} />
 
       <Campo rotulo="Serviço">
         <input name="servico" required defaultValue={p.servicoInicial} className="campo" placeholder="Ex.: Polimento e vitrificação" />
       </Campo>
-      <Campo rotulo="Tipo">
+      <Campo rotulo="Tipo" obrigatorio>
         <select name="categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as Categoria)} className="campo">
           {Object.entries(CATEGORIAS).map(([k, v]) => <option key={k} value={k}>{v.icone} {v.rotulo}</option>)}
         </select>
       </Campo>
 
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-medium">Quando você prefere? (até 3 opções)</legend>
+        <legend className="mb-1 text-sm font-medium">Quando você prefere? (até 3 opções)<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></legend>
         {prefs.map((pr, i) => (
           <div key={i} className="flex gap-2">
             <input

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { hojeISO } from "@/lib/garagem";
@@ -12,10 +12,8 @@ export default async function NovoLancamentoPage() {
   await exigirAdmin();
   const [categorias, contas, cartoes] = await Promise.all([listarCategorias(), listarContas(), listarCartoes()]);
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href="/gestao/financeiro">Financeiro</Voltar>
-      <h1 className="text-2xl font-bold">Novo lançamento</h1>
+    <PaginaFicha voltar={{ href: "/gestao/financeiro", rotulo: "Financeiro" }} icone="financeiro" titulo="Novo lançamento" descricao="Entradas e saídas do caixa: despesas, compras no cartão, contas fixas e parceladas.">
       <Cartao><FormLancamento categorias={categorias} contas={contas.filter((c) => c.ativa)} hoje={hojeISO()} cartoes={cartoes.filter((c) => c.ativo).map(({ id, nome }) => ({ id, nome }))} /></Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

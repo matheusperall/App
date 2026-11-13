@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { exigirAdmin } from "@/lib/auth";
 import { placaConfigurada } from "@/lib/consulta-placa";
 import { obterOS } from "@/lib/gestao-dados";
@@ -17,9 +17,7 @@ export default async function EditarOSPage({ params }: PageProps<"/gestao/os/[os
   const { clientes, catalogo } = await opcoesFormOS();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Voltar href={`/gestao/os/${os.id}`}>OS #{os.numero}</Voltar>
-      <h1 className="text-2xl font-bold">Editar OS #{os.numero}</h1>
+    <PaginaFicha voltar={{ href: `/gestao/os/${os.id}`, rotulo: `OS #${os.numero}` }} icone="os" titulo={`Editar OS #${os.numero}`}>
       <FormOS
         clientes={clientes}
         catalogo={catalogo}
@@ -35,6 +33,6 @@ export default async function EditarOSPage({ params }: PageProps<"/gestao/os/[os
           observacoes: os.observacoes,
         }}
       />
-    </div>
+    </PaginaFicha>
   );
 }
