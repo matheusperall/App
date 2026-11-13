@@ -9,9 +9,9 @@ import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterOrcamento, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
-import { EMPRESA, mensagemOrcamento, type Mensagem } from "@/lib/mensagens";
-import { osPorOrigem } from "@/lib/gestao-dados";
-import { CATEGORIAS, formatarData, formatarDataHora, formatarValor, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
+import { mensagensOrcamento } from "@/lib/mensagens";
+import { obterModelosMensagens, osPorOrigem } from "@/lib/gestao-dados";
+import { CATEGORIAS, formatarData, formatarDataHora, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
 import { excluirOrcamento } from "../actions";
 import { Decisao } from "./Decisao";
 import { FormResposta } from "./FormResposta";
@@ -28,20 +28,13 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
   const vencido = orcamentoVencido(o);
   const respondido = o.itens.length > 0;
   const osLigada = admin && o.situacao === "aceito" ? (await osPorOrigem("orcamento_id", [o.id]))[o.id] : undefined;
-  // Mensagens prontas para o cliente (o contato vem da conta do app ou da ficha da loja)
-  const contato = admin && respondido ? (await obterVeiculo(o.veiculo_id))?.dono ?? o.veiculo?.dono ?? null : null;
-  const mensagens: Mensagem[] = [];
-  if (admin && respondido && o.situacao !== "cancelado") {
-    const dados = { ...o, cliente: contato?.nome, veiculo: o.veiculo ? nomeVeiculo(o.veiculo) : null, placa: o.veiculo?.placa };
-    if (o.situacao === "aceito") {
-      mensagens.push({
-        chave: "combinar",
-        rotulo: "Combinar a data",
-        texto: `Olá${contato?.nome ? `, ${contato.nome.split(" ")[0]}` : ""}! Aqui é da *${EMPRESA}*. Obrigado por aprovar o orçamento #${o.numero} (${formatarValor(o.valor_total)}). Qual o melhor dia para trazer o ${o.veiculo ? nomeVeiculo(o.veiculo) : "veículo"}?`,
-      });
-    }
-    mensagens.push(mensagemOrcamento(dados));
-  }
+  // Mensagens prontas para o cliente, com o nome e o carro (o contato vem da conta do app ou da ficha da loja)
+  const comMensagens = admin && respondido && o.situacao !== "cancelado";
+  const [carro, modelos] = comMensagens ? await Promise.all([obterVeiculo(o.veiculo_id), obterModelosMensagens()]) : [null, {}];
+  const contato = carro?.dono ?? o.veiculo?.dono ?? null;
+  const mensagens = comMensagens
+    ? mensagensOrcamento(o, { nome: contato?.nome, marca: carro?.marca ?? o.veiculo?.marca, modelo: carro?.modelo ?? o.veiculo?.modelo, ano: carro?.ano, cor: carro?.cor, placa: carro?.placa ?? o.veiculo?.placa }, modelos)
+    : [];
 
   return (
     <div className="space-y-4">

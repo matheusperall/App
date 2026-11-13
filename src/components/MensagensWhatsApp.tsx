@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { linkWhatsApp } from "@/lib/gestao";
 import type { Mensagem } from "@/lib/mensagens";
@@ -20,8 +21,20 @@ export function MensagensWhatsApp({ mensagens, telefone, titulo = "Enviar ao cli
     <section className="space-y-3 rounded-2xl border border-borda bg-cartao p-5 shadow-[0_1px_2px_rgba(11,18,32,0.04)]">
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-semibold">💬 {titulo}</h2>
-        {!telefone && <span className="text-xs text-suave">Cliente sem telefone: escolha o contato no WhatsApp</span>}
+        <Link
+          href={`/gestao/mensagens#${atual.chave}`}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-suave hover:bg-fundo hover:text-marca-escura"
+          title={`Editar o modelo da mensagem “${atual.rotulo}”`}
+          aria-label={`Editar o modelo da mensagem ${atual.rotulo}`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" />
+            <path d="m13.5 6.5 4 4" />
+          </svg>
+          Editar modelo
+        </Link>
       </div>
+      {!telefone && <p className="-mt-1 text-xs text-suave">Cliente sem telefone: ao enviar, escolha o contato no WhatsApp.</p>}
 
       {mensagens.length > 1 && (
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tipo de mensagem">

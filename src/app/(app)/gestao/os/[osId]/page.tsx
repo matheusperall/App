@@ -8,11 +8,11 @@ import { mensagensOS } from "@/lib/mensagens";
 import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Cartao } from "@/components/ui";
 import { AtencaoPreferencias } from "@/components/AtencaoPreferencias";
-import { preferenciasDosVeiculos } from "@/lib/dados";
+import { obterVeiculo, preferenciasDosVeiculos } from "@/lib/dados";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
 import { STATUS_OS, arred, faltaReceber, rotuloForma } from "@/lib/gestao";
-import { consumoDaOS, listarContas, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
+import { consumoDaOS, listarContas, obterModelosMensagens, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
 import { avancarStatus, cancelarOS } from "../actions";
 import { FormReceber } from "./FormReceber";
 
@@ -28,6 +28,8 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
     pagamentosDaOS(os.id),
     os.veiculo_id ? preferenciasDosVeiculos([os.veiculo_id]) : Promise.resolve({} as Record<string, string[]>),
   ]);
+  // Dados do carro e modelos para as mensagens de WhatsApp
+  const [carro, modelos] = await Promise.all([os.veiculo_id ? obterVeiculo(os.veiculo_id) : Promise.resolve(null), obterModelosMensagens()]);
   const falta = faltaReceber(os);
   const nomeConta = (id: string | null) => contas.find((c) => c.id === id)?.nome;
   const s = STATUS_OS[os.status];
@@ -187,7 +189,10 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           )}
         </Cartao>
       )}
-      <MensagensWhatsApp mensagens={mensagensOS(os, pagamentos)} telefone={os.cliente?.telefone} />
+      <MensagensWhatsApp
+        mensagens={mensagensOS(os, pagamentos, { nome: os.cliente?.nome, marca: carro?.marca, modelo: carro?.modelo, ano: carro?.ano, cor: carro?.cor, placa: carro?.placa ?? os.placa }, modelos)}
+        telefone={os.cliente?.telefone}
+      />
       {cancelavel && (
         <FormAcao
           acao={cancelarOS}

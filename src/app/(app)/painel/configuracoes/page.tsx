@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Cabecalho } from "@/components/gestao/Cabecalho";
 import { abasPainel } from "../abas";
 import * as webpush from "web-push";
@@ -107,6 +108,15 @@ export default async function ConfiguracoesPage() {
           </ol>
         )}
         <p className="text-xs text-suave">Mesmo sem e-mail ou push, todos os avisos aparecem na aba Avisos do app.</p>
+      </Cartao>
+
+      <Cartao className="space-y-3">
+        <h2 className="font-semibold">💬 Mensagens de WhatsApp</h2>
+        <p className="text-sm text-suave">
+          Textos prontos da OS (resumo, carro pronto, cobrança e comprovante), do orçamento e do lembrete de agendamento.
+          Ajuste o jeito de escrever da loja; o nome do cliente e o carro entram sozinhos.
+        </p>
+        <Link href="/gestao/mensagens" className="botao-contorno w-full text-sm">Editar modelos das mensagens</Link>
       </Cartao>
       </div>
     </div>

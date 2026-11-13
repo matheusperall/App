@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { MenuGestao } from "@/components/gestao/MenuGestao";
 import Link from "next/link";
 import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
-import { EMPRESA, mensagemLembreteAgendamento, type Mensagem } from "@/lib/mensagens";
+import { mensagensAgendamento } from "@/lib/mensagens";
+import { obterModelosMensagens } from "@/lib/gestao-dados";
 import { notFound } from "next/navigation";
 import { SeloAgendamento, descreverPreferencias } from "@/components/agendamento";
 import { Placa, Voltar } from "@/components/garagem";
@@ -24,19 +25,14 @@ export default async function AgendamentoPage({ params, searchParams }: PageProp
   if (!a) notFound();
   const admin = usuario.papel === "admin";
   const cat = CATEGORIAS[a.categoria as keyof typeof CATEGORIAS] ?? CATEGORIAS.outros;
-  // Mensagens prontas para o cliente (o contato vem da conta do app ou da ficha da loja)
+  // Mensagens prontas para o cliente, com o nome e o carro (o contato vem da conta do app ou da ficha da loja)
   const ativoAgora = a.situacao === "solicitado" || a.situacao === "confirmado";
-  const contato = admin && ativoAgora ? (await obterVeiculo(a.veiculo_id))?.dono ?? a.veiculo?.dono ?? null : null;
-  const mensagens: Mensagem[] = [];
-  if (admin && ativoAgora) {
-    const veiculo = a.veiculo ? nomeVeiculo(a.veiculo) : null;
-    if (a.situacao === "confirmado" && a.inicio) mensagens.push(mensagemLembreteAgendamento({ ...a, cliente: contato?.nome, veiculo, placa: a.veiculo?.placa }));
-    mensagens.push({
-      chave: "conversa",
-      rotulo: "Falar sobre o agendamento",
-      texto: `Olá${contato?.nome ? `, ${contato.nome.split(" ")[0]}` : ""}! Aqui é da *${EMPRESA}*, sobre o agendamento de ${a.servico}${veiculo ? ` do seu ${veiculo}` : ""}.`,
-    });
-  }
+  const [carro, modelos] = admin && ativoAgora ? await Promise.all([obterVeiculo(a.veiculo_id), obterModelosMensagens()]) : [null, {}];
+  const contato = carro?.dono ?? a.veiculo?.dono ?? null;
+  const mensagens =
+    admin && ativoAgora
+      ? mensagensAgendamento(a, { nome: contato?.nome, marca: carro?.marca ?? a.veiculo?.marca, modelo: carro?.modelo ?? a.veiculo?.modelo, ano: carro?.ano, cor: carro?.cor, placa: carro?.placa ?? a.veiculo?.placa }, modelos)
+      : [];
   const ativo = a.situacao === "solicitado" || a.situacao === "confirmado";
   const osLigada = admin ? (await osPorOrigem("agendamento_id", [a.id]))[a.id] : undefined;
   const sugestao = a.preferencias[0];

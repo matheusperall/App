@@ -31,6 +31,7 @@ aparecem, mas login e cadastro não funcionam.
    15. `0015_cartoes_credito.sql` — cartões de crédito da empresa (compras, faturas e pagamento)
    16. `0016_seguranca.sql` — ajustes de segurança (veja [SEGURANCA.md](SEGURANCA.md))
    17. `0017_preferencias_veiculo.sql` — preferências do cliente para cada veículo (ponto de atenção na OS)
+   18. `0018_modelos_mensagens.sql` — modelos editáveis das mensagens de WhatsApp
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

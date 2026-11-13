@@ -57,6 +57,10 @@ com textos prontos. Escolha o tipo, confira (dá para mudar o texto), toque em *
   **Comprovante de pagamento** (depois de receber). A mais útil para a situação da OS já vem escolhida.
 - Orçamento: **Orçamento** com os itens, total, prazo e validade (e **Combinar a data** depois de aprovado).
 - Agendamento: **Lembrete do agendamento** com dia e horário.
+- O nome do cliente, a marca, o modelo e a placa do carro entram sozinhos.
+- **Editar modelo** (lápis no quadro) abre *Gestão › Mensagens de WhatsApp*: ali você muda o texto de cada mensagem,
+  usando campos como `{cliente}`, `{marca}`, `{modelo}`, `{placa}`, `{total}` e `{em_aberto}`, com uma prévia ao lado.
+  **Voltar ao padrão** desfaz. (Também dá para chegar por *Atendimento › Configurações*.)
 
 **Campos de valor em reais** começam em 0,00 e os números "correm" como numa maquininha:
 digitar 12345 vira 123,45. A tecla de apagar tira o último número.
@@ -168,5 +172,11 @@ para cada veículo (ex.: "Não mexer nos bancos", "Não passar cheirinho", "Pret
   Dá para copiar as mesmas preferências para os outros veículos do cliente (um por um ou todos) e marcar
   **Usar nos próximos veículos cadastrados**.
 - Elas aparecem como **⚠️ Ponto de atenção** ao escolher o veículo na Nova OS, na OS aberta e na página do veículo.
+
+### Atualização: modelos das mensagens de WhatsApp (arquivo 0018)
+
+Depois do 0017, rode **`supabase/migrations/0018_modelos_mensagens.sql`**. Ele guarda os textos das mensagens de
+WhatsApp que você editar em *Gestão › Mensagens de WhatsApp*. Sem ele, as mensagens funcionam com o texto padrão,
+mas não dá para salvar mudanças.
 
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
