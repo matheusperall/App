@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CartaoVeiculo, contarAlertas } from "@/components/garagem";
 import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
-import { apontamentoAberto, hojeISO, ritmoDoVeiculo, somarDias } from "@/lib/garagem";
+import { apontamentoAberto, hojeISO, ritmoDoVeiculo, situacaoDocumento } from "@/lib/garagem";
+import { documentosAutomaticos } from "@/lib/calendarios";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario, primeiroNome } from "@/lib/auth";
 import { listarAnexos, listarApontamentos, listarDocumentosVeiculos, listarManutencoes, listarVeiculos, obterCnh, urlsDasFotos } from "@/lib/dados";
@@ -29,6 +30,13 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
 
   const alertas = veiculos.map((v) => contarAlertas(manutencoes.filter((m) => m.veiculo_id === v.id), v.km_atual, ritmoDoVeiculo(v)));
   const hoje = hojeISO();
+  // Mesma conta do cartão de cada veículo: documentos cadastrados + IPVA/licenciamento pelo final da placa
+  const situacoesDocs = veiculos.flatMap((v) => {
+    const manuais = documentos.filter((d) => d.veiculo_id === v.id);
+    return [...documentosAutomaticos(v, manuais, hoje), ...manuais].map((d) => situacaoDocumento(d.vencimento, hoje).situacao);
+  });
+  const docsVencidos = situacoesDocs.filter((x) => x === "vencida").length;
+  const docsEmBreve = situacoesDocs.filter((x) => x === "em_breve").length;
 
   return (
     <div className="space-y-4">
@@ -45,7 +53,8 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
             { rotulo: "Manutenções vencidas", valor: alertas.reduce((t, a) => t + a.vencidas, 0), formato: "numero", cor: alertas.some((a) => a.vencidas) ? "vermelho" : "verde" },
             { rotulo: "Manutenções em breve", valor: alertas.reduce((t, a) => t + a.emBreve, 0), formato: "numero", cor: "amarelo" },
             { rotulo: "Apontamentos abertos", valor: apontamentos.filter(apontamentoAberto).length, formato: "numero", cor: apontamentos.some(apontamentoAberto) ? "amarelo" : "verde" },
-            { rotulo: "Documentos a vencer", valor: documentos.filter((d) => d.vencimento <= somarDias(hoje, 30)).length, formato: "numero", cor: "amarelo" },
+            { rotulo: "Documentos vencidos", valor: docsVencidos, formato: "numero", cor: docsVencidos ? "vermelho" : "verde" },
+            { rotulo: "Documentos em breve", valor: docsEmBreve, formato: "numero", cor: "amarelo" },
           ]}
         />
       )}
