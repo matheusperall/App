@@ -8,7 +8,7 @@ import { ResumoFipe, SeletorFipe, type Escolha } from "@/components/SeletorFipe"
 import { Aviso, Campo } from "@/components/ui";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { TIPOS_VEICULO, type DetalheFipe, type TipoVeiculo } from "@/lib/fipe";
-import type { Veiculo } from "@/lib/garagem";
+import { PORTES, type Porte, type Veiculo } from "@/lib/garagem";
 import { salvarVeiculo } from "./actions";
 import { UFS } from "@/lib/calendarios";
 
@@ -164,6 +164,12 @@ export function FormVeiculo({
 
         <Campo rotulo="Cor">
           <input name="cor" defaultValue={veiculo?.cor ?? ""} className="campo" placeholder="Ex.: Prata" />
+        </Campo>
+        <Campo rotulo="Tamanho" dica="Define o preço dos serviços que mudam por tamanho">
+          <select name="porte" defaultValue={veiculo?.porte ?? ""} className="campo">
+            <option value="">Não informado</option>
+            {(Object.keys(PORTES) as Porte[]).map((p) => <option key={p} value={p}>{PORTES[p]}</option>)}
+          </select>
         </Campo>
         <Campo rotulo="Quilometragem atual">
           <input name="km_atual" inputMode="numeric" defaultValue={veiculo?.km_atual ?? ""} className="campo" placeholder="Ex.: 45000" />

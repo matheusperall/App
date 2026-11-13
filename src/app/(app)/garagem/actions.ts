@@ -12,6 +12,7 @@ import {
   hojeISO,
   normalizarPlaca,
   pastaFotos,
+  ehPorte,
   limparPreferencias,
   placaValida,
 } from "@/lib/garagem";
@@ -130,6 +131,9 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
   }
 
   await salvarPreferencias(supabase, resultado.data.id, form, !id);
+  // Tamanho do veículo (0020); sem a migração, não faz nada
+  const porte = texto(form, "porte");
+  await supabase.from("veiculos").update({ porte: ehPorte(porte) ? porte : null }).eq("id", resultado.data.id);
 
   revalidatePath("/garagem");
   redirect(`/garagem/${resultado.data.id}`);

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
-import { CATEGORIAS } from "@/lib/garagem";
+import { CATEGORIAS, PORTES } from "@/lib/garagem";
 import { lerDinheiro } from "@/lib/gestao";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,6 +36,12 @@ export async function salvarServicoCatalogo(_: EstadoForm, form: FormData): Prom
 
   const supabase = await createClient();
   const dados = { nome, preco, categoria, ativo: id ? form.get("ativo") === "on" : true };
+  // Preço por tamanho do veículo (só os preenchidos)
+  const precosPorte: Record<string, number> = {};
+  for (const p of Object.keys(PORTES)) {
+    const v = lerDinheiro(texto(form, `preco_${p}`));
+    if (v != null && v > 0) precosPorte[p] = v;
+  }
   let servicoId = id;
   if (id) {
     const { error } = await supabase.from("catalogo_servicos").update(dados).eq("id", id);
@@ -45,6 +51,9 @@ export async function salvarServicoCatalogo(_: EstadoForm, form: FormData): Prom
     if (error || !data) return { erro: error?.code === "23505" ? "Já existe um serviço com esse nome." : "Não foi possível cadastrar." };
     servicoId = data.id;
   }
+
+  // Preços por tamanho (0020); sem a migração, não faz nada
+  await supabase.from("catalogo_servicos").update({ precos_porte: precosPorte }).eq("id", servicoId);
 
   await supabase.from("catalogo_consumo").delete().eq("servico_id", servicoId);
   if (porProduto.size) {

@@ -7,7 +7,7 @@ import { Placa, Voltar } from "@/components/garagem";
 import { SeloOrcamento, TabelaItens } from "@/components/orcamento";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { obterOrcamento, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { obterOrcamento, obterVeiculo, portesDosVeiculos, urlsDasFotos } from "@/lib/dados";
 import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
 import { mensagensOrcamento } from "@/lib/mensagens";
 import { listarCatalogo, obterModelosMensagens, osPorOrigem } from "@/lib/gestao-dados";
@@ -31,7 +31,8 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
   // Mensagens prontas para o cliente, com o nome e o carro (o contato vem da conta do app ou da ficha da loja)
   const comMensagens = admin && respondido && o.situacao !== "cancelado";
   // Serviços cadastrados, para montar os itens ao responder ou editar
-  const catalogo = admin ? (await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco }) => ({ id, nome, preco })) : [];
+  const catalogo = admin ? (await listarCatalogo()).filter((c) => c.ativo).map(({ id, nome, preco, precos_porte }) => ({ id, nome, preco, precos_porte })) : [];
+  const porteDoCarro = admin ? ((await portesDosVeiculos([o.veiculo_id]))[o.veiculo_id] ?? null) : null;
   const [carro, modelos] = comMensagens ? await Promise.all([obterVeiculo(o.veiculo_id), obterModelosMensagens()]) : [null, {}];
   const contato = carro?.dono ?? o.veiculo?.dono ?? null;
   const mensagens = comMensagens
@@ -158,6 +159,7 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
                   observacoes={o.observacoes}
                   validadePadrao={o.validade && !vencido ? o.validade : somarDias(hojeISO(), 15)}
                   catalogo={catalogo}
+                  porte={porteDoCarro}
                   jaEnviado={o.situacao === "respondido" && !vencido}
                 />
               </Cartao>

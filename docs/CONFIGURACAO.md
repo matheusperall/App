@@ -33,6 +33,7 @@ aparecem, mas login e cadastro não funcionam.
    17. `0017_preferencias_veiculo.sql` — preferências do cliente para cada veículo (ponto de atenção na OS)
    18. `0018_modelos_mensagens.sql` — modelos editáveis das mensagens de WhatsApp
    19. `0019_voltar_etapa_os.sql` — voltar etapa da OS sem contar o estoque em dobro
+   20. `0020_tamanho_veiculo.sql` — tamanho do veículo e preço dos serviços por tamanho
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

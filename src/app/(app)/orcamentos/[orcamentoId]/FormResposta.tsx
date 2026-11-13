@@ -5,7 +5,7 @@ import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
 import { CampoEscolha, ListaBusca, type OpcaoBusca } from "@/components/ListaBusca";
-import { CATEGORIAS, formatarValor, type Categoria, type ItemOrcamento } from "@/lib/garagem";
+import { CATEGORIAS, PORTES, formatarValor, precoParaPorte, type Categoria, type ItemOrcamento, type Porte, type PrecosPorte } from "@/lib/garagem";
 import { responderOrcamento } from "../actions";
 
 type Linha = { chave: number; descricao: string; valor: string };
@@ -27,6 +27,8 @@ export function FormResposta({
   veiculos,
   catalogo = [],
   jaEnviado = false,
+  porte,
+  portes = {},
 }: {
   id?: string;
   veiculoId?: string;
@@ -38,7 +40,11 @@ export function FormResposta({
   /** Novo orçamento sem veículo definido: a empresa escolhe o veículo do cliente aqui */
   veiculos?: OpcaoBusca[];
   /** Serviços cadastrados, para montar os itens com o preço do catálogo */
-  catalogo?: { id: string; nome: string; preco: number }[];
+  catalogo?: { id: string; nome: string; preco: number; precos_porte?: PrecosPorte }[];
+  /** Tamanho do veículo deste orçamento (o preço dos serviços segue o tamanho) */
+  porte?: Porte | null;
+  /** Novo orçamento com escolha do veículo: tamanho de cada veículo */
+  portes?: Record<string, Porte>;
   /** O orçamento já foi enviado ao cliente antes (aí dá para só salvar alterações, sem avisar de novo) */
   jaEnviado?: boolean;
 }) {
@@ -52,20 +58,22 @@ export function FormResposta({
   const [veiculoEscolhido, setVeiculoEscolhido] = useState("");
   const total = linhas.reduce((s, l) => s + paraNumero(l.valor), 0);
   const precoFmt = (v: number) => v.toFixed(2).replace(".", ",");
+  const porteAtual: Porte | null = porte ?? (veiculoEscolhido ? (portes[veiculoEscolhido] ?? null) : null);
   /** Coloca um serviço do catálogo: preenche a primeira linha vazia ou cria uma nova */
   function adicionarDoCatalogo(idServico: string) {
     const sv = catalogo.find((c) => c.id === idServico);
     if (!sv) return;
     setLinhas((ls) => {
       const vazia = ls.find((l) => !l.descricao.trim() && !l.valor.trim());
-      if (vazia) return ls.map((l) => (l === vazia ? { ...l, descricao: sv.nome, valor: precoFmt(sv.preco) } : l));
-      return [...ls, { chave: Math.max(0, ...ls.map((x) => x.chave)) + 1, descricao: sv.nome, valor: precoFmt(sv.preco) }];
+      const valor = precoFmt(precoParaPorte(sv, porteAtual));
+      if (vazia) return ls.map((l) => (l === vazia ? { ...l, descricao: sv.nome, valor } : l));
+      return [...ls, { chave: Math.max(0, ...ls.map((x) => x.chave)) + 1, descricao: sv.nome, valor }];
     });
   }
   /** Ao escrever o nome exato de um serviço cadastrado, já traz o preço (se o valor estiver vazio) */
   function mudarDescricao(chave: number, v: string) {
     const sv = catalogo.find((c) => c.nome.toLowerCase() === v.trim().toLowerCase());
-    setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, descricao: v, valor: sv && !l.valor.trim() ? precoFmt(sv.preco) : l.valor } : l)));
+    setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, descricao: v, valor: sv && !l.valor.trim() ? precoFmt(precoParaPorte(sv, porteAtual)) : l.valor } : l)));
   }
   const atualizar = (chave: number, campo: "descricao" | "valor", v: string) =>
     setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, [campo]: v } : l)));
@@ -105,12 +113,17 @@ export function FormResposta({
         <legend className="mb-1 text-sm font-medium">Itens do orçamento<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></legend>
         {catalogo.length > 0 && (
           <ListaBusca
-            opcoes={catalogo.map((c) => ({ id: c.id, titulo: c.nome, extra: <span className="tabular-nums text-suave">{formatarValor(c.preco)}</span> }))}
+            opcoes={catalogo.map((c) => ({ id: c.id, titulo: c.nome, extra: <span className="tabular-nums text-suave">{formatarValor(precoParaPorte(c, porteAtual))}</span> }))}
             aoEscolher={adicionarDoCatalogo}
             placeholder="Buscar serviço cadastrado (ex.: polimento)"
             rotuloAcessivel="Buscar serviço cadastrado para o orçamento"
             vazio="Nenhum serviço com esse nome. Escreva o item à mão abaixo."
           />
+        )}
+        {catalogo.length > 0 && (
+          <p className="text-xs text-suave">
+            {porteAtual ? <>Preços para carro <strong className="text-texto">{PORTES[porteAtual].toLowerCase()}</strong>.</> : "Veículo sem tamanho cadastrado: preços normais do catálogo."}
+          </p>
         )}
         {linhas.map((l, n) => (
           <div key={l.chave} className="flex gap-2">

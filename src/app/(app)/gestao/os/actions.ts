@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
-import { CATEGORIAS, hojeISO, nomeVeiculo, normalizarPlaca, placaValida } from "@/lib/garagem";
+import { CATEGORIAS, hojeISO, nomeVeiculo, normalizarPlaca, placaValida, ehPorte } from "@/lib/garagem";
 import { STATUS_OS, arred, ehFormaPagamento, type StatusOS } from "@/lib/gestao";
 import { notificar } from "@/lib/notificar";
 import { registrarLeitura } from "@/lib/ritmo";
@@ -36,6 +36,7 @@ export type DadosOS = {
           fipe_marca_cod?: string | null;
           fipe_modelo_cod?: string | null;
           fipe_ano_cod?: string | null;
+          porte?: string | null;
         };
       }
     | null;
@@ -125,6 +126,8 @@ async function resolverVeiculo(
     return { erro: error?.code === "23505" ? "Esta placa já está cadastrada." : "Não foi possível cadastrar o veículo." };
   }
   if (km) await registrarLeitura(supabase, data.id, km, "cadastro");
+  // Tamanho do veículo (0020); sem a migração, não faz nada
+  if (ehPorte(novo.porte)) await supabase.from("veiculos").update({ porte: novo.porte }).eq("id", data.id);
   return { id: data.id, placa: data.placa, nome: nomeVeiculo(data), dono_id: data.dono_id, km_atual: data.km_atual };
 }
 

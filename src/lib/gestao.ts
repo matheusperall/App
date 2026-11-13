@@ -1,5 +1,5 @@
 // Gestão da loja: tipos, listas e regras (sem acesso a banco: pode ser usado no cliente e no servidor)
-import { hojeISO, somarDias, type Categoria } from "@/lib/garagem";
+import { hojeISO, somarDias, type Categoria, type PrecosPorte } from "@/lib/garagem";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -56,6 +56,8 @@ export type ServicoCatalogo = {
   id: string;
   nome: string;
   preco: number;
+  /** Preço por tamanho do veículo (0020) */
+  precos_porte?: PrecosPorte;
   categoria: Categoria;
   ativo: boolean;
   consumo: Consumo[];

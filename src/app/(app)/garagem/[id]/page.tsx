@@ -10,7 +10,7 @@ import { ItemListaOrcamento } from "@/components/orcamento";
 import { exigirUsuario } from "@/lib/auth";
 import { listarApontamentos, listarDocumentosVeiculos, listarLeiturasKm, listarOrcamentos, listarManutencoes, listarServicos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { documentosAutomaticos } from "@/lib/calendarios";
-import { PRIORIDADES, REGISTROS_PARA_MEDIA, hojeISO, apontamentoAberto, formatarData, formatarValor, kmEstimado, kmPorMes, nomeVeiculo, registrosFaltando, ritmoDoVeiculo, situacaoManutencao } from "@/lib/garagem";
+import { PRIORIDADES, REGISTROS_PARA_MEDIA, hojeISO, apontamentoAberto, formatarData, formatarValor, kmEstimado, kmPorMes, nomeVeiculo, registrosFaltando, ritmoDoVeiculo, situacaoManutencao, PORTES } from "@/lib/garagem";
 import { FormKm } from "./FormKm";
 
 export const metadata: Metadata = { title: "Veículo" };
@@ -84,7 +84,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold sm:text-2xl">{nomeVeiculo(veiculo)}</h1>
               <p className="text-suave">
-                {[veiculo.apelido && `${veiculo.marca} ${veiculo.modelo}`, veiculo.ano, veiculo.combustivel, veiculo.cor].filter(Boolean).join(" · ")}
+                {[veiculo.apelido && `${veiculo.marca} ${veiculo.modelo}`, veiculo.ano, veiculo.combustivel, veiculo.cor, veiculo.porte && `Tamanho ${PORTES[veiculo.porte].toLowerCase()}`].filter(Boolean).join(" · ")}
               </p>
               {veiculo.valor_fipe != null && (
                 <p className="mt-1 text-sm">
