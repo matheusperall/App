@@ -12,6 +12,7 @@ import {
   hojeISO,
   normalizarPlaca,
   pastaFotos,
+  limparPreferencias,
   placaValida,
 } from "@/lib/garagem";
 import { createClient } from "@/lib/supabase/server";
@@ -128,8 +129,31 @@ export async function salvarVeiculo(_: EstadoForm, form: FormData): Promise<Esta
     await registrarLeitura(supabase, resultado.data.id, km, !id ? "cadastro" : usuario.papel === "admin" ? "empresa" : "cliente");
   }
 
+  await salvarPreferencias(supabase, resultado.data.id, form, !id);
+
   revalidatePath("/garagem");
   redirect(`/garagem/${resultado.data.id}`);
+}
+
+/**
+ * Preferências do cliente (0017): grava no veículo, copia para os outros veículos escolhidos do mesmo
+ * cliente e, se pedido, guarda como padrão para os próximos veículos. Sem a migração, não faz nada.
+ */
+async function salvarPreferencias(supabase: Awaited<ReturnType<typeof createClient>>, veiculoId: string, form: FormData, novo: boolean) {
+  const preferencias = limparPreferencias(form.getAll("preferencias"));
+  // Veículo novo sem preferências: mantém as preferências padrão do cliente, que o banco já colocou
+  if (novo && preferencias.length === 0) return;
+  const { error } = await supabase.from("veiculos").update({ preferencias }).eq("id", veiculoId);
+  if (error) return;
+  const copiarPara = form.getAll("copiar_para").map(String).filter((id) => id !== veiculoId).slice(0, 50);
+  if (copiarPara.length && preferencias.length) {
+    const { data: v } = await supabase.from("veiculos").select("cliente_id").eq("id", veiculoId).maybeSingle();
+    // Só veículos do mesmo cliente (e o banco ainda confere a permissão de cada um)
+    if (v?.cliente_id) await supabase.from("veiculos").update({ preferencias }).in("id", copiarPara).eq("cliente_id", v.cliente_id);
+  }
+  if (form.get("preferencias_futuros") === "sim") {
+    await supabase.rpc("salvar_preferencias_padrao", { p_veiculo: veiculoId, p_preferencias: preferencias });
+  }
 }
 
 export async function excluirVeiculo(form: FormData) {

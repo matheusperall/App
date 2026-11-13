@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cabecalho } from "@/components/gestao/Cabecalho";
 import { abasVeiculo } from "./abas";
 import Link from "next/link";
+import { AtencaoPreferencias } from "@/components/AtencaoPreferencias";
 import { notFound } from "next/navigation";
 import { FotoVeiculo, ItemApontamento, ItemDocumento, ItemManutencao, ItemServico, Placa, Voltar } from "@/components/garagem";
 import { Aviso, Cartao } from "@/components/ui";
@@ -61,6 +62,11 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
         abas={abasVeiculo(veiculo.id, "geral")}
       />
 
+      <AtencaoPreferencias
+        preferencias={veiculo.preferencias}
+        titulo={admin ? "Ponto de atenção · preferências do cliente" : "Suas preferências para este veículo"}
+        acao={<Link href={`/garagem/${veiculo.id}/editar`} className="shrink-0 text-xs font-semibold text-[#8a5a00] underline">Editar</Link>}
+      />
       {sp.registrado && <Aviso tipo="sucesso">Serviço registrado no histórico.</Aviso>}
       {sp.apontado && <Aviso tipo="sucesso">Apontamento registrado. O cliente foi avisado.</Aviso>}
 

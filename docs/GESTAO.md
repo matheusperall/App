@@ -153,4 +153,13 @@ Depois do 0014, rode **`supabase/migrations/0015_cartoes_credito.sql`**. Ele cri
 - No resultado do mês (DRE), a compra conta como despesa no mês em que foi feita.
 - As vagas do pátio agora se editam pelo lápis no quadro do pátio, no Painel da Gestão.
 
+### Atualização: preferências do cliente no veículo (arquivo 0017)
+
+Depois do 0016, rode **`supabase/migrations/0017_preferencias_veiculo.sql`**. Ele guarda as preferências do cliente
+para cada veículo (ex.: "Não mexer nos bancos", "Não passar cheirinho", "Pretinho semi brilho"):
+- **Cadastro/edição do veículo › Preferências do cliente**: toque nas sugestões ou escreva outra.
+  Dá para copiar as mesmas preferências para os outros veículos do cliente (um por um ou todos) e marcar
+  **Usar nos próximos veículos cadastrados**.
+- Elas aparecem como **⚠️ Ponto de atenção** ao escolher o veículo na Nova OS, na OS aberta e na página do veículo.
+
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
