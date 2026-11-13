@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos" | "orcamentos" | "agenda" | "gestao" | "atendimento"; contador?: number };
+export type ItemNav = { href: string; rotulo: string; icone: "garagem" | "conta" | "painel" | "avisos" | "orcamentos" | "agenda" | "gestao" | "atendimento"; contador?: number; tambem?: string[] };
 
 const ICONES: Record<ItemNav["icone"], React.ReactNode> = {
   garagem: (
@@ -77,7 +77,9 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
   const [avisosVistos, setAvisosVistos] = useState(false);
   if (path === "/notificacoes" && !avisosVistos) setAvisosVistos(true);
   const lista = itens.map((i) => (i.href === "/notificacoes" && avisosVistos ? { ...i, contador: 0 } : i));
-  const ativo = (href: string) => path === href || path.startsWith(`${href}/`);
+  const abre = (href: string) => path === href || path.startsWith(`${href}/`);
+  // Um item também fica ativo nas telas que pertencem a ele (ex.: Agenda e Orçamentos dentro da Gestão)
+  const ativo = (href: string) => abre(href) || (itens.find((i) => i.href === href)?.tambem ?? []).some(abre);
 
   if (local === "barra") {
     return (

@@ -1,9 +1,9 @@
-import { AbasGestao } from "@/components/gestao/Abas";
+import { MenuGestao } from "@/components/gestao/MenuGestao";
 
 export default function GestaoLayout({ children }: LayoutProps<"/gestao">) {
   return (
     <div className="space-y-5">
-      <AbasGestao />
+      <MenuGestao />
       {children}
     </div>
   );

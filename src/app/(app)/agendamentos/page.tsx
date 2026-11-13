@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MenuGestao } from "@/components/gestao/MenuGestao";
 import { ItemAgendamento } from "@/components/agendamento";
 import { Aviso, Cartao } from "@/components/ui";
 import { Bloco } from "@/components/gestao/Bloco";
@@ -60,6 +61,7 @@ export default async function AgendamentosPage({ searchParams }: PageProps<"/age
     const grupos = agruparPorMesEDia(proximos, (a) => diaDe(a.inicio)).map((m) => ({ ...m, dias: [...m.dias].reverse() })).reverse();
     return (
       <div className="space-y-4">
+        <MenuGestao />
         <Cabecalho icone="calendario" titulo="Agenda" acao={{ href: "/agendamentos/novo", rotulo: "Agendamento" }} />
 
         {/* Busca: placa, modelo, cliente, telefone ou serviço */}

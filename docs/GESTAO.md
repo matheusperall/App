@@ -2,13 +2,16 @@
 
 A Gestão é a área do administrador que substitui a plataforma CERA. Ela fica dentro do
 próprio Sempre Zero, usa o mesmo banco de dados e aparece no menu como **Gestão**
-(só para quem é administrador; o cliente não vê nada disso).
+(só para quem é administrador; o cliente não vê nada disso). Agenda e Orçamentos também ficam dentro da Gestão;
+o cliente continua vendo a Agenda e os Orçamentos dele no menu do app.
 
 ## O que tem em cada aba
 
 | Aba | Para que serve |
 |---|---|
 | **Painel** (dentro da Gestão) | Saudação e atalhos (Nova OS, Novo agendamento, Novo cliente, Novo lançamento, Faturas), calendário do mês com o número de agendamentos de cada dia (tocar no dia abre a Agenda naquele dia), recebido por forma de pagamento, entradas e saídas de hoje, a receber, orçamentos, vagas no pátio, oportunidades, carros no pátio, agenda de hoje, o que precisa de atenção, faturamento por dia e top 5 clientes. |
+| **Agenda** | Agendamentos: calendário com o número de agendamentos por dia, pedidos a confirmar, próximos horários, busca e **+ Agendamento**. |
+| **Orçamentos** | Pedidos de orçamento dos clientes (a responder, aguardando cliente, aprovados), busca e **+ Orçamento**. |
 | **OS** | Ordens de serviço. Filtros: no pátio, a receber, lojistas, todas (por mês). Busca por placa, cliente ou número. |
 | **Faturas** | Fatura mensal dos lojistas (revendas): junta as OS do mês, recebe em partes e manda o extrato pelo WhatsApp. |
 | **Financeiro** | Três partes: **Movimentações** (resumo do mês e todos os lançamentos numa tabela, com atrasados no topo; o "⋮" de cada linha marca como pago, encerra recorrência ou apaga), **Contas** (cartões com saldo atual e previsto, formas e taxas, e a configuração de vagas do pátio) e **Resultado (DRE)**. O botão **+ Adicionar** cria um lançamento. |
