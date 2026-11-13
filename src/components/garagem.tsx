@@ -38,7 +38,7 @@ export function Placa({ placa, tamanho = "md" }: { placa: string; tamanho?: "sm"
       <span className={`bg-[#1e4fa3] text-white ${sm ? "px-1.5 py-[1px] text-[6px]" : "px-2 py-[2px] text-[7px]"} tracking-widest`}>
         BRASIL
       </span>
-      <span className={sm ? "px-1.5 py-0.5" : "px-2 py-1 tracking-wider"}>{formatarPlaca(placa)}</span>
+      <span className={`whitespace-nowrap ${sm ? "px-1.5 py-0.5" : "px-2 py-1 tracking-wider"}`}>{formatarPlaca(placa)}</span>
     </span>
   );
 }
@@ -110,13 +110,15 @@ export function CartaoVeiculo({
       </div>
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold">{nomeVeiculo(veiculo)}</h3>
             <p className="text-sm text-suave">
               {[veiculo.ano, veiculo.cor].filter(Boolean).join(" · ") || "—"} · {formatarKm(veiculo.km_atual)}
             </p>
           </div>
-          <Placa placa={veiculo.placa} tamanho="sm" />
+          <span className="shrink-0">
+            <Placa placa={veiculo.placa} tamanho="sm" />
+          </span>
         </div>
         {vencidas + emBreve + abertos > 0 ? (
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
