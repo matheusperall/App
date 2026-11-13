@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterCliente } from "@/lib/dados";
@@ -21,15 +21,15 @@ export default async function NovoVeiculoPage({ searchParams }: PageProps<"/gara
   const donoId = cliente ? (cliente.perfil_id ?? `c-${cliente.id}`) : usuario.id;
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href={cliente ? `/gestao/clientes/${cliente.id}` : "/garagem"}>
-        {cliente ? cliente.nome || "Cliente" : "Minha garagem"}
-      </Voltar>
-      <h1 className="text-2xl font-bold">Novo veículo</h1>
-      {cliente && <p className="text-suave">Cadastrando para <strong className="text-texto">{cliente.nome}</strong></p>}
+    <PaginaFicha
+      voltar={{ href: cliente ? `/gestao/clientes/${cliente.id}` : "/garagem", rotulo: cliente ? cliente.nome || "Cliente" : "Minha garagem" }}
+      icone="carro"
+      titulo="Novo veículo"
+      descricao={cliente ? <>Cadastrando para <strong className="text-texto">{cliente.nome}</strong></> : undefined}
+    >
       <Cartao>
         <FormVeiculo donoId={donoId} clienteId={cliente && !cliente.perfil_id ? cliente.id : undefined} />
       </Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

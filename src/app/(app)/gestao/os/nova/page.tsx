@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Aviso } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { placaConfigurada } from "@/lib/consulta-placa";
@@ -61,11 +61,9 @@ export default async function NovaOSPage({ searchParams }: PageProps<"/gestao/os
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <Voltar href="/gestao/os">Ordens de serviço</Voltar>
-      <h1 className="text-2xl font-bold">Nova OS</h1>
+    <PaginaFicha voltar={{ href: "/gestao/os", rotulo: "Ordens de serviço" }} icone="os" titulo="Nova OS" descricao="Cliente, veículo e serviços. O total aparece na hora.">
       {origem && <Aviso>{origem}. Confira os serviços e os preços antes de abrir.</Aviso>}
       <FormOS clientes={clientes} catalogo={catalogo} inicial={inicial} placaApi={placaConfigurada()} />
-    </div>
+    </PaginaFicha>
   );
 }

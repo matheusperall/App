@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterVeiculo } from "@/lib/dados";
@@ -15,15 +15,16 @@ export default async function NovoServicoPage({ params }: PageProps<"/garagem/[i
   if (!veiculo) notFound();
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
-      <h1 className="text-2xl font-bold">Registrar serviço</h1>
-      {usuario.papel !== "admin" && (
-        <p className="text-sm text-suave">
-          Registre aqui serviços feitos em outros lugares para manter o histórico completo. Os serviços feitos
-          pela Sempre Zero são registrados pela nossa equipe.
-        </p>
-      )}
+    <PaginaFicha
+      voltar={{ href: `/garagem/${id}`, rotulo: nomeVeiculo(veiculo) }}
+      icone="chave"
+      titulo="Registrar serviço"
+      descricao={
+        usuario.papel !== "admin"
+          ? "Registre aqui serviços feitos em outros lugares para manter o histórico completo. Os serviços feitos pela Sempre Zero são registrados pela nossa equipe."
+          : `${nomeVeiculo(veiculo)} (${veiculo.placa})`
+      }
+    >
       <Cartao>
         <FormServico
           veiculoId={veiculo.id}
@@ -33,6 +34,6 @@ export default async function NovoServicoPage({ params }: PageProps<"/garagem/[i
           admin={usuario.papel === "admin"}
         />
       </Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

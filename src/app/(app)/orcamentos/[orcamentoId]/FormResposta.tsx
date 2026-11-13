@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { Aviso, Campo } from "@/components/ui";
+import { CampoEscolha, type OpcaoBusca } from "@/components/ListaBusca";
 import { CATEGORIAS, formatarValor, type Categoria, type ItemOrcamento } from "@/lib/garagem";
 import { responderOrcamento } from "../actions";
 
@@ -23,6 +24,7 @@ export function FormResposta({
   validadePadrao,
   observacoes,
   novo = false,
+  veiculos,
 }: {
   id?: string;
   veiculoId?: string;
@@ -31,6 +33,8 @@ export function FormResposta({
   validadePadrao: string;
   observacoes?: string | null;
   novo?: boolean;
+  /** Novo orçamento sem veículo definido: a empresa escolhe o veículo do cliente aqui */
+  veiculos?: OpcaoBusca[];
 }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(responderOrcamento, {});
   const [linhas, setLinhas] = useState<Linha[]>(
@@ -39,15 +43,28 @@ export function FormResposta({
       : [{ chave: 0, descricao: "", valor: "" }],
   );
   const [categoria, setCategoria] = useState<Categoria>("estetica");
+  const [veiculoEscolhido, setVeiculoEscolhido] = useState("");
   const total = linhas.reduce((s, l) => s + paraNumero(l.valor), 0);
   const atualizar = (chave: number, campo: "descricao" | "valor", v: string) =>
     setLinhas((ls) => ls.map((l) => (l.chave === chave ? { ...l, [campo]: v } : l)));
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {id && <input type="hidden" name="id" value={id} />}
       {veiculoId && <input type="hidden" name="veiculo_id" value={veiculoId} />}
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
+
+      {!veiculoId && veiculos && (
+        <CampoEscolha
+          rotulo="Cliente e veículo"
+          nome="veiculo_id"
+          opcoes={veiculos}
+          valor={veiculoEscolhido}
+          mudar={setVeiculoEscolhido}
+          placeholder="Digite a placa, o modelo, o nome ou o telefone"
+          vazio="Nenhum veículo encontrado. Cadastre o cliente em Gestão › Clientes."
+        />
+      )}
 
       {novo && (
         <>
@@ -63,7 +80,7 @@ export function FormResposta({
       )}
 
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-medium">Itens do orçamento</legend>
+        <legend className="mb-1 text-sm font-medium">Itens do orçamento<span className="ml-0.5 text-perigo" aria-hidden="true">*</span></legend>
         {linhas.map((l, n) => (
           <div key={l.chave} className="flex gap-2">
             <input
@@ -104,14 +121,12 @@ export function FormResposta({
         </div>
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-3">
         <Campo rotulo="Prazo de execução (dias)">
           <input name="prazo_dias" type="number" min={0} inputMode="numeric" defaultValue={prazo ?? ""} className="campo" placeholder="Ex.: 2" />
         </Campo>
         <Campo rotulo="Válido até">
           <input name="validade" type="date" required defaultValue={validadePadrao} className="campo" />
         </Campo>
-      </div>
 
       <Campo rotulo="Observações" dica="Opcional. Condições de pagamento, o que está incluso, garantia…">
         <textarea name="observacoes" rows={3} defaultValue={observacoes ?? ""} className="campo" />

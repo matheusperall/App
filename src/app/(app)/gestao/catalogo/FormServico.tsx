@@ -25,7 +25,7 @@ export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; 
   const consumo = linhas.map((l) => ({ produto_id: l.produto_id, quantidade: lerNumero(l.quantidade) ?? 0 }));
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       {servico && <input type="hidden" name="id" value={servico.id} />}
       <input type="hidden" name="consumo" value={JSON.stringify(consumo)} />
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
@@ -33,8 +33,7 @@ export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; 
       <Campo rotulo="Nome do serviço">
         <input name="nome" defaultValue={servico?.nome} required className="campo" placeholder="Ex.: Lavagem completa" />
       </Campo>
-      <div className="grid grid-cols-2 gap-3">
-        <Campo rotulo="Preço (R$)">
+        <Campo rotulo="Preço (R$)" obrigatorio>
           <CampoDinheiro name="preco" valor={preco} aoMudar={setPreco} />
         </Campo>
         <Campo rotulo="Categoria">
@@ -42,7 +41,6 @@ export function FormServico({ servico, produtos }: { servico?: ServicoCatalogo; 
             {(Object.keys(CATEGORIAS) as Categoria[]).map((c) => <option key={c} value={c}>{CATEGORIAS[c].rotulo}</option>)}
           </select>
         </Campo>
-      </div>
       {servico && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ativo" defaultChecked={servico.ativo} className="h-4 w-4 accent-marca" /> Ativo (aparece na hora de abrir OS)

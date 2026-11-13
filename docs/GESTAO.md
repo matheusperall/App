@@ -47,6 +47,10 @@ o cliente continua vendo a Agenda e os Orçamentos dele no menu do app.
    As próximas entram como contas a pagar (ou a receber). Para parar uma recorrência, use
    **Encerrar recorrência** na conta a pagar: apaga as próximas que ainda não foram pagas.
 
+**Telas de cadastro** (novo cliente, produto, serviço, lançamento, OS, orçamento, agendamento, veículo) abrem
+como uma ficha larga, com os campos em branco. Os campos marcados com \* são obrigatórios. Onde é preciso escolher
+algo (cliente, veículo, serviço), é só começar a digitar que a lista aparece; a setinha ▾ abre a lista completa.
+
 **Campos de valor em reais** começam em 0,00 e os números "correm" como numa maquininha:
 digitar 12345 vira 123,45. A tecla de apagar tira o último número.
 

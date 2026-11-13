@@ -7,8 +7,7 @@ export function CamposProduto({ p }: { p?: Produto }) {
       <Campo rotulo="Nome do produto">
         <input name="nome" defaultValue={p?.nome} required className="campo" placeholder="Ex.: Shampoo automotivo" />
       </Campo>
-      <div className="grid grid-cols-2 gap-3">
-        <Campo rotulo="Unidade de controle">
+        <Campo rotulo="Unidade de controle" obrigatorio>
           <select name="unidade" defaultValue={p?.unidade ?? "ml"} className="campo px-3">
             {(Object.keys(UNIDADES) as Unidade[]).map((u) => <option key={u} value={u}>{u} ({UNIDADES[u]})</option>)}
           </select>
@@ -16,7 +15,6 @@ export function CamposProduto({ p }: { p?: Produto }) {
         <Campo rotulo="Estoque mínimo" dica="Abaixo disso fica crítico">
           <input name="minimo" defaultValue={p ? String(p.minimo).replace(".", ",") : ""} inputMode="decimal" className="campo" placeholder="0" />
         </Campo>
-      </div>
     </>
   );
 }

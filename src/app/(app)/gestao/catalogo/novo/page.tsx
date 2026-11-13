@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Voltar } from "@/components/garagem";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirAdmin } from "@/lib/auth";
 import { listarProdutos } from "@/lib/gestao-dados";
@@ -11,10 +11,8 @@ export default async function NovoServicoPage() {
   await exigirAdmin();
   const produtos = (await listarProdutos()).filter((p) => p.ativo);
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href="/gestao/catalogo">Serviços</Voltar>
-      <h1 className="text-2xl font-bold">Novo serviço</h1>
+    <PaginaFicha voltar={{ href: "/gestao/catalogo", rotulo: "Serviços" }} icone="servicos" titulo="Novo serviço" descricao="O que a loja vende: preço e os produtos que o serviço gasta.">
       <Cartao><FormServico produtos={produtos} /></Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

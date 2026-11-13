@@ -24,11 +24,11 @@ export function FormApontamento({ veiculoId, donoId }: { veiculoId: string; dono
   const [titulo, setTitulo] = useState("");
 
   return (
-    <form action={acao} className="space-y-4">
+    <form action={acao} className="ficha">
       <input type="hidden" name="veiculo_id" value={veiculoId} />
       {estado.erro && <Aviso tipo="erro">{estado.erro}</Aviso>}
 
-      <Campo rotulo="Categoria">
+      <Campo rotulo="Categoria" largo>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {Object.entries(CATEGORIAS).map(([k, v]) => (
             <label
@@ -47,16 +47,6 @@ export function FormApontamento({ veiculoId, donoId }: { veiculoId: string; dono
       <Campo rotulo="O que foi identificado?">
         <input name="titulo" required value={titulo} onChange={(e) => setTitulo(e.target.value)} className="campo" placeholder="Ex.: Risco na porta traseira direita" />
       </Campo>
-      {SUGESTOES[categoria].length > 0 && (
-        <div className="-mt-2 flex flex-wrap gap-2">
-          {SUGESTOES[categoria].map((s) => (
-            <button key={s} type="button" onClick={() => setTitulo(s)} className="rounded-full border border-borda bg-white px-3 py-1 text-xs text-suave hover:border-marca hover:text-marca-escura">
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
       <Campo rotulo="Prioridade">
         <div className="grid grid-cols-3 gap-2">
           {(Object.keys(PRIORIDADES) as Prioridade[])
@@ -75,11 +65,21 @@ export function FormApontamento({ veiculoId, donoId }: { veiculoId: string; dono
         </div>
       </Campo>
 
+      {SUGESTOES[categoria].length > 0 && (
+        <div className="-mt-1 flex flex-wrap gap-2">
+          {SUGESTOES[categoria].map((s) => (
+            <button key={s} type="button" onClick={() => setTitulo(s)} className="rounded-full border border-borda bg-white px-3 py-1 text-xs text-suave hover:border-marca hover:text-marca-escura">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Campo rotulo="Explicação para o cliente" dica="Explique de forma simples o que é e por que é importante resolver.">
         <textarea name="descricao" rows={4} className="campo" placeholder="Ex.: O risco chegou no primer. Recomendamos repintura localizada para evitar ferrugem." />
       </Campo>
 
-      <Campo rotulo="Fotos" dica="Fotos ajudam muito o cliente a entender. Até 8.">
+      <Campo rotulo="Fotos" dica="Fotos ajudam muito o cliente a entender. Até 8." largo>
         <EnviarFotos pasta={`${donoId}/${veiculoId}`} maximo={8} />
       </Campo>
 

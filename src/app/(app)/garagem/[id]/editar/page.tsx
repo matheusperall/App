@@ -1,7 +1,7 @@
 import { pastaFotos } from "@/lib/garagem";
 import type { Metadata } from "next";
+import { PaginaFicha } from "@/components/PaginaFicha";
 import { notFound } from "next/navigation";
-import { Voltar } from "@/components/garagem";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { obterVeiculo, urlsDasFotos } from "@/lib/dados";
@@ -18,9 +18,7 @@ export default async function EditarVeiculoPage({ params }: PageProps<"/garagem/
   const fotos = await urlsDasFotos([veiculo.foto]);
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <Voltar href={`/garagem/${id}`}>Voltar ao veículo</Voltar>
-      <h1 className="text-2xl font-bold">Editar veículo</h1>
+    <PaginaFicha voltar={{ href: `/garagem/${id}`, rotulo: "Voltar ao veículo" }} icone="carro" titulo="Editar veículo" descricao={`${veiculo.placa}`}>
       <Cartao>
         <FormVeiculo veiculo={veiculo} donoId={pastaFotos(veiculo)} fotoUrl={veiculo.foto ? fotos[veiculo.foto] : undefined} />
       </Cartao>
@@ -33,6 +31,6 @@ export default async function EditarVeiculoPage({ params }: PageProps<"/garagem/
           <BotaoExcluir mensagem="Excluir este veículo e todo o histórico?">Excluir veículo</BotaoExcluir>
         </form>
       </Cartao>
-    </div>
+    </PaginaFicha>
   );
 }

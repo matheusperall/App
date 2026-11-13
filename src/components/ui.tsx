@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 
 export function Aviso({
   tipo = "info",
@@ -23,15 +23,25 @@ export function Aviso({
 export function Campo({
   rotulo,
   dica,
+  obrigatorio,
+  largo,
   children,
 }: {
   rotulo: string;
   dica?: string;
+  /** Mostra o * vermelho. Se não for informado, aparece sozinho quando o campo tem `required`. */
+  obrigatorio?: boolean;
+  /** Na ficha de cadastro, ocupa a linha inteira (opções em grade, fotos…) */
+  largo?: boolean;
   children: ReactNode;
 }) {
+  const exigido = obrigatorio ?? (isValidElement(children) && Boolean((children.props as { required?: boolean }).required));
   return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-texto">{rotulo}</span>
+    <label className={`block space-y-1.5 ${largo ? "inteira" : ""}`}>
+      <span className="text-sm font-medium text-texto">
+        {rotulo}
+        {exigido && <span className="ml-0.5 text-perigo" aria-hidden="true">*</span>}
+      </span>
       {children}
       {dica && <span className="block text-xs text-suave">{dica}</span>}
     </label>
