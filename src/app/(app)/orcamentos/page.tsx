@@ -6,7 +6,10 @@ import { ItemListaOrcamento } from "@/components/orcamento";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
 import { listarOrcamentos, listarOrcamentosEmpresa, listarVeiculos, type OrcamentoComVeiculo } from "@/lib/dados";
-import { CATEGORIAS, SITUACOES_ORCAMENTO, formatarData, formatarValor, nomeVeiculo, orcamentoVencido } from "@/lib/garagem";
+import { CATEGORIAS, SITUACOES_ORCAMENTO, formatarData, formatarValor, nomeVeiculo, normalizarPlaca, orcamentoVencido } from "@/lib/garagem";
+import { combina } from "@/lib/gestao";
+import { listarFichas } from "@/lib/gestao-dados";
+import { Icone } from "@/components/gestao/Icones";
 
 export const metadata: Metadata = { title: "Orçamentos" };
 
@@ -27,24 +30,55 @@ export default async function OrcamentosPage({ searchParams }: PageProps<"/orcam
 
   if (admin) {
     const filtro = (typeof sp.f === "string" && sp.f in FILTROS ? sp.f : "responder") as keyof typeof FILTROS;
-    const todos = await listarOrcamentosEmpresa();
+    const busca = typeof sp.q === "string" ? sp.q.trim() : "";
+    const [todos, fichas] = await Promise.all([listarOrcamentosEmpresa(), busca ? listarFichas() : Promise.resolve([])]);
     const situacoes: readonly string[] = FILTROS[filtro].situacoes;
-    const lista = situacoes.length ? todos.filter((o) => situacoes.includes(o.situacao)) : todos;
+    // Com busca, procura em todos os orçamentos (número, placa, modelo, cliente, telefone ou pedido)
+    const fichaDoVeiculo = new Map(fichas.flatMap((f) => f.veiculos.map((v) => [v.id, f] as const)));
+    const placa = normalizarPlaca(busca);
+    const lista = busca
+      ? todos.filter((o) => {
+          const v = o.veiculo;
+          const f = fichaDoVeiculo.get(o.veiculo_id);
+          if (busca.replace(/^#/, "") === String(o.numero)) return true;
+          if (placa.length >= 2 && v?.placa.includes(placa)) return true;
+          return combina([v?.marca, v?.modelo, v?.apelido, v?.dono?.nome, v?.dono?.telefone, f?.nome, f?.telefone, o.pedido, CATEGORIAS[o.categoria].rotulo].filter(Boolean).join(" "), busca);
+        })
+      : situacoes.length
+        ? todos.filter((o) => situacoes.includes(o.situacao))
+        : todos;
     const por = (s: string) => todos.filter((o) => o.situacao === s);
     return (
       <div className="space-y-4">
-        <Cabecalho icone="orcamento" titulo="Orçamentos" />
+        <Cabecalho icone="orcamento" titulo="Orçamentos" acao={{ href: "/orcamentos/novo", rotulo: "Orçamento" }} />
 
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex gap-1 overflow-x-auto rounded-xl border border-borda bg-white p-1">
+        {/* Busca: número, placa, modelo, cliente, telefone ou pedido */}
+        <section className="rounded-2xl border border-borda bg-white p-4">
+          <form className="flex flex-col gap-2 sm:flex-row" role="search">
+            <input name="q" defaultValue={busca} type="search" className="campo flex-1" placeholder="Número, placa, modelo, cliente, telefone ou pedido" aria-label="Buscar orçamento" />
+            <button type="submit" className="botao-primario gap-1.5 rounded-full px-4 py-2.5 text-sm">
+              <Icone nome="orcamento" className="h-4 w-4" />Buscar orçamento
+            </button>
+          </form>
+          {busca && (
+            <div className="mt-3 flex items-center justify-between gap-2 px-1 text-sm">
+              <span className="text-suave">
+                {lista.length} {lista.length === 1 ? "orçamento encontrado" : "orçamentos encontrados"} para <strong className="text-texto">“{busca}”</strong>
+              </span>
+              <Link href="/orcamentos" className="shrink-0 font-semibold text-marca-escura hover:underline">Limpar</Link>
+            </div>
+          )}
+        </section>
+
+        {!busca && (
+          <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-white p-1">
             {Object.entries(FILTROS).map(([k, v]) => (
               <Link key={k} href={`/orcamentos?f=${k}`} className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold ${filtro === k ? "bg-tinta text-white" : "text-suave hover:text-texto"}`}>
                 {v.rotulo}
               </Link>
             ))}
           </div>
-          <p className="text-sm text-suave">Para enviar um orçamento por conta própria, abra o veículo do cliente e toque em <strong>Enviar orçamento</strong>.</p>
-        </div>
+        )}
 
         <ResumoPeriodo
           titulo="Resumo dos últimos orçamentos"

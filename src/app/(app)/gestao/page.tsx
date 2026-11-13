@@ -9,9 +9,9 @@ import { EditarVagas } from "@/components/gestao/EditarVagas";
 import { Icone } from "@/components/gestao/Icones";
 import { exigirAdmin, primeiroNome } from "@/lib/auth";
 import { formatarQuando, partesBrasilia } from "@/lib/agenda";
-import { agendaEmpresa, contarOrcamentosAResponder, contarPainel, listarOrcamentosEmpresa } from "@/lib/dados";
-import { formatarData, formatarValor, hojeISO, nomeVeiculo } from "@/lib/garagem";
-import { formatarQtd, mesAtual, mesValido } from "@/lib/gestao";
+import { agendaEmpresa, agendamentosEntre, contarOrcamentosAResponder, contarPainel, listarOrcamentosEmpresa } from "@/lib/dados";
+import { formatarData, formatarValor, hojeISO, nomeVeiculo, somarDias } from "@/lib/garagem";
+import { formatarQtd, mesAtual, mesValido, somarMes } from "@/lib/gestao";
 import { listarFichas, osPorOrigem, resumoGestao } from "@/lib/gestao-dados";
 
 export const metadata: Metadata = { title: "Gestão" };
@@ -24,9 +24,11 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
   const [usuario, sp] = await Promise.all([exigirAdmin(), searchParams]);
   const mes = mesValido(sp.mes) ? sp.mes : mesAtual();
   const hoje = hojeISO();
-  const [r, agenda, aceitos, aResponder, { abertos }, fichas] = await Promise.all([
+  const mesCalendario = mesAtual();
+  const [r, agenda, doMes, aceitos, aResponder, { abertos }, fichas] = await Promise.all([
     resumoGestao(mes),
     agendaEmpresa(),
+    agendamentosEntre(`${mesCalendario}-01`, somarDias(`${somarMes(mesCalendario, 1)}-01`, -1)),
     listarOrcamentosEmpresa(["aceito"]),
     contarOrcamentosAResponder(),
     contarPainel(),
@@ -39,7 +41,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
   ]);
   const orcamentosSemOS = aceitos.filter((o) => !osDeOrcamentos[o.id]);
   const agendadosPorDia: Record<string, number> = {};
-  for (const a of agenda.proximos) if (a.inicio) {
+  for (const a of doMes) if (a.inicio) {
     const d = partesBrasilia(new Date(a.inicio)).dia;
     agendadosPorDia[d] = (agendadosPorDia[d] ?? 0) + 1;
   }
@@ -57,14 +59,15 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
           <h1 className="text-xl font-bold sm:text-2xl">Olá {primeiroNome(usuario.nome, usuario.email)}, {saudacao(Number(agora.hora.slice(0, 2)))}!</h1>
           <p className="text-sm text-suave">Hoje é {dataExtenso}.</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap [&>*:last-child:nth-child(odd)]:col-span-2">
           {[
             { href: "/gestao/os/nova", rotulo: "Nova OS", icone: "os" as const },
+            { href: "/agendamentos/novo", rotulo: "Novo agendamento", icone: "calendario" as const },
             { href: "/gestao/clientes/novo", rotulo: "Novo cliente", icone: "clientes" as const },
             { href: "/gestao/financeiro/novo", rotulo: "Novo lançamento", icone: "financeiro" as const },
             { href: "/gestao/faturas", rotulo: "Faturas", icone: "faturas" as const },
           ].map((b) => (
-            <Link key={b.href} href={b.href} className="botao-primario gap-1.5 rounded-full px-4 py-2 text-sm">
+            <Link key={b.href} href={b.href} className="botao-primario gap-1.5 rounded-full px-3 py-2 text-[13px] whitespace-nowrap sm:px-4 sm:text-sm">
               <Icone nome={b.icone} className="h-4 w-4" />
               {b.rotulo}
             </Link>
@@ -75,7 +78,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
       {/* Linha 1: calendário · recebimentos por forma · resumo financeiro */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
         <Bloco icone="calendario" titulo="Agenda do mês" direita={<span className="text-xs text-suave">{deHoje.length ? `${deHoje.length} hoje` : "Sem agendamentos hoje"}</span>}>
-          <CalendarioMes mes={mesAtual()} hoje={hoje} marcados={agendadosPorDia} />
+          <CalendarioMes mes={mesCalendario} hoje={hoje} marcados={agendadosPorDia} />
         </Bloco>
         <Bloco icone="cartao" titulo="Recebido por forma" direita={<span className="text-xs"><strong className="text-sucesso">{formatarValor(recebidoMes)}</strong> <span className="text-suave">no mês</span></span>}>
           <GraficoFormas dados={r.porForma} />
