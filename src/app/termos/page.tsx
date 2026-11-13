@@ -21,8 +21,6 @@ export default function TermosPage() {
       </ul>
       <h2>Cancelamento</h2>
       <p>Você pode encerrar sua conta a qualquer momento entrando em contato conosco.</p>
-      <h2>Contato</h2>
-      <p>[Nome da empresa] — [CNPJ] — [e-mail de contato] — [telefone].</p>
     </PaginaTexto>
   );
 }

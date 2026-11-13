@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PaginaTexto } from "@/components/PaginaTexto";
+import { DADOS_EMPRESA } from "@/lib/empresa";
 
 export const metadata: Metadata = { title: "Política de privacidade" };
 
@@ -30,10 +31,13 @@ export default function PrivacidadePage() {
       <h2>Seus direitos</h2>
       <p>
         Você pode, a qualquer momento, acessar, corrigir ou pedir a exclusão dos seus dados e da sua
-        conta, entrando em contato conosco.
+        conta, entrando em contato conosco pelos canais abaixo.
       </p>
-      <h2>Contato</h2>
-      <p>[Nome da empresa] — [CNPJ] — [e-mail de contato] — [telefone].</p>
+      <h2>Responsável pelos dados</h2>
+      <p>
+        A {DADOS_EMPRESA.nome} (CNPJ {DADOS_EMPRESA.cnpj}) é a responsável pelo tratamento dos seus dados pessoais neste
+        aplicativo, nos termos da LGPD.
+      </p>
     </PaginaTexto>
   );
 }
