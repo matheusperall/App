@@ -142,6 +142,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
       </div>
 
       {(abertos.length > 0 || admin) && (
+        <div id="apontamentos" className="scroll-mt-28">
         <Cartao className={abertos.length > 0 ? "border-tinta/20" : ""}>
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">📍 Apontamentos {abertos.length > 0 && <span className="text-suave">({abertos.length})</span>}</h2>
@@ -178,10 +179,11 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
             </details>
           )}
         </Cartao>
+        </div>
       )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] [&>*]:min-w-0">
-        <Cartao>
+        <Cartao id="manutencoes" className="scroll-mt-28">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Próximas manutenções</h2>
             <Link href={`/garagem/${veiculo.id}/manutencoes`} className="text-sm font-semibold text-marca-escura hover:underline">
@@ -206,7 +208,7 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
           )}
         </Cartao>
 
-        <Cartao>
+        <Cartao id="documentos" className="scroll-mt-28">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Documentos e vencimentos</h2>
             <Link href={`/garagem/${veiculo.id}/documentos`} className="text-sm font-semibold text-marca-escura hover:underline">

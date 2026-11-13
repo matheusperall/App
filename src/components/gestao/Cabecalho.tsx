@@ -81,7 +81,7 @@ export function ResumoPeriodo({
   itens,
 }: {
   titulo?: string;
-  itens: { rotulo: string; valor: number; cor?: Cor; formato?: "dinheiro" | "numero" | "porcento"; dica?: string; sinal?: boolean }[];
+  itens: { rotulo: string; valor: number; cor?: Cor; formato?: "dinheiro" | "numero" | "porcento"; dica?: string; sinal?: boolean; href?: string }[];
 }) {
   const formatar = (v: number, f: "dinheiro" | "numero" | "porcento" = "dinheiro", sinal?: boolean) =>
     f === "numero"
@@ -94,9 +94,17 @@ export function ResumoPeriodo({
       <h2 className="mb-3 text-sm font-semibold">{titulo}</h2>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
         {itens.map((i) => (
-          <div key={i.rotulo} className="min-w-0" title={i.dica}>
+          <div
+            key={i.rotulo}
+            className={`min-w-0 ${i.href ? "group relative -m-1.5 rounded-lg p-1.5 transition hover:bg-fundo" : ""}`}
+            title={i.dica}
+          >
             <dt className="truncate text-xs text-suave sm:text-sm">{i.rotulo}</dt>
-            <dd className={`truncate font-titulo text-base font-bold tabular-nums sm:text-lg ${COR_TEXTO[i.cor ?? "neutro"]}`}>{formatar(i.valor, i.formato, i.sinal)}</dd>
+            <dd className={`truncate font-titulo text-base font-bold tabular-nums sm:text-lg ${COR_TEXTO[i.cor ?? "neutro"]}`}>
+              {formatar(i.valor, i.formato, i.sinal)}
+              {i.href && <span className="ml-1.5 text-xs font-semibold text-marca-escura group-hover:underline">ver ›</span>}
+            </dd>
+            {i.href && <Link href={i.href} className="absolute inset-0 rounded-lg" aria-label={`Ver ${i.rotulo.toLowerCase()}`} />}
           </div>
         ))}
       </dl>
