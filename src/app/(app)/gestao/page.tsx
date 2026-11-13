@@ -75,13 +75,10 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         </div>
       </div>
 
-      {/* Linha 1: calendário · recebimentos por forma · resumo financeiro */}
+      {/* Linha 1: calendário · resumo financeiro · recebimentos por forma */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
         <Bloco icone="calendario" titulo="Agenda do mês" direita={<span className="text-xs text-suave">{deHoje.length ? `${deHoje.length} hoje` : "Sem agendamentos hoje"}</span>}>
           <CalendarioMes mes={mesCalendario} hoje={hoje} marcados={agendadosPorDia} />
-        </Bloco>
-        <Bloco icone="cartao" titulo="Recebido por forma" direita={<span className="text-xs"><strong className="text-sucesso">{formatarValor(recebidoMes)}</strong> <span className="text-suave">no mês</span></span>}>
-          <GraficoFormas dados={r.porForma} />
         </Bloco>
         <Bloco icone="financeiro" titulo="Resumo financeiro" direita={<span className="text-xs"><strong className={r.saldoContas < 0 ? "text-perigo" : "text-sucesso"}>{formatarValor(r.saldoContas)}</strong> <span className="text-suave">de saldo</span></span>}>
           <div className="grid grid-cols-2 gap-2 text-center">
@@ -108,6 +105,9 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
               </div>
             </div>
           </div>
+        </Bloco>
+        <Bloco icone="cartao" titulo="Recebido por forma" direita={<span className="text-xs"><strong className="text-sucesso">{formatarValor(recebidoMes)}</strong> <span className="text-suave">no mês</span></span>}>
+          <GraficoFormas dados={r.porForma} />
         </Bloco>
       </div>
 

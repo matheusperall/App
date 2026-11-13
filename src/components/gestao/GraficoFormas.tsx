@@ -23,11 +23,11 @@ export function GraficoFormas({ dados }: { dados: { chave: string; valor: number
           </div>
         ))}
       </div>
-      <figcaption className="mt-1.5 flex gap-2 sm:gap-3">
+      <figcaption className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
         {dados.map((d) => (
-          <span key={d.chave} className="flex flex-1 items-center justify-center gap-1 text-center text-[10px] text-suave sm:text-xs">
+          <span key={d.chave} className="flex items-center gap-1 text-[11px] whitespace-nowrap text-suave sm:text-xs">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: SERIES[d.chave]?.cor }} />
-            <span className="truncate">{SERIES[d.chave]?.rotulo}</span>
+            <span>{SERIES[d.chave]?.rotulo}</span>
           </span>
         ))}
       </figcaption>
