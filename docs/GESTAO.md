@@ -189,4 +189,11 @@ mas não dá para salvar mudanças.
 Depois do 0018, rode **`supabase/migrations/0019_voltar_etapa_os.sql`**. Ele faz a devolução de produtos ao estoque
 contar certo quando a OS vai e volta de "pronta" mais de uma vez.
 
+### Limpar os dados de teste (antes de importar a CERA)
+
+O arquivo **`supabase/manutencao/limpar_testes.sql`** apaga todo o movimento de teste e deixa o sistema pronto para os dados reais.
+**Apaga de verdade** — faça um backup antes. Ficam: as contas de administrador, as contas/cartões/categorias do financeiro,
+o catálogo de serviços e os produtos (com saldo zerado) e os ajustes (vagas e modelos de mensagens).
+A numeração de OS, orçamentos e faturas volta a começar do 1. Rode **uma vez só** (SQL Editor › New query › colar › Run).
+
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
