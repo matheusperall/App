@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { getUsuarioAtual } from "@/lib/auth";
 import { limparValor, supabaseAnonKey, supabaseUrl, supabaseUrlValida } from "@/lib/env";
 
 /**
@@ -17,6 +18,11 @@ function descrever(valor: string) {
 
 export async function GET() {
   await connection();
+  // Com o app configurado, só o administrador vê este diagnóstico (antes disso ele ajuda a configurar)
+  if (supabaseUrlValida && supabaseAnonKey) {
+    const usuario = await getUsuarioAtual();
+    if (usuario?.papel !== "admin") return new Response("Não encontrado", { status: 404 });
+  }
   const secreta = limparValor(process.env.SUPABASE_SERVICE_ROLE_KEY);
   const linhas: [string, string, boolean][] = [];
 

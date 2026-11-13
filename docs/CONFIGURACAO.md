@@ -29,6 +29,7 @@ aparecem, mas login e cadastro não funcionam.
    13. `0013_pagamentos_os.sql` — OS paga em vários pagamentos (ou em partes)
    14. `0014_anexos_documentos.sql` — anexos de documentos (CNH, CRLV-e, apólice e outros)
    15. `0015_cartoes_credito.sql` — cartões de crédito da empresa (compras, faturas e pagamento)
+   16. `0016_seguranca.sql` — ajustes de segurança (veja [SEGURANCA.md](SEGURANCA.md))
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

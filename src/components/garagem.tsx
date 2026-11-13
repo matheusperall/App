@@ -173,7 +173,7 @@ export function SeloPrestador({ servico }: { servico: Pick<Servico, "prestador" 
         empresa ? "bg-marca-clara text-marca-escura" : "bg-fundo text-suave"
       }`}
     >
-      {PRESTADORES[servico.prestador]}
+      {empresa ? PRESTADORES[servico.prestador === "externo" ? "proprio" : servico.prestador] : PRESTADORES.externo}
     </span>
   );
 }
