@@ -64,12 +64,19 @@ export default async function VeiculoPage({ params, searchParams }: PageProps<"/
       {sp.registrado && <Aviso tipo="sucesso">Serviço registrado no histórico.</Aviso>}
       {sp.apontado && <Aviso tipo="sucesso">Apontamento registrado. O cliente foi avisado.</Aviso>}
 
-      <div className="overflow-hidden rounded-2xl border border-borda bg-white lg:grid lg:grid-cols-[1.1fr_1fr] [&>*]:min-w-0">
-        <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="aspect-[16/9] w-full lg:aspect-auto lg:h-full" />
+      <div className="overflow-hidden rounded-2xl border border-borda bg-white sm:grid sm:grid-cols-[12rem_1fr] lg:grid-cols-[15rem_1fr] [&>*]:min-w-0">
+        {/* Computador/tablet: foto numa coluna estreita ao lado das informações */}
+        <div className="hidden sm:block">
+          <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="h-full min-h-40 w-full" />
+        </div>
         <div className="space-y-4 p-5">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold">{nomeVeiculo(veiculo)}</h1>
+            {/* Celular: miniatura ao lado do nome */}
+            <div className="shrink-0 overflow-hidden rounded-xl sm:hidden">
+              <FotoVeiculo url={veiculo.foto ? fotos[veiculo.foto] : undefined} className="h-16 w-20" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold sm:text-2xl">{nomeVeiculo(veiculo)}</h1>
               <p className="text-suave">
                 {[veiculo.apelido && `${veiculo.marca} ${veiculo.modelo}`, veiculo.ano, veiculo.combustivel, veiculo.cor].filter(Boolean).join(" · ")}
               </p>

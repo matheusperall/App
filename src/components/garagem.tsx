@@ -104,7 +104,7 @@ export function CartaoVeiculo({
       href={`/garagem/${veiculo.id}`}
       className="group block overflow-hidden rounded-2xl border border-borda bg-white transition hover:border-marca/50 hover:shadow-lg hover:shadow-tinta/5"
     >
-      <FotoVeiculo url={fotoUrl} className="aspect-[16/9] w-full" />
+      <FotoVeiculo url={fotoUrl} className="h-28 w-full sm:h-32" />
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
