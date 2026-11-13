@@ -24,7 +24,37 @@ export type Veiculo = {
   fipe_ano_cod?: string | null;
   km_por_dia?: number | null;
   uf?: string | null;
+  /** Preferências do cliente (ex.: "Não mexer nos bancos"), mostradas como ponto de atenção na OS */
+  preferencias?: string[];
 };
+
+/** Sugestões para a área de preferências do veículo */
+export const SUGESTOES_PREFERENCIAS = [
+  "Não mexer nos bancos",
+  "Não passar cheirinho",
+  "Pretinho semi brilho",
+  "Pretinho brilhante",
+  "Não usar pretinho",
+  "Não lavar o motor",
+  "Não mexer no rádio e nos ajustes",
+  "Não aspirar o porta-malas",
+  "Cuidado com o adesivo",
+];
+
+/** Limpa a lista de preferências vinda do formulário */
+export function limparPreferencias(lista: unknown[]): string[] {
+  const vistas = new Set<string>();
+  const saida: string[] = [];
+  for (const item of lista) {
+    const t = String(item).replace(/\s+/g, " ").trim().slice(0, 80);
+    const chave = t.toLowerCase();
+    if (t && !vistas.has(chave)) {
+      vistas.add(chave);
+      saida.push(t);
+    }
+  }
+  return saida.slice(0, 30);
+}
 
 export type Servico = {
   id: string;

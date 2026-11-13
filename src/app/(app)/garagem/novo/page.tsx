@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { PaginaFicha } from "@/components/PaginaFicha";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { obterCliente } from "@/lib/dados";
+import { listarVeiculos, obterCliente } from "@/lib/dados";
+import { nomeVeiculo } from "@/lib/garagem";
 import { obterFicha } from "@/lib/gestao-dados";
 import { FormVeiculo } from "../FormVeiculo";
 
@@ -19,6 +20,12 @@ export default async function NovoVeiculoPage({ searchParams }: PageProps<"/gara
     (clienteId ? await obterFicha(clienteId) : null) ??
     (clienteId ? await obterCliente(clienteId).then((c) => (c ? { id: c.id, nome: c.nome, perfil_id: c.id } : null)) : null);
   const donoId = cliente ? (cliente.perfil_id ?? `c-${cliente.id}`) : usuario.id;
+  // Veículos que o cliente já tem, para copiar as preferências
+  const existentes =
+    cliente && "veiculos" in cliente
+      ? cliente.veiculos
+      : await listarVeiculos(cliente?.perfil_id ?? usuario.id);
+  const outros = existentes.map((v) => ({ id: v.id, nome: `${nomeVeiculo(v)} (${v.placa})` }));
 
   return (
     <PaginaFicha
@@ -28,7 +35,7 @@ export default async function NovoVeiculoPage({ searchParams }: PageProps<"/gara
       descricao={cliente ? <>Cadastrando para <strong className="text-texto">{cliente.nome}</strong></> : undefined}
     >
       <Cartao>
-        <FormVeiculo donoId={donoId} clienteId={cliente && !cliente.perfil_id ? cliente.id : undefined} />
+        <FormVeiculo outros={outros} donoId={donoId} clienteId={cliente && !cliente.perfil_id ? cliente.id : undefined} />
       </Cartao>
     </PaginaFicha>
   );

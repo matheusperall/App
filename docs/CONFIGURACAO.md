@@ -30,6 +30,7 @@ aparecem, mas login e cadastro não funcionam.
    14. `0014_anexos_documentos.sql` — anexos de documentos (CNH, CRLV-e, apólice e outros)
    15. `0015_cartoes_credito.sql` — cartões de crédito da empresa (compras, faturas e pagamento)
    16. `0016_seguranca.sql` — ajustes de segurança (veja [SEGURANCA.md](SEGURANCA.md))
+   17. `0017_preferencias_veiculo.sql` — preferências do cliente para cada veículo (ponto de atenção na OS)
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 

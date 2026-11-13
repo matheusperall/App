@@ -9,6 +9,7 @@ import { CATEGORIAS, formatarValor, normalizarPlaca, placaValida, type Categoria
 import { arred } from "@/lib/gestao";
 import { CampoDinheiro } from "@/components/CampoDinheiro";
 import { ListaBusca } from "@/components/ListaBusca";
+import { AtencaoPreferencias } from "@/components/AtencaoPreferencias";
 import { salvarOS, type DadosOS } from "./actions";
 
 export type OpcaoCliente = {
@@ -16,7 +17,7 @@ export type OpcaoCliente = {
   nome: string;
   telefone: string | null;
   lojista: boolean;
-  veiculos: { id: string; placa: string; nome: string }[];
+  veiculos: { id: string; placa: string; nome: string; preferencias?: string[] }[];
 };
 export type OpcaoServico = { id: string; nome: string; preco: number; categoria: Categoria };
 
@@ -347,6 +348,7 @@ export function FormOS({
               )}
             </>
           )}
+          {!novoVeiculo && <AtencaoPreferencias preferencias={veiculosDoCliente.find((v) => v.id === veiculoId)?.preferencias} />}
         </Cartao>
 
       {/* 3. Serviços */}

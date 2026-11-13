@@ -6,6 +6,8 @@ import { Dinheiro, SeloStatus } from "@/components/gestao";
 import { CopiarWhatsApp } from "@/components/gestao/Copiar";
 import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Cartao } from "@/components/ui";
+import { AtencaoPreferencias } from "@/components/AtencaoPreferencias";
+import { preferenciasDosVeiculos } from "@/lib/dados";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
 import { STATUS_OS, arred, faltaReceber, linkWhatsApp, resumoOSWhatsApp, rotuloForma } from "@/lib/gestao";
@@ -19,7 +21,12 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
   const [{ osId }, sp] = await Promise.all([params, searchParams, exigirAdmin()]);
   const os = await obterOS(osId);
   if (!os) notFound();
-  const [consumo, contas, pagamentos] = await Promise.all([consumoDaOS(os.id), listarContas(), pagamentosDaOS(os.id)]);
+  const [consumo, contas, pagamentos, preferencias] = await Promise.all([
+    consumoDaOS(os.id),
+    listarContas(),
+    pagamentosDaOS(os.id),
+    os.veiculo_id ? preferenciasDosVeiculos([os.veiculo_id]) : Promise.resolve({} as Record<string, string[]>),
+  ]);
   const falta = faltaReceber(os);
   const nomeConta = (id: string | null) => contas.find((c) => c.id === id)?.nome;
   const s = STATUS_OS[os.status];
@@ -57,6 +64,8 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
             {os.placa && <Placa placa={os.placa} tamanho="sm" />}
           </div>
         )}
+        {/* Preferências do cliente só importam enquanto o carro está na loja */}
+        {os.veiculo_id && os.status !== "entregue" && os.status !== "cancelada" && <AtencaoPreferencias preferencias={preferencias[os.veiculo_id]} />}
         {os.observacoes && <p className="text-sm whitespace-pre-line">{os.observacoes}</p>}
       </Cartao>
 

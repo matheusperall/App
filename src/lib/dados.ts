@@ -16,6 +16,8 @@ const CAMPOS_BASICOS =
 const CAMPOS_VEICULO = `${CAMPOS_BASICOS}, tipo, combustivel, codigo_fipe, valor_fipe, fipe_referencia, fipe_marca_cod, fipe_modelo_cod, fipe_ano_cod, km_por_dia, uf`;
 /** Com a ficha do cliente na loja (gestão, 0010). */
 const CAMPOS_VEICULO_FICHA = `${CAMPOS_VEICULO}, cliente_id`;
+/** Com as preferências do cliente (0017). */
+const CAMPOS_VEICULO_PREF = `${CAMPOS_VEICULO_FICHA}, preferencias`;
 
 /** Se o banco ainda não recebeu as colunas da FIPE (0004), consulta só as básicas. */
 const faltaColuna = (e: { code?: string } | null) => e?.code === "42703";
@@ -25,10 +27,23 @@ export async function listarVeiculos(donoId: string): Promise<Veiculo[]> {
   const supabase = await createClient();
   const consulta = (campos: string) =>
     supabase.from("veiculos").select(campos).eq("dono_id", donoId).order("criado_em");
-  let { data, error } = await consulta(CAMPOS_VEICULO_FICHA);
+  let { data, error } = await consulta(CAMPOS_VEICULO_PREF);
+  if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO_FICHA));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
   return (data as unknown as Veiculo[] | null) ?? [];
+}
+
+/** Preferências de cada veículo (id → lista). Sem a migração 0017, volta vazio. */
+export async function preferenciasDosVeiculos(ids?: string[]): Promise<Record<string, string[]>> {
+  if (!isSupabaseConfigured) return Object.fromEntries(DEMO.veiculos.map((v) => [v.id, v.preferencias ?? []]));
+  if (ids && ids.length === 0) return {};
+  const supabase = await createClient();
+  let q = supabase.from("veiculos").select("id, preferencias");
+  if (ids) q = q.in("id", ids.filter(ehUuid));
+  const { data, error } = await q;
+  if (error) return {};
+  return Object.fromEntries(((data ?? []) as { id: string; preferencias: string[] | null }[]).filter((v) => v.preferencias?.length).map((v) => [v.id, v.preferencias ?? []]));
 }
 
 export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
@@ -44,7 +59,8 @@ export async function obterVeiculo(id: string): Promise<VeiculoComDono | null> {
       .select(`${campos}, dono:perfis!veiculos_dono_id_fkey (id, nome, email, telefone)`)
       .eq("id", id)
       .maybeSingle();
-  let { data, error } = await consulta(`${CAMPOS_VEICULO_FICHA}, ficha:clientes (id, nome, email, telefone)`);
+  let { data, error } = await consulta(`${CAMPOS_VEICULO_PREF}, ficha:clientes (id, nome, email, telefone)`);
+  if (error) ({ data, error } = await consulta(`${CAMPOS_VEICULO_FICHA}, ficha:clientes (id, nome, email, telefone)`));
   if (error) ({ data, error } = await consulta(CAMPOS_VEICULO));
   if (faltaColuna(error)) ({ data, error } = await consulta(CAMPOS_BASICOS));
   const v = data as unknown as (VeiculoComDono & { ficha?: Dono | null }) | null;
@@ -489,6 +505,7 @@ const DEMO = {
       km_atualizado_em: `${hoje}T12:00:00Z`,
       foto: null,
       km_por_dia: 27.0,
+      preferencias: ["Não mexer nos bancos", "Pretinho semi brilho"],
     },
   ] satisfies Veiculo[],
   servicos: [

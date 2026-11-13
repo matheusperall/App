@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { BotaoEnviar } from "@/components/BotaoEnviar";
 import { EnviarFotos } from "@/components/EnviarFotos";
+import { PreferenciasVeiculo } from "@/components/PreferenciasVeiculo";
 import { ResumoFipe, SeletorFipe, type Escolha } from "@/components/SeletorFipe";
 import { Aviso, Campo } from "@/components/ui";
 import type { EstadoForm } from "@/app/(auth)/actions";
@@ -18,6 +19,7 @@ export function FormVeiculo({
   donoId,
   clienteId,
   fotoUrl,
+  outros = [],
 }: {
   veiculo?: Veiculo;
   /** Dono do veículo (a empresa pode cadastrar para um cliente) */
@@ -25,6 +27,8 @@ export function FormVeiculo({
   /** Ficha da loja (cliente sem login): o veículo fica nela */
   clienteId?: string;
   fotoUrl?: string;
+  /** Outros veículos do mesmo cliente, para copiar as preferências */
+  outros?: { id: string; nome: string }[];
 }) {
   const [estado, acao] = useActionState<EstadoForm, FormData>(salvarVeiculo, {});
   const anoAtual = new Date().getFullYear();
@@ -168,7 +172,9 @@ export function FormVeiculo({
         <input name="apelido" defaultValue={veiculo?.apelido ?? ""} className="campo" />
       </Campo>
 
-      <Campo rotulo="Foto do veículo" dica="Opcional.">
+      <PreferenciasVeiculo iniciais={veiculo?.preferencias ?? []} outros={outros} />
+
+      <Campo rotulo="Foto do veículo" dica="Opcional." largo>
         <EnviarFotos
           pasta={`${donoId}/veiculos`}
           maximo={1}

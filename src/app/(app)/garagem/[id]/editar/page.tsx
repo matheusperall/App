@@ -1,10 +1,11 @@
-import { pastaFotos } from "@/lib/garagem";
+import { nomeVeiculo, pastaFotos } from "@/lib/garagem";
+import { obterFicha } from "@/lib/gestao-dados";
 import type { Metadata } from "next";
 import { PaginaFicha } from "@/components/PaginaFicha";
 import { notFound } from "next/navigation";
 import { Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { listarVeiculos, obterVeiculo, urlsDasFotos } from "@/lib/dados";
 import { excluirVeiculo } from "../../actions";
 import { FormVeiculo } from "../../FormVeiculo";
 import { BotaoExcluir } from "@/components/BotaoExcluir";
@@ -15,12 +16,17 @@ export default async function EditarVeiculoPage({ params }: PageProps<"/garagem/
   const [{ id }, usuario] = await Promise.all([params, exigirUsuario()]);
   const veiculo = await obterVeiculo(id);
   if (!veiculo) notFound();
-  const fotos = await urlsDasFotos([veiculo.foto]);
+  const [fotos, irmaos] = await Promise.all([
+    urlsDasFotos([veiculo.foto]),
+    // Outros veículos do mesmo cliente, para copiar as preferências
+    veiculo.dono_id ? listarVeiculos(veiculo.dono_id) : veiculo.cliente_id ? obterFicha(veiculo.cliente_id).then((f) => f?.veiculos ?? []) : Promise.resolve([]),
+  ]);
+  const outros = irmaos.filter((v) => v.id !== veiculo.id).map((v) => ({ id: v.id, nome: `${nomeVeiculo(v)} (${v.placa})` }));
 
   return (
     <PaginaFicha voltar={{ href: `/garagem/${id}`, rotulo: "Voltar ao veículo" }} icone="carro" titulo="Editar veículo" descricao={`${veiculo.placa}`}>
       <Cartao>
-        <FormVeiculo veiculo={veiculo} donoId={pastaFotos(veiculo)} fotoUrl={veiculo.foto ? fotos[veiculo.foto] : undefined} />
+        <FormVeiculo outros={outros} veiculo={veiculo} donoId={pastaFotos(veiculo)} fotoUrl={veiculo.foto ? fotos[veiculo.foto] : undefined} />
       </Cartao>
       <Cartao className="space-y-3">
         <h2 className="font-semibold text-perigo">Excluir veículo</h2>
