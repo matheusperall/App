@@ -38,9 +38,9 @@ export function Campo({
   );
 }
 
-export function Cartao({ className = "", children }: { className?: string; children: ReactNode }) {
+export function Cartao({ className = "", children, id }: { className?: string; children: ReactNode; id?: string }) {
   return (
-    <div className={`rounded-2xl border border-borda bg-cartao p-5 shadow-[0_1px_2px_rgba(11,18,32,0.04)] ${className}`}>
+    <div id={id} className={`rounded-2xl border border-borda bg-cartao p-5 shadow-[0_1px_2px_rgba(11,18,32,0.04)] ${className}`}>
       {children}
     </div>
   );

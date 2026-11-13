@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CartaoVeiculo, contarAlertas } from "@/components/garagem";
-import { Cabecalho, ResumoPeriodo } from "@/components/gestao/Cabecalho";
+import { Cabecalho, ResumoPeriodo, type Cor } from "@/components/gestao/Cabecalho";
 import { apontamentoAberto, hojeISO, ritmoDoVeiculo, situacaoDocumento } from "@/lib/garagem";
 import { documentosAutomaticos } from "@/lib/calendarios";
 import { Aviso, Cartao } from "@/components/ui";
@@ -28,15 +28,44 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
     listarAnexos({ donoId: usuario.id }),
   ]);
 
-  const alertas = veiculos.map((v) => contarAlertas(manutencoes.filter((m) => m.veiculo_id === v.id), v.km_atual, ritmoDoVeiculo(v)));
   const hoje = hojeISO();
-  // Mesma conta do cartão de cada veículo: documentos cadastrados + IPVA/licenciamento pelo final da placa
-  const situacoesDocs = veiculos.flatMap((v) => {
+  // Pendências de cada veículo, com a mesma conta do cartão (documentos incluem IPVA/licenciamento pelo final da placa)
+  const porVeiculo = veiculos.map((v) => {
+    const m = contarAlertas(manutencoes.filter((x) => x.veiculo_id === v.id), v.km_atual, ritmoDoVeiculo(v));
     const manuais = documentos.filter((d) => d.veiculo_id === v.id);
-    return [...documentosAutomaticos(v, manuais, hoje), ...manuais].map((d) => situacaoDocumento(d.vencimento, hoje).situacao);
+    const docs = [...documentosAutomaticos(v, manuais, hoje), ...manuais].map((d) => situacaoDocumento(d.vencimento, hoje).situacao);
+    return {
+      id: v.id,
+      "manutencoes-vencidas": m.vencidas,
+      "manutencoes-em-breve": m.emBreve,
+      apontamentos: apontamentos.filter((a) => a.veiculo_id === v.id && apontamentoAberto(a)).length,
+      "documentos-vencidos": docs.filter((x) => x === "vencida").length,
+      "documentos-em-breve": docs.filter((x) => x === "em_breve").length,
+    };
   });
-  const docsVencidos = situacoesDocs.filter((x) => x === "vencida").length;
-  const docsEmBreve = situacoesDocs.filter((x) => x === "em_breve").length;
+  type Chave = Exclude<keyof (typeof porVeiculo)[number], "id">;
+  const total = (c: Chave) => porVeiculo.reduce((t, x) => t + x[c], 0);
+  // Para onde leva o número do resumo: direto ao veículo, ou à lista filtrada quando são vários
+  const destino = (c: Chave) => {
+    const com = porVeiculo.filter((x) => x[c] > 0);
+    if (com.length === 0) return undefined;
+    if (com.length > 1) return `/garagem?ver=${c}#veiculos`;
+    const id = com[0].id;
+    return `/garagem/${id}#${c === "apontamentos" ? "apontamentos" : c.startsWith("documentos") ? "documentos" : "manutencoes"}`;
+  };
+  const ROTULOS: Record<Chave, string> = {
+    "manutencoes-vencidas": "Manutenções vencidas",
+    "manutencoes-em-breve": "Manutenções em breve",
+    apontamentos: "Apontamentos abertos",
+    "documentos-vencidos": "Documentos vencidos",
+    "documentos-em-breve": "Documentos em breve",
+  };
+  const filtro = typeof params.ver === "string" && params.ver in ROTULOS ? (params.ver as Chave) : undefined;
+  const visiveis = filtro ? veiculos.filter((v) => (porVeiculo.find((x) => x.id === v.id)?.[filtro] ?? 0) > 0) : veiculos;
+  const item = (c: Chave, corComValor: Cor) => {
+    const valor = total(c);
+    return { rotulo: ROTULOS[c], valor, formato: "numero" as const, cor: valor ? corComValor : ("verde" as Cor), href: destino(c) };
+  };
 
   return (
     <div className="space-y-4">
@@ -50,11 +79,11 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           titulo="Resumo"
           itens={[
             { rotulo: "Veículos", valor: veiculos.length, formato: "numero" },
-            { rotulo: "Manutenções vencidas", valor: alertas.reduce((t, a) => t + a.vencidas, 0), formato: "numero", cor: alertas.some((a) => a.vencidas) ? "vermelho" : "verde" },
-            { rotulo: "Manutenções em breve", valor: alertas.reduce((t, a) => t + a.emBreve, 0), formato: "numero", cor: "amarelo" },
-            { rotulo: "Apontamentos abertos", valor: apontamentos.filter(apontamentoAberto).length, formato: "numero", cor: apontamentos.some(apontamentoAberto) ? "amarelo" : "verde" },
-            { rotulo: "Documentos vencidos", valor: docsVencidos, formato: "numero", cor: docsVencidos ? "vermelho" : "verde" },
-            { rotulo: "Documentos em breve", valor: docsEmBreve, formato: "numero", cor: "amarelo" },
+            item("manutencoes-vencidas", "vermelho"),
+            item("manutencoes-em-breve", "amarelo"),
+            item("apontamentos", "amarelo"),
+            item("documentos-vencidos", "vermelho"),
+            item("documentos-em-breve", "amarelo"),
           ]}
         />
       )}
@@ -79,8 +108,19 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
           <Link href="/garagem/novo" className="botao-primario mt-2">Cadastrar meu veículo</Link>
         </Cartao>
       ) : (
+        <div id="veiculos" className="scroll-mt-28 space-y-3">
+          {filtro && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-marca/30 bg-marca-clara/60 px-4 py-2.5 text-sm">
+              <span>
+                Mostrando os veículos com <strong>{ROTULOS[filtro].toLowerCase()}</strong>
+              </span>
+              <Link href="/garagem" className="shrink-0 font-semibold text-marca-escura hover:underline">
+                Ver todos
+              </Link>
+            </div>
+          )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:min-w-0">
-          {veiculos.map((v) => (
+          {visiveis.map((v) => (
             <CartaoVeiculo
               key={v.id}
               veiculo={v}
@@ -90,6 +130,7 @@ export default async function GaragemPage({ searchParams }: PageProps<"/garagem"
               documentos={documentos.filter((d) => d.veiculo_id === v.id)}
             />
           ))}
+        </div>
         </div>
       )}
 
