@@ -81,15 +81,17 @@ export function LinksNavegacao({ itens, local }: { itens: ItemNav[]; local: "top
 
   if (local === "barra") {
     return (
-      <nav aria-label="Menu principal" className="hidden border-b border-borda bg-white sm:block">
-        <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6">
+      // Menu principal: faixa escura junto do topo, letras em negrito e o item ativo em destaque.
+      // Assim não se confunde com os submenus das telas, que são brancos e sublinhados.
+      <nav aria-label="Menu principal" className="hidden border-t border-white/10 bg-tinta-2 sm:block">
+        <ul className="mx-auto flex max-w-7xl gap-1.5 overflow-x-auto px-4 py-2 sm:px-6">
           {lista.map((i) => (
             <li key={i.href} className="shrink-0">
               <Link
                 href={i.href}
                 aria-current={ativo(i.href) ? "page" : undefined}
-                className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition ${
-                  ativo(i.href) ? "border-marca text-marca-escura" : "border-transparent text-suave hover:text-texto"
+                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                  ativo(i.href) ? "bg-marca text-white shadow-sm" : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <span className="[&_svg]:h-5 [&_svg]:w-5"><Icone nome={i.icone} /></span>
