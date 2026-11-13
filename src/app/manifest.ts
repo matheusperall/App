@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Sempre Zero — Garagem digital",
     short_name: "Sempre Zero",
     description: "Histórico, apontamentos, lembretes e vencimentos do seu veículo.",
-    start_url: "/garagem",
+    start_url: "/inicio",
     display: "standalone",
     background_color: "#0b1220",
     theme_color: "#0b1220",

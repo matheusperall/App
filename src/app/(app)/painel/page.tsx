@@ -11,14 +11,19 @@ import { agendaEmpresa, caixaDeEntrada, contarOrcamentosAResponder, contarPainel
 import { ItemAgendamento } from "@/components/agendamento";
 import { partesBrasilia } from "@/lib/agenda";
 import { googleConfigurado } from "@/lib/google-agenda";
-import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo } from "@/lib/garagem";
+import { SITUACOES_APONTAMENTO, formatarDataHora, nomeVeiculo, normalizarPlaca } from "@/lib/garagem";
+import { combina, type FichaComResumo, type VeiculoResumo } from "@/lib/gestao";
+import { listarFichas } from "@/lib/gestao-dados";
 import { emailConfigurado, pushConfigurado } from "@/lib/notificar";
 import { lembretesConfigurados } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Atendimento" };
 
-export default async function PainelPage() {
-  await exigirAdmin();
+export default async function PainelPage({ searchParams }: PageProps<"/painel">) {
+  const [, sp] = await Promise.all([exigirAdmin(), searchParams]);
+  const busca = typeof sp.q === "string" ? sp.q.trim() : "";
+  const tipoBusca = sp.tipo === "cliente" ? "cliente" : "veiculo";
+  const resultado = busca ? await buscarAtendimento(busca, tipoBusca) : null;
   const [{ clientes, abertos }, caixa, vencimentos, orcamentosAResponder, agenda] = await Promise.all([
     contarPainel(),
     caixaDeEntrada(),
@@ -33,7 +38,30 @@ export default async function PainelPage() {
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("geral")} acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }} />
+      <Cabecalho icone="atendimento" titulo="Atendimento" abas={abasPainel("geral")} />
+
+      {/* Busca rápida: veículo (placa ou modelo) ou cliente (nome ou telefone) */}
+      <section className="rounded-2xl border border-borda bg-white p-4">
+        <form className="flex flex-col gap-2 sm:flex-row" role="search">
+          <input
+            name="q"
+            defaultValue={busca}
+            type="search"
+            className="campo flex-1"
+            placeholder="Placa, modelo, nome ou telefone"
+            aria-label="Buscar veículo ou cliente"
+          />
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <button type="submit" name="tipo" value="veiculo" className={`gap-1.5 rounded-full px-4 py-2.5 text-sm ${tipoBusca === "veiculo" || !busca ? "botao-primario" : "botao-contorno"}`}>
+              <Icone nome="carro" className="h-4 w-4" />Buscar veículo
+            </button>
+            <button type="submit" name="tipo" value="cliente" className={`gap-1.5 rounded-full px-4 py-2.5 text-sm ${tipoBusca === "cliente" && busca ? "botao-primario" : "botao-contorno"}`}>
+              <Icone nome="clientes" className="h-4 w-4" />Buscar cliente
+            </button>
+          </div>
+        </form>
+        {resultado && <ResultadoBusca resultado={resultado} busca={busca} />}
+      </section>
 
       {(!pushConfigurado() || !emailConfigurado() || !lembretesConfigurados() || !googleConfigurado()) && (
         <Aviso tipo="alerta">
@@ -61,11 +89,10 @@ export default async function PainelPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        <Link href="/gestao/clientes/novo" className="botao-primario gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="clientes" className="h-4 w-4" />Cadastrar cliente</Link>
-        <Link href="/gestao/clientes" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="carro" className="h-4 w-4" />Buscar cliente ou placa</Link>
+        <Link href="/orcamentos?f=responder" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="orcamento" className="h-4 w-4" />Responder orçamentos</Link>
+        <Link href="/agendamentos" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="calendario" className="h-4 w-4" />Confirmar agendamentos</Link>
         <Link href="/painel/comunicados" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="megafone" className="h-4 w-4" />Enviar comunicado</Link>
-        <Link href="/gestao" className="botao-escuro gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="financeiro" className="h-4 w-4" />Gestão da loja</Link>
-        <Link href="/garagem" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="carro" className="h-4 w-4" />Minha garagem</Link>
+        <Link href="/gestao/clientes/novo" className="botao-contorno gap-1.5 rounded-full px-4 py-2 text-sm"><Icone nome="clientes" className="h-4 w-4" />Cadastrar cliente</Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -81,6 +108,63 @@ export default async function PainelPage() {
       {agendados.length > 0 && <Caixa titulo="Agendados" vazio="" itens={agendados} />}
       <Vencimentos itens={vencimentos} />
     </div>
+  );
+}
+
+type Resultado =
+  | { tipo: "veiculo"; itens: { veiculo: VeiculoResumo; ficha: FichaComResumo }[] }
+  | { tipo: "cliente"; itens: FichaComResumo[] };
+
+async function buscarAtendimento(busca: string, tipo: "veiculo" | "cliente"): Promise<Resultado> {
+  if (tipo === "cliente") return { tipo, itens: (await listarFichas(busca)).slice(0, 20) };
+  const placa = normalizarPlaca(busca);
+  const itens = (await listarFichas())
+    .flatMap((ficha) => ficha.veiculos.map((veiculo) => ({ veiculo, ficha })))
+    .filter(({ veiculo }) => (placa.length >= 2 && veiculo.placa.includes(placa)) || combina(`${veiculo.marca} ${veiculo.modelo} ${veiculo.apelido ?? ""}`, busca))
+    .slice(0, 20);
+  return { tipo, itens };
+}
+
+function ResultadoBusca({ resultado, busca }: { resultado: Resultado; busca: string }) {
+  if (resultado.itens.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-suave">
+        Nada encontrado para “{busca}”.{" "}
+        <Link href={resultado.tipo === "veiculo" ? `/painel?q=${encodeURIComponent(busca)}&tipo=cliente` : `/painel?q=${encodeURIComponent(busca)}&tipo=veiculo`} className="font-semibold text-marca-escura">
+          Buscar como {resultado.tipo === "veiculo" ? "cliente" : "veículo"}
+        </Link>
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-3 divide-y divide-borda overflow-hidden rounded-xl border border-borda">
+      {resultado.tipo === "veiculo"
+        ? resultado.itens.map(({ veiculo, ficha }) => (
+            <li key={veiculo.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <Link href={`/garagem/${veiculo.id}`} className="flex min-w-0 items-center gap-3 hover:underline">
+                <span className="shrink-0"><Placa placa={veiculo.placa} tamanho="sm" /></span>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{nomeVeiculo(veiculo)}{veiculo.ano ? ` · ${veiculo.ano}` : ""}</span>
+                  <span className="block truncate text-sm text-suave">{ficha.nome}{ficha.telefone ? ` · ${ficha.telefone}` : ""}</span>
+                </span>
+              </Link>
+              <Link href={`/gestao/clientes/${ficha.id}`} className="shrink-0 text-xs font-semibold text-marca-escura">Ficha</Link>
+            </li>
+          ))
+        : resultado.itens.map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <Link href={`/gestao/clientes/${f.id}`} className="min-w-0 hover:underline">
+                <span className="block truncate font-medium">{f.nome}{f.lojista ? " · lojista" : ""}</span>
+                <span className="block truncate text-sm text-suave">{[f.telefone, ...f.veiculos.map((v) => v.placa)].filter(Boolean).join(" · ") || "—"}</span>
+              </Link>
+              {f.telefone && (
+                <a href={linkWhatsApp(f.telefone, `Olá, ${f.nome.split(" ")[0]}!`)} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-borda px-2.5 py-1.5 text-xs font-semibold text-marca-escura hover:border-marca">
+                  WhatsApp
+                </a>
+              )}
+            </li>
+          ))}
+    </ul>
   );
 }
 

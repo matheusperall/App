@@ -59,9 +59,9 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {[
             { href: "/gestao/os/nova", rotulo: "Nova OS", icone: "os" as const },
+            { href: "/gestao/clientes/novo", rotulo: "Novo cliente", icone: "clientes" as const },
             { href: "/gestao/financeiro/novo", rotulo: "Novo lançamento", icone: "financeiro" as const },
             { href: "/gestao/faturas", rotulo: "Faturas", icone: "faturas" as const },
-            { href: "/gestao/clientes/novo", rotulo: "Novo cliente", icone: "clientes" as const },
           ].map((b) => (
             <Link key={b.href} href={b.href} className="botao-primario gap-1.5 rounded-full px-4 py-2 text-sm">
               <Icone nome={b.icone} className="h-4 w-4" />
