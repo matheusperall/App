@@ -29,16 +29,19 @@ export function LogoSimbolo({ className = "h-9 w-9" }: { className?: string }) {
 export function Logo({
   className = "",
   claro = false,
+  compacto = false,
 }: {
   className?: string;
   /** true para usar sobre fundo escuro */
   claro?: boolean;
+  /** Versão menor, para o topo do app */
+  compacto?: boolean;
 }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <LogoSimbolo />
+    <span className={`inline-flex items-center ${compacto ? "gap-2" : "gap-2.5"} ${className}`}>
+      <LogoSimbolo className={compacto ? "h-7 w-7" : "h-9 w-9"} />
       <span
-        className={`font-titulo text-lg font-bold tracking-tight ${claro ? "text-white" : "text-tinta"}`}
+        className={`font-titulo ${compacto ? "text-base" : "text-lg"} font-bold tracking-tight ${claro ? "text-white" : "text-tinta"}`}
       >
         Sempre<span className="text-marca">Zero</span>
       </span>

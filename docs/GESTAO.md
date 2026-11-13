@@ -9,7 +9,7 @@ o cliente continua vendo a Agenda e os Orçamentos dele no menu do app.
 
 | Aba | Para que serve |
 |---|---|
-| **Painel** (dentro da Gestão) | Saudação e atalhos (Nova OS, Novo agendamento, Novo orçamento, Novo cliente, Novo lançamento), calendário do mês com o número de agendamentos de cada dia (tocar no dia abre a Agenda naquele dia), recebido por forma de pagamento, entradas e saídas de hoje, a receber, orçamentos, vagas no pátio, oportunidades, carros no pátio, agenda de hoje, o que precisa de atenção, faturamento por dia e top 5 clientes. |
+| **Painel** (dentro da Gestão) | Saudação e atalhos (Nova OS, Novo agendamento, Novo orçamento, Novo cliente, Novo lançamento) e o painel dividido em partes: **Hoje na loja** (pátio, vagas e agenda de hoje), **Precisa de atenção** (faturas de lojistas, faturas de cartão, contas a pagar em 7 dias e estoque crítico, cada um no seu quadro), **Agenda e vendas** (calendário do mês, orçamentos e oportunidades), **Financeiro** (resumo, recebido por forma e faturamento por dia) e **Clientes** (top 5). |
 | **Agenda** | Agendamentos: calendário com o número de agendamentos por dia, pedidos a confirmar, próximos horários, busca e **+ Agendamento**. |
 | **Orçamentos** | Pedidos de orçamento dos clientes (a responder, aguardando cliente, aprovados), busca e **+ Orçamento**. |
 | **OS** | Ordens de serviço. Filtros: no pátio, a receber, lojistas, todas (por mês). Busca por placa, cliente ou número. |

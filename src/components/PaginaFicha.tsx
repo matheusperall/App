@@ -26,10 +26,10 @@ export function PaginaFicha({
     <div className="space-y-4">
       {menu}
       <Voltar href={voltar.href}>{voltar.rotulo}</Voltar>
-      <header className="flex flex-col gap-1 rounded-2xl border border-borda bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <header className="flex flex-col gap-1 rounded-2xl border border-borda bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
-            <Icone nome={icone} className="h-6 w-6 shrink-0 text-marca-escura" />
+          <h1 className="flex items-center gap-2 text-base font-bold sm:text-lg">
+            <Icone nome={icone} className="h-5 w-5 shrink-0 text-marca-escura" />
             {titulo}
           </h1>
           {descricao && <div className="mt-0.5 text-sm text-suave">{descricao}</div>}
