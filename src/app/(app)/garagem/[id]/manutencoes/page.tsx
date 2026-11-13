@@ -23,7 +23,7 @@ export default async function ManutencoesPage({ params }: PageProps<"/garagem/[i
     <div className="space-y-4">
       <Voltar href={`/garagem/${id}`}>{nomeVeiculo(veiculo)}</Voltar>
       <Cabecalho icone="carro" titulo={`${nomeVeiculo(veiculo)} · ${veiculo.placa}`} abas={abasVeiculo(id, "lembretes")} />
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold">Lembretes de manutenção</h2>
         <p className="text-suave">
@@ -31,7 +31,7 @@ export default async function ManutencoesPage({ params }: PageProps<"/garagem/[i
           recomendação da oficina. Avisamos o que vier primeiro: a data ou a quilometragem.
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         {tipos.map((t) => (
           <FormManutencao
             key={t}

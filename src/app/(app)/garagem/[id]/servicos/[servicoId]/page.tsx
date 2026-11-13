@@ -19,7 +19,7 @@ export default async function ServicoPage({ params }: PageProps<"/garagem/[id]/s
   const cat = CATEGORIAS[servico.categoria];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <Voltar href={`/garagem/${id}`}>Voltar ao veículo</Voltar>
       <Cartao className="space-y-4">
         <div className="space-y-2">

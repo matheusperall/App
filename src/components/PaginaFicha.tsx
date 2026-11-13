@@ -11,16 +11,20 @@ export function PaginaFicha({
   icone,
   titulo,
   descricao,
+  menu,
   children,
 }: {
   voltar: { href: string; rotulo: ReactNode };
   icone: NomeIcone;
   titulo: string;
   descricao?: ReactNode;
+  /** Menu da seção acima da ficha (ex.: menu da Gestão) */
+  menu?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="space-y-4">
+      {menu}
       <Voltar href={voltar.href}>{voltar.rotulo}</Voltar>
       <header className="flex flex-col gap-1 rounded-2xl border border-borda bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0">
