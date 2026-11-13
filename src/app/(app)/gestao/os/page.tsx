@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { NavMes, Vazio } from "@/components/gestao";
 import { Cabecalho, CelulaStatus, GrupoDia, GrupoMes, ResumoPeriodo, type Cor } from "@/components/gestao/Cabecalho";
+import type { NomeIcone } from "@/components/gestao/Icones";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarValor } from "@/lib/garagem";
 import { STATUS_OS, agruparPorMesEDia, arred, concluida, faltaReceber, mesAtual, mesValido, rotuloDia, rotuloForma, tituloMes, type OrdemServico } from "@/lib/gestao";
@@ -10,11 +11,11 @@ import { ItemOS } from "./ItemOS";
 
 export const metadata: Metadata = { title: "Ordens de serviço" };
 
-const FILTROS: { chave: FiltroOS; rotulo: string }[] = [
-  { chave: "todas", rotulo: "Todas" },
-  { chave: "patio", rotulo: "No pátio" },
-  { chave: "receber", rotulo: "A receber" },
-  { chave: "lojistas", rotulo: "Lojistas" },
+const FILTROS: { chave: FiltroOS; rotulo: string; icone: NomeIcone }[] = [
+  { chave: "todas", rotulo: "Todas", icone: "os" },
+  { chave: "patio", rotulo: "No pátio", icone: "carro" },
+  { chave: "receber", rotulo: "A receber", icone: "caixa" },
+  { chave: "lojistas", rotulo: "Lojistas", icone: "clientes" },
 ];
 
 const COR_STATUS: Record<OrdemServico["status"], Cor> = { aberta: "amarelo", em_andamento: "amarelo", pronta: "verde", entregue: "verde", cancelada: "vermelho" };
@@ -46,9 +47,14 @@ export default async function ListaOSPage({ searchParams }: PageProps<"/gestao/o
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="os" titulo="Ordens de serviço" acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }} />
+      <Cabecalho
+        icone="os"
+        titulo="Ordens de serviço"
+        acao={{ href: "/gestao/os/nova", rotulo: "Nova OS" }}
+        abas={FILTROS.map((f) => ({ href: link(f.chave), rotulo: f.rotulo, icone: f.icone, ativa: !busca && filtro === f.chave }))}
+      />
 
-      {/* Filtros numa linha */}
+      {/* Mês e busca */}
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         {comMes && <div className="lg:w-72"><NavMes mes={mes} base="/gestao/os" params={{ f: filtro }} /></div>}
         <form className="flex flex-1 items-center gap-2 rounded-xl border border-borda bg-white px-3" role="search">
@@ -57,13 +63,6 @@ export default async function ListaOSPage({ searchParams }: PageProps<"/gestao/o
           <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-suave" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input name="q" defaultValue={busca} type="search" className="min-w-0 flex-1 bg-transparent py-2.5 text-base outline-none" placeholder="Buscar por placa, cliente ou nº da OS" aria-label="Buscar OS" />
         </form>
-        <div className="flex gap-1 overflow-x-auto rounded-xl border border-borda bg-white p-1">
-          {FILTROS.map((f) => (
-            <Link key={f.chave} href={link(f.chave)} className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold ${filtro === f.chave ? "bg-tinta text-white" : "text-suave hover:text-texto"}`}>
-              {f.rotulo}
-            </Link>
-          ))}
-        </div>
       </div>
       {busca && (
         <p className="text-sm text-suave">

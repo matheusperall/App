@@ -7,19 +7,16 @@ import { Placa, Voltar } from "@/components/garagem";
 import { SeloOrcamento, TabelaItens } from "@/components/orcamento";
 import { Aviso, Cartao } from "@/components/ui";
 import { exigirUsuario } from "@/lib/auth";
-import { obterOrcamento, urlsDasFotos } from "@/lib/dados";
-import { osPorOrigem } from "@/lib/gestao-dados";
-import { CATEGORIAS, formatarData, formatarDataHora, formatarValor, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
+import { obterOrcamento, obterVeiculo, urlsDasFotos } from "@/lib/dados";
+import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
+import { mensagensOrcamento } from "@/lib/mensagens";
+import { obterModelosMensagens, osPorOrigem } from "@/lib/gestao-dados";
+import { CATEGORIAS, formatarData, formatarDataHora, hojeISO, nomeVeiculo, orcamentoVencido, somarDias } from "@/lib/garagem";
 import { excluirOrcamento } from "../actions";
 import { Decisao } from "./Decisao";
 import { FormResposta } from "./FormResposta";
 
 export const metadata: Metadata = { title: "Orçamento" };
-
-function linkWhatsApp(telefone: string, texto: string) {
-  const n = telefone.replace(/\D/g, "");
-  return `https://wa.me/${n.length <= 11 ? `55${n}` : n}?text=${encodeURIComponent(texto)}`;
-}
 
 export default async function OrcamentoPage({ params, searchParams }: PageProps<"/orcamentos/[orcamentoId]">) {
   const [{ orcamentoId }, sp, usuario] = await Promise.all([params, searchParams, exigirUsuario()]);
@@ -31,6 +28,13 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
   const vencido = orcamentoVencido(o);
   const respondido = o.itens.length > 0;
   const osLigada = admin && o.situacao === "aceito" ? (await osPorOrigem("orcamento_id", [o.id]))[o.id] : undefined;
+  // Mensagens prontas para o cliente, com o nome e o carro (o contato vem da conta do app ou da ficha da loja)
+  const comMensagens = admin && respondido && o.situacao !== "cancelado";
+  const [carro, modelos] = comMensagens ? await Promise.all([obterVeiculo(o.veiculo_id), obterModelosMensagens()]) : [null, {}];
+  const contato = carro?.dono ?? o.veiculo?.dono ?? null;
+  const mensagens = comMensagens
+    ? mensagensOrcamento(o, { nome: contato?.nome, marca: carro?.marca ?? o.veiculo?.marca, modelo: carro?.modelo ?? o.veiculo?.modelo, ano: carro?.ano, cor: carro?.cor, placa: carro?.placa ?? o.veiculo?.placa }, modelos)
+    : [];
 
   return (
     <div className="space-y-4">
@@ -134,16 +138,7 @@ export default async function OrcamentoPage({ params, searchParams }: PageProps<
         {/* Empresa responde / atualiza */}
         {admin && (
           <>
-            {o.situacao === "aceito" && o.veiculo?.dono?.telefone && (
-              <a
-                href={linkWhatsApp(o.veiculo.dono.telefone, `Olá, ${o.veiculo.dono.nome?.split(" ")[0] ?? ""}! Aqui é da Sempre Zero. Obrigado por aprovar o orçamento #${o.numero} (${formatarValor(o.valor_total)}). Qual o melhor dia para trazer o ${nomeVeiculo(o.veiculo)}?`)}
-                target="_blank"
-                rel="noreferrer"
-                className="botao-primario w-full"
-              >
-                Combinar a data pelo WhatsApp
-              </a>
-            )}
+            {mensagens.length > 0 && <MensagensWhatsApp mensagens={mensagens} telefone={contato?.telefone} />}
             {(o.situacao === "solicitado" || o.situacao === "respondido" || vencido) && (
               <Cartao className="space-y-3">
                 <h2 className="font-semibold">{respondido ? "Editar orçamento" : "Responder com valores"}</h2>

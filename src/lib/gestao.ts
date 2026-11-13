@@ -409,23 +409,6 @@ export function linkWhatsApp(telefone: string | null | undefined, texto: string)
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dataBr = (d: string) => d.slice(0, 10).split("-").reverse().join("/");
 
-export function resumoOSWhatsApp(os: OrdemServico, empresa = "Nexus Automotive") {
-  const linhas = [
-    `*${empresa}* — OS #${os.numero}`,
-    `${os.cliente?.nome ?? ""}`,
-    [os.veiculo_nome, os.placa].filter(Boolean).join(" · "),
-    `Data: ${dataBr(os.data)} · ${STATUS_OS[os.status].rotulo}`,
-    "",
-    ...os.itens.map((i) => `• ${i.nome}: ${brl(i.preco)}`),
-  ];
-  if (os.desconto > 0) linhas.push(`Desconto: −${brl(os.desconto)}`);
-  linhas.push(`*Total: ${brl(os.total)}*`);
-  if (os.pago) linhas.push(`Pago${os.forma_pagamento ? ` (${rotuloForma(os.forma_pagamento, os.parcelas)})` : ""}. Obrigado!`);
-  else if ((os.valor_pago ?? 0) > 0) linhas.push(`Já pago: ${brl(os.valor_pago ?? 0)} · falta ${brl(arred(os.total - (os.valor_pago ?? 0)))}`);
-  else if (os.cliente?.lojista) linhas.push("Valor entra na fatura do mês.");
-  return linhas.filter((l, i) => l !== "" || i === 4).join("\n");
-}
-
 export function extratoFaturaWhatsApp(f: Fatura, itens: ItemFatura[], empresa = "Nexus Automotive") {
   const saldo = arred(f.total - f.valor_pago);
   return [

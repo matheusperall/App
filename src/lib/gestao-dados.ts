@@ -1,4 +1,5 @@
 import "server-only";
+import { ehChaveMensagem, type ModelosSalvos } from "@/lib/mensagens";
 import { cache } from "react";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +46,15 @@ export const obterConfig = cache(async function obterConfig(): Promise<ConfigGes
   const { data } = await supabase.from("gestao_config").select("vagas_patio, taxa_debito, taxa_credito").maybeSingle();
   if (!data) return CONFIG_PADRAO;
   return { vagas_patio: n(data.vagas_patio), taxa_debito: n(data.taxa_debito), taxa_credito: n(data.taxa_credito) };
+});
+
+/** Modelos de mensagem de WhatsApp editados pela empresa (0018). Sem a migração, volta vazio (usa os padrões). */
+export const obterModelosMensagens = cache(async function obterModelosMensagens(): Promise<ModelosSalvos> {
+  if (!isSupabaseConfigured) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("gestao_config").select("mensagens").maybeSingle();
+  if (error || !data?.mensagens || typeof data.mensagens !== "object") return {};
+  return Object.fromEntries(Object.entries(data.mensagens as Record<string, unknown>).filter(([k, v]) => ehChaveMensagem(k) && typeof v === "string")) as ModelosSalvos;
 });
 
 // ---------------------------------------------------------------------------

@@ -3,15 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Placa, Voltar } from "@/components/garagem";
 import { Dinheiro, SeloStatus } from "@/components/gestao";
-import { CopiarWhatsApp } from "@/components/gestao/Copiar";
+import { MensagensWhatsApp } from "@/components/MensagensWhatsApp";
+import { mensagensOS } from "@/lib/mensagens";
 import { FormAcao } from "@/components/gestao/FormAcao";
 import { Aviso, Cartao } from "@/components/ui";
 import { AtencaoPreferencias } from "@/components/AtencaoPreferencias";
-import { preferenciasDosVeiculos } from "@/lib/dados";
+import { obterVeiculo, preferenciasDosVeiculos } from "@/lib/dados";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, formatarDataHora, formatarKm, hojeISO } from "@/lib/garagem";
-import { STATUS_OS, arred, faltaReceber, linkWhatsApp, resumoOSWhatsApp, rotuloForma } from "@/lib/gestao";
-import { consumoDaOS, listarContas, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
+import { STATUS_OS, arred, faltaReceber, rotuloForma } from "@/lib/gestao";
+import { consumoDaOS, listarContas, obterModelosMensagens, obterOS, pagamentosDaOS } from "@/lib/gestao-dados";
 import { avancarStatus, cancelarOS } from "../actions";
 import { FormReceber } from "./FormReceber";
 
@@ -27,13 +28,14 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
     pagamentosDaOS(os.id),
     os.veiculo_id ? preferenciasDosVeiculos([os.veiculo_id]) : Promise.resolve({} as Record<string, string[]>),
   ]);
+  // Dados do carro e modelos para as mensagens de WhatsApp
+  const [carro, modelos] = await Promise.all([os.veiculo_id ? obterVeiculo(os.veiculo_id) : Promise.resolve(null), obterModelosMensagens()]);
   const falta = faltaReceber(os);
   const nomeConta = (id: string | null) => contas.find((c) => c.id === id)?.nome;
   const s = STATUS_OS[os.status];
   const editavel = (os.status === "aberta" || os.status === "em_andamento") && !os.pago && !os.fatura_id;
   const cancelavel = os.status !== "entregue" && os.status !== "cancelada" && !os.pago && !(os.valor_pago ?? 0) && !os.fatura_id;
   const margem = arred(os.total - os.custo_produtos - os.taxa_valor);
-  const resumo = resumoOSWhatsApp(os);
 
   return (
     <div className="space-y-4">
@@ -187,10 +189,10 @@ export default async function OSPage({ params, searchParams }: PageProps<"/gesta
           )}
         </Cartao>
       )}
-      <Cartao className="space-y-3">
-        <h2 className="font-semibold">Enviar ao cliente</h2>
-        <CopiarWhatsApp texto={resumo} rotulo="Copiar resumo da OS" link={os.cliente?.telefone ? linkWhatsApp(os.cliente.telefone, resumo) : undefined} />
-      </Cartao>
+      <MensagensWhatsApp
+        mensagens={mensagensOS(os, pagamentos, { nome: os.cliente?.nome, marca: carro?.marca, modelo: carro?.modelo, ano: carro?.ano, cor: carro?.cor, placa: carro?.placa ?? os.placa }, modelos)}
+        telefone={os.cliente?.telefone}
+      />
       {cancelavel && (
         <FormAcao
           acao={cancelarOS}
