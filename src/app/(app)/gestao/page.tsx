@@ -63,9 +63,9 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
           {[
             { href: "/gestao/os/nova", rotulo: "Nova OS", icone: "os" as const },
             { href: "/agendamentos/novo", rotulo: "Novo agendamento", icone: "calendario" as const },
+            { href: "/orcamentos/novo", rotulo: "Novo orçamento", icone: "orcamento" as const },
             { href: "/gestao/clientes/novo", rotulo: "Novo cliente", icone: "clientes" as const },
             { href: "/gestao/financeiro/novo", rotulo: "Novo lançamento", icone: "financeiro" as const },
-            { href: "/gestao/faturas", rotulo: "Faturas", icone: "faturas" as const },
           ].map((b) => (
             <Link key={b.href} href={b.href} className="botao-primario gap-1.5 rounded-full px-3 py-2 text-[13px] whitespace-nowrap sm:px-4 sm:text-sm">
               <Icone nome={b.icone} className="h-4 w-4" />
