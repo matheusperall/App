@@ -10,7 +10,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <header className="sticky top-0 z-20">
         <div className="bg-tinta pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/garagem" aria-label="Início">
+          <Link href="/inicio" aria-label="Início">
             <Logo claro />
           </Link>
           <Suspense>

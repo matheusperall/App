@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from "@/lib/env";
 
 /** Rotas que exigem login */
-const PROTECTED = ["/garagem", "/painel", "/conta"];
+const PROTECTED = ["/garagem", "/painel", "/gestao", "/conta", "/inicio"];
 /** Rotas de quem ainda não entrou (usuário logado é mandado para o app) */
 const GUEST_ONLY = ["/entrar", "/cadastro"];
 
@@ -54,7 +54,7 @@ async function renovarSessao(request: NextRequest) {
   };
 
   if (!loggedIn && matches(path, PROTECTED)) return redirectTo("/entrar", true);
-  if (loggedIn && matches(path, GUEST_ONLY)) return redirectTo("/garagem");
+  if (loggedIn && matches(path, GUEST_ONLY)) return redirectTo("/inicio");
 
   return response;
 }

@@ -11,7 +11,7 @@ export async function getSiteUrl() {
 }
 
 /** Evita redirecionar para outro site depois do login. */
-export function caminhoSeguro(next: unknown, padrao = "/garagem") {
+export function caminhoSeguro(next: unknown, padrao = "/inicio") {
   const s = typeof next === "string" ? next : "";
   return s.startsWith("/") && !s.startsWith("//") ? s : padrao;
 }
