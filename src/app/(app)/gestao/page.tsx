@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Dinheiro, NavMes, SeloFatura, SeloProduto, SeloStatus } from "@/components/gestao";
+import { Dinheiro, NavMes, SeloFatura, SeloProduto } from "@/components/gestao";
 import { CalendarioMes } from "@/components/gestao/Calendario";
 import { GraficoDias } from "@/components/gestao/GraficoDias";
 import { GraficoFormas } from "@/components/gestao/GraficoFormas";
@@ -133,56 +133,9 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         </Bloco>
       </div>
 
-      {/* Linha 2: contadores */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Bloco icone="os" titulo="Orçamentos">
-          <div className="flex gap-6">
-            <Link href="/orcamentos?f=responder"><Contagem n={aResponder} legenda="a responder" cor={aResponder ? "text-[#b07800]" : "text-suave"} /></Link>
-            <Contagem n={orcamentosSemOS.length} legenda="aceitos sem OS" cor={orcamentosSemOS.length ? "text-sucesso" : "text-suave"} />
-          </div>
-        </Bloco>
-        <Bloco icone="carro" titulo="Vagas no pátio hoje" direita={<EditarVagas vagas={r.vagas} />}>
-          <div className="flex gap-6">
-            <Contagem n={<>{r.patio.length}<span className="text-base text-suave"> / {r.vagas}</span></>} legenda="vagas ocupadas" cor={r.patio.length >= r.vagas ? "text-perigo" : "text-[#b07800]"} />
-            <Contagem n={r.entreguesHoje} legenda="entregues hoje" cor="text-sucesso" />
-          </div>
-        </Bloco>
-        <Bloco icone="clientes" titulo="Oportunidades">
-          <Link href="/painel"><Contagem n={abertos} legenda="apontamentos pendentes nos carros dos clientes" cor={abertos ? "text-marca-escura" : "text-suave"} /></Link>
-        </Bloco>
-        <Bloco icone="faturas" titulo="Faturas e contas">
-          <div className="flex gap-6">
-            <Link href="/gestao/faturas"><Contagem n={r.faturasAbertas.length} legenda="faturas em aberto" cor={r.faturasAbertas.length ? "text-[#b07800]" : "text-suave"} /></Link>
-            <Link href="/gestao/financeiro"><Contagem n={r.aPagar7dias.length + r.cartoes7dias.length} legenda="contas e faturas de cartão a pagar em 7 dias" cor={r.aPagar7dias.length + r.cartoes7dias.length ? "text-perigo" : "text-suave"} /></Link>
-          </div>
-        </Bloco>
-      </div>
-
-      {/* Linha 3: pátio · agenda de hoje */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Bloco icone="carro" titulo={`No pátio · ${r.patio.length} de ${r.vagas}`} direita={<div className="flex items-center gap-2"><Link href="/gestao/os?f=patio" className="text-xs font-semibold text-marca-escura">Ver todos</Link><EditarVagas vagas={r.vagas} /></div>}>
-          <div className="mb-3 flex gap-1.5" aria-hidden="true">
-            {Array.from({ length: Math.max(r.vagas, r.patio.length) }, (_, i) => (
-              <div key={i} className={`h-2.5 flex-1 rounded-full ${i < r.patio.length ? (i >= r.vagas ? "bg-perigo" : "bg-marca") : "bg-borda"}`} />
-            ))}
-          </div>
-          {r.patio.length === 0 ? (
-            <p className="text-sm text-suave">Pátio livre.</p>
-          ) : (
-            <ul className="divide-y divide-borda">
-              {r.patio.map((o) => (
-                <li key={o.id}>
-                  <Link href={`/gestao/os/${o.id}`} className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-marca-escura">
-                    <span className="min-w-0 truncate"><span className="font-mono font-semibold">{o.placa ?? "—"}</span> · {o.veiculo_nome} · {o.cliente?.nome}</span>
-                    <SeloStatus status={o.status} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Bloco>
-
-        <Bloco icone="calendario" titulo="Agenda de hoje" direita={<Link href="/agendamentos" className="text-xs font-semibold text-marca-escura">Ver agenda</Link>}>
+      {/* Linha 2: agenda de hoje · vagas · oportunidades · orçamentos */}
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Bloco icone="calendario" titulo="Agenda de hoje" className="sm:col-span-2 lg:col-span-1" direita={<Link href="/agendamentos" className="text-xs font-semibold text-marca-escura">Ver agenda</Link>}>
           {deHoje.length === 0 && orcamentosSemOS.length === 0 && <p className="text-sm text-suave">Nenhum atendimento confirmado para hoje.</p>}
           <ul className="divide-y divide-borda">
             {deHoje.map((a) => {
@@ -211,6 +164,21 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
               </li>
             ))}
           </ul>
+        </Bloco>
+        <Bloco icone="carro" titulo="Vagas no pátio hoje" direita={<EditarVagas vagas={r.vagas} />}>
+          <div className="flex gap-6">
+            <Link href="/gestao/os?f=patio"><Contagem n={<>{r.patio.length}<span className="text-base text-suave"> / {r.vagas}</span></>} legenda="vagas ocupadas" cor={r.patio.length >= r.vagas ? "text-perigo" : "text-[#b07800]"} /></Link>
+            <Contagem n={r.entreguesHoje} legenda="entregues hoje" cor="text-sucesso" />
+          </div>
+        </Bloco>
+        <Bloco icone="clientes" titulo="Oportunidades">
+          <Link href="/painel"><Contagem n={abertos} legenda="apontamentos pendentes nos carros dos clientes" cor={abertos ? "text-marca-escura" : "text-suave"} /></Link>
+        </Bloco>
+        <Bloco icone="os" titulo="Orçamentos">
+          <div className="flex gap-6">
+            <Link href="/orcamentos?f=responder"><Contagem n={aResponder} legenda="a responder" cor={aResponder ? "text-[#b07800]" : "text-suave"} /></Link>
+            <Contagem n={orcamentosSemOS.length} legenda="aceitos sem OS" cor={orcamentosSemOS.length ? "text-sucesso" : "text-suave"} />
+          </div>
         </Bloco>
       </div>
 
