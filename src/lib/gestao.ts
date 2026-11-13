@@ -62,11 +62,11 @@ export type ServicoCatalogo = {
 };
 
 export const STATUS_OS = {
-  aberta: { rotulo: "Aberta", classe: "bg-marca-clara text-marca-escura", proximo: "em_andamento", acao: "Iniciar serviço" },
-  em_andamento: { rotulo: "Em andamento", classe: "bg-alerta-claro text-[#8a5a00]", proximo: "pronta", acao: "Marcar como pronta" },
-  pronta: { rotulo: "Pronta", classe: "bg-sucesso-claro text-sucesso", proximo: "entregue", acao: "Entregar ao cliente" },
-  entregue: { rotulo: "Entregue", classe: "bg-fundo text-suave", proximo: null, acao: null },
-  cancelada: { rotulo: "Cancelada", classe: "bg-perigo-claro text-perigo", proximo: null, acao: null },
+  aberta: { rotulo: "Aberta", classe: "bg-marca-clara text-marca-escura", proximo: "em_andamento", acao: "Iniciar serviço", anterior: null },
+  em_andamento: { rotulo: "Em andamento", classe: "bg-alerta-claro text-[#8a5a00]", proximo: "pronta", acao: "Marcar como pronta", anterior: "aberta" },
+  pronta: { rotulo: "Pronta", classe: "bg-sucesso-claro text-sucesso", proximo: "entregue", acao: "Entregar ao cliente", anterior: "em_andamento" },
+  entregue: { rotulo: "Entregue", classe: "bg-fundo text-suave", proximo: null, acao: null, anterior: "pronta" },
+  cancelada: { rotulo: "Cancelada", classe: "bg-perigo-claro text-perigo", proximo: null, acao: null, anterior: null },
 } as const;
 export type StatusOS = keyof typeof STATUS_OS;
 /** OS que ainda ocupa vaga no pátio */

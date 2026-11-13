@@ -302,6 +302,45 @@ export async function avancarStatus(_: EstadoForm, form: FormData): Promise<Esta
   return { sucesso: `OS #${os.numero}: ${STATUS_OS[para].rotulo.toLowerCase()}.` };
 }
 
+/**
+ * Volta a OS uma etapa (ex.: marcou "pronta" sem querer).
+ * - pronta → em andamento: os produtos voltam para o estoque (saem de novo ao marcar pronta).
+ * - entregue → pronta: o serviço sai do histórico do veículo e o agendamento volta a "confirmado".
+ */
+export async function voltarStatus(_: EstadoForm, form: FormData): Promise<EstadoForm> {
+  if (!isSupabaseConfigured) return DEMO;
+  await exigirAdmin();
+  const id = texto(form, "id");
+  const para = texto(form, "para") as StatusOS;
+  const supabase = await createClient();
+  const { data: os } = await supabase
+    .from("ordens_servico")
+    .select("id, numero, status, fatura_id, agendamento_id, servico_historico_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!os) return { erro: "OS não encontrada." };
+  const atual = os.status as StatusOS;
+  if (STATUS_OS[atual].anterior !== para) return { erro: "Esta etapa não está disponível. Atualize a página." };
+  if (os.fatura_id && (para === "em_andamento" || para === "aberta")) {
+    return { erro: "Esta OS está numa fatura. Cancele a fatura antes de voltar a etapa." };
+  }
+
+  if (atual === "pronta") {
+    const { error } = await supabase.rpc("gestao_estornar_estoque_os", { p_os: id });
+    if (error) return { erro: "Não foi possível devolver os produtos ao estoque." };
+    await supabase.from("ordens_servico").update({ status: para, pronta_em: null }).eq("id", id);
+  } else if (atual === "entregue") {
+    if (os.servico_historico_id) await supabase.from("servicos").delete().eq("id", os.servico_historico_id);
+    await supabase.from("ordens_servico").update({ status: para, entregue_em: null, servico_historico_id: null }).eq("id", id);
+    if (os.agendamento_id) await supabase.from("agendamentos").update({ situacao: "confirmado" }).eq("id", os.agendamento_id).eq("situacao", "concluido");
+  } else {
+    await supabase.from("ordens_servico").update({ status: para }).eq("id", id);
+  }
+
+  revalidatePath("/gestao", "layout");
+  return { sucesso: `OS #${os.numero} voltou para “${STATUS_OS[para].rotulo}”.` };
+}
+
 export async function cancelarOS(_: EstadoForm, form: FormData): Promise<EstadoForm> {
   if (!isSupabaseConfigured) return DEMO;
   await exigirAdmin();

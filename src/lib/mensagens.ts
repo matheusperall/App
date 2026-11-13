@@ -244,15 +244,12 @@ export function mensagensOS(os: OrdemServico, pagamentos: PagamentoOS[], cliente
 
   const concluida = os.status === "pronta" || os.status === "entregue";
   const deveCobrar = concluida && falta > 0 && !os.cliente?.lojista;
-  const ordem: ChaveMensagem[] = [];
-  if (os.status === "cancelada") ordem.push("os_resumo");
-  else {
+  // Ordem fixa: Ordem de serviço → Carro pronto (quando pronta) → Cobrança (com valor em aberto) → Comprovante (com pagamento)
+  const ordem: ChaveMensagem[] = ["os_resumo"];
+  if (os.status !== "cancelada") {
     if (os.status === "pronta") ordem.push("os_pronta");
-    if (os.status === "entregue" && deveCobrar) ordem.push("os_cobranca");
-    if (pago > 0 && falta === 0) ordem.push("os_comprovante");
-    ordem.push("os_resumo");
-    if (deveCobrar && !ordem.includes("os_cobranca")) ordem.push("os_cobranca");
-    if (pago > 0 && !ordem.includes("os_comprovante")) ordem.push("os_comprovante");
+    if (deveCobrar) ordem.push("os_cobranca");
+    if (pago > 0) ordem.push("os_comprovante");
   }
   return ordem.map((c) => gerar(c, valores, salvos));
 }

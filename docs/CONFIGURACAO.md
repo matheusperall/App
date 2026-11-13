@@ -32,6 +32,7 @@ aparecem, mas login e cadastro não funcionam.
    16. `0016_seguranca.sql` — ajustes de segurança (veja [SEGURANCA.md](SEGURANCA.md))
    17. `0017_preferencias_veiculo.sql` — preferências do cliente para cada veículo (ponto de atenção na OS)
    18. `0018_modelos_mensagens.sql` — modelos editáveis das mensagens de WhatsApp
+   19. `0019_voltar_etapa_os.sql` — voltar etapa da OS sem contar o estoque em dobro
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 
