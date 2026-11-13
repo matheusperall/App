@@ -9,12 +9,15 @@ import {
   combina,
   concluida,
   faturaEmAberto,
+  datasDaFatura,
+  faturaDaCompra,
   faltaReceber,
   formatarQtd,
   limitesMes,
   noPatio,
   type CategoriaFinanceira,
   type ConfigGestao,
+  type Cartao,
   type Conta,
   type Fatura,
   type Ficha,
@@ -284,16 +287,21 @@ export const listarCategorias = cache(async function listarCategorias(): Promise
 const CAMPOS_LANC = "id, data, vencimento, tipo, descricao, valor, categoria_id, conta_id, pago, pago_em, os_id, fatura_id";
 /** Série (recorrente/parcelado) — migração 0012 */
 const CAMPOS_SERIE = ", grupo_id, parcela, total_parcelas, recorrente";
+/** Compra no cartão de crédito — migração 0015 */
+const CAMPOS_CARTAO = ", cartao_id, fatura_mes";
 const normLanc = (l: Lancamento) => ({ ...l, valor: n(l.valor) });
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 /** Consulta lançamentos com os campos da série; se o banco ainda não tem o 0012, sem eles. */
 async function consultarLancamentos(montar: (supabase: Supa, campos: string) => PromiseLike<{ data: unknown; error: { code?: string } | null }>) {
   const supabase = await createClient();
-  const r = await montar(supabase, CAMPOS_LANC + CAMPOS_SERIE);
-  let data = r.data;
-  if (r.error?.code === "42703") ({ data } = await montar(supabase, CAMPOS_LANC));
-  return ((data ?? []) as Lancamento[]).map(normLanc);
+  // Tenta com os campos mais novos primeiro (cartão: 0015; série: 0012) e vai tirando se o banco não tiver
+  for (const campos of [CAMPOS_LANC + CAMPOS_SERIE + CAMPOS_CARTAO, CAMPOS_LANC + CAMPOS_SERIE, CAMPOS_LANC]) {
+    const r = await montar(supabase, campos);
+    if (r.error?.code === "42703") continue;
+    return ((r.data ?? []) as Lancamento[]).map(normLanc);
+  }
+  return [];
 }
 
 /** Lançamentos com competência no mês ou pagos no mês. */
@@ -312,10 +320,61 @@ export async function lancamentosDoMes(mes: string): Promise<Lancamento[]> {
 }
 
 /** Contas a pagar (saídas ainda não pagas), da mais antiga para a mais nova. */
+/** Contas a pagar (saídas não pagas). Compras no cartão ficam de fora: entram pela fatura do cartão. */
 export async function contasAPagar(): Promise<Lancamento[]> {
-  if (!isSupabaseConfigured) return DEMO.lancamentos.filter((l) => !l.pago && l.tipo === "saida");
-  return consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).eq("pago", false).eq("tipo", "saida").order("vencimento").limit(500));
+  if (!isSupabaseConfigured) return DEMO.lancamentos.filter((l) => !l.pago && l.tipo === "saida" && !l.cartao_id);
+  const lista = await consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).eq("pago", false).eq("tipo", "saida").order("vencimento").limit(1000));
+  return lista.filter((l) => !l.cartao_id);
 }
+
+// ---------------------------------------------------------------------------
+// Cartões de crédito
+// ---------------------------------------------------------------------------
+export type FaturaCartao = { cartao: Cartao; fatura_mes: string; vencimento: string; total: number; em_aberto: number; qtd: number };
+
+/** Cartões com o valor em aberto (compras ainda não pagas). Lista vazia se o banco não tem o 0015. */
+export const listarCartoes = cache(async function listarCartoes(): Promise<Cartao[]> {
+  if (!isSupabaseConfigured) return DEMO.cartoes;
+  const supabase = await createClient();
+  const [{ data, error }, { data: abertos }] = await Promise.all([
+    supabase.from("cartoes").select("id, nome, final, limite, dia_fechamento, dia_vencimento, conta_pagamento_id, ativo").order("criado_em"),
+    supabase.from("lancamentos").select("cartao_id, valor").eq("pago", false).not("cartao_id", "is", null).limit(5000),
+  ]);
+  if (error) return [];
+  const soma = new Map<string, number>();
+  for (const l of (abertos ?? []) as { cartao_id: string; valor: number }[]) soma.set(l.cartao_id, (soma.get(l.cartao_id) ?? 0) + n(l.valor));
+  return ((data ?? []) as Cartao[]).map((c) => ({ ...c, limite: c.limite == null ? null : n(c.limite), em_aberto: arred(soma.get(c.id) ?? 0) }));
+});
+
+/** Todas as compras de um cartão (para montar as faturas). */
+export async function lancamentosCartao(cartaoId: string): Promise<Lancamento[]> {
+  if (!isSupabaseConfigured) return DEMO.lancamentos.filter((l) => l.cartao_id === cartaoId);
+  if (!ehUuid(cartaoId)) return [];
+  return consultarLancamentos((supabase, campos) =>
+    supabase.from("lancamentos").select(campos).eq("cartao_id", cartaoId).order("data", { ascending: false }).limit(2000),
+  );
+}
+
+/** Faturas de cartão com valor em aberto (todas as compras não pagas, agrupadas por cartão e mês). */
+export const faturasCartaoEmAberto = cache(async function faturasCartaoEmAberto(): Promise<FaturaCartao[]> {
+  const cartoes = await listarCartoes();
+  if (cartoes.length === 0) return [];
+  const compras = isSupabaseConfigured
+    ? await consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).eq("pago", false).not("cartao_id", "is", null).limit(5000))
+    : DEMO.lancamentos.filter((l) => l.cartao_id && !l.pago);
+  const grupos = new Map<string, FaturaCartao>();
+  for (const l of compras) {
+    const cartao = cartoes.find((c) => c.id === l.cartao_id);
+    if (!cartao || !l.fatura_mes) continue;
+    const chave = `${cartao.id}:${l.fatura_mes}`;
+    const g = grupos.get(chave) ?? { cartao, fatura_mes: l.fatura_mes, vencimento: datasDaFatura(l.fatura_mes, cartao).vencimento, total: 0, em_aberto: 0, qtd: 0 };
+    g.total = arred(g.total + l.valor);
+    g.em_aberto = arred(g.em_aberto + l.valor);
+    g.qtd++;
+    grupos.set(chave, g);
+  }
+  return [...grupos.values()].sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+});
 
 export async function contasAReceberAvulsas(): Promise<Lancamento[]> {
   if (!isSupabaseConfigured) return [];
@@ -386,6 +445,8 @@ export type ResumoGestao = {
   vagas: number;
   faturasAbertas: Fatura[];
   aPagar7dias: Lancamento[];
+  /** Faturas de cartão em aberto vencendo em até 7 dias (ou já vencidas) */
+  cartoes7dias: FaturaCartao[];
   estoqueCritico: Produto[];
   porDia: { dia: string; valor: number }[];
   /** Recebido no mês por forma (OS) e por faturas de lojistas */
@@ -410,6 +471,7 @@ export async function resumoGestao(mes: string): Promise<ResumoGestao> {
     listarProdutos(),
     listarCategorias(),
   ]);
+  const faturasCartao = await faturasCartaoEmAberto();
   const fora = new Set(categorias.filter((c) => c.dre === "fora").map((c) => c.id));
 
   const concluidasMes = osMes.filter((o) => concluida(o.status));
@@ -451,6 +513,7 @@ export async function resumoGestao(mes: string): Promise<ResumoGestao> {
     vagas: config.vagas_patio,
     faturasAbertas: abertas.sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
     aPagar7dias: aPagar.filter((l) => (l.vencimento ?? l.data) <= somarDias(hoje, 7)),
+    cartoes7dias: faturasCartao.filter((f) => f.vencimento <= somarDias(hoje, 7)),
     estoqueCritico: produtos.filter((p) => p.ativo && p.saldo <= p.minimo),
     porDia,
   };
@@ -562,6 +625,9 @@ const DEMO = {
     { id: "demo-k2", nome: "Banco", tipo: "banco", saldo_inicial: 1000, ativa: true, saldo: 1600, formas: ["pix", "transferencia"], taxa_pix: 0, taxa_debito: 0, taxa_credito: 0, taxas_parcelado: {} },
     { id: "demo-k3", nome: "Maquininha", tipo: "outro", saldo_inicial: 0, ativa: true, saldo: 0, formas: ["debito", "credito", "pix"], taxa_pix: 0.99, taxa_debito: 1.99, taxa_credito: 3.49, taxas_parcelado: { "2": 5.39, "3": 6.19, "6": 8.49 } },
   ] as Conta[],
+  cartoes: [
+    { id: "demo-cc1", nome: "Cartão empresa", final: "4321", limite: 8000, dia_fechamento: 5, dia_vencimento: 12, conta_pagamento_id: "demo-k2", ativo: true, em_aberto: 1250 },
+  ] as Cartao[],
   categorias: [
     { id: "demo-cat1", nome: "Serviços (OS)", tipo: "entrada", dre: "receita", sistema: "os", ativa: true },
     { id: "demo-cat2", nome: "Faturas de lojistas", tipo: "entrada", dre: "receita", sistema: "fatura", ativa: true },
@@ -571,6 +637,8 @@ const DEMO = {
   ] satisfies CategoriaFinanceira[],
   lancamentos: [
     { id: "demo-l1", data: somarDias(hoje, -2), vencimento: null, tipo: "entrada", descricao: "OS #1 · BRA2E19", valor: 600, categoria_id: "demo-cat1", conta_id: "demo-k2", pago: true, pago_em: somarDias(hoje, -2), os_id: "demo-os3", fatura_id: null },
+    { id: "demo-l3", data: hoje, vencimento: faturaDaCompra(hoje, { dia_fechamento: 5, dia_vencimento: 12 }).vencimento, tipo: "saida", descricao: "Produtos de limpeza (atacado)", valor: 850, categoria_id: "demo-cat4", conta_id: null, pago: false, pago_em: null, os_id: null, fatura_id: null, cartao_id: "demo-cc1", fatura_mes: faturaDaCompra(hoje, { dia_fechamento: 5, dia_vencimento: 12 }).fatura_mes },
+    { id: "demo-l4", data: hoje, vencimento: faturaDaCompra(hoje, { dia_fechamento: 5, dia_vencimento: 12 }).vencimento, tipo: "saida", descricao: "Combustível", valor: 400, categoria_id: "demo-cat5", conta_id: null, pago: false, pago_em: null, os_id: null, fatura_id: null, cartao_id: "demo-cc1", fatura_mes: faturaDaCompra(hoje, { dia_fechamento: 5, dia_vencimento: 12 }).fatura_mes },
     { id: "demo-l2", data: hoje, vencimento: somarDias(hoje, 5), tipo: "saida", descricao: "Aluguel do galpão", valor: 1800, categoria_id: "demo-cat5", conta_id: "demo-k2", pago: false, pago_em: null, os_id: null, fatura_id: null, grupo_id: "demo-g1", parcela: 1, total_parcelas: 12, recorrente: true },
   ] satisfies Lancamento[],
   faturas: [

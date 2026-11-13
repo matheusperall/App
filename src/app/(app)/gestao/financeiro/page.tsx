@@ -6,7 +6,7 @@ import { Icone } from "@/components/gestao/Icones";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, hojeISO } from "@/lib/garagem";
 import { arred, combina, limitesMes, mesAtual, mesValido, rotuloSerie, type Lancamento } from "@/lib/gestao";
-import { contasAPagar, contasAReceberAvulsas, lancamentosDoMes, listarCategorias, listarContas } from "@/lib/gestao-dados";
+import { contasAPagar, contasAReceberAvulsas, lancamentosDoMes, listarCartoes, listarCategorias, listarContas } from "@/lib/gestao-dados";
 import { abasFinanceiro } from "./abas";
 import { AcoesLancamento } from "./AcoesLancamento";
 
@@ -19,6 +19,7 @@ const dataDe = (l: Lancamento) => (l.pago ? (l.pago_em ?? l.data) : (l.venciment
 
 function situacao(l: Lancamento, hoje: string): { texto: string; cor: Cor } {
   if (l.pago) return { texto: l.tipo === "saida" ? "Pago" : "Recebido", cor: "verde" };
+  if (l.cartao_id) return { texto: "Na fatura", cor: dataDe(l) < hoje ? "vermelho" : "amarelo" };
   if (dataDe(l) < hoje) return { texto: "Vencido", cor: "vermelho" };
   return { texto: l.tipo === "saida" ? "A pagar" : "A receber", cor: "amarelo" };
 }
@@ -29,9 +30,10 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
   const busca = typeof sp.q === "string" ? sp.q : "";
   const contaFiltro = typeof sp.conta === "string" ? sp.conta : "";
   const hoje = hojeISO();
-  const [contas, categorias, doMes, aPagar, aReceber] = await Promise.all([listarContas(), listarCategorias(), lancamentosDoMes(mes), contasAPagar(), contasAReceberAvulsas()]);
+  const [contas, categorias, doMes, aPagar, aReceber, cartoes] = await Promise.all([listarContas(), listarCategorias(), lancamentosDoMes(mes), contasAPagar(), contasAReceberAvulsas(), listarCartoes()]);
   const cat = new Map(categorias.map((c) => [c.id, c]));
   const nomeConta = new Map(contas.map((c) => [c.id, c.nome]));
+  const nomeCartao = new Map(cartoes.map((c) => [c.id, `💳 ${c.nome}`]));
   const ativas = contas.filter((c) => c.ativa);
   const { inicio } = limitesMes(mes);
 
@@ -105,9 +107,9 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
             <span />
           </div>
           {atrasados.length > 0 && <GrupoMes titulo="Atrasados de meses anteriores" />}
-          {atrasados.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
+          {atrasados.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "") ?? nomeCartao.get(l.cartao_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
           {atrasados.length > 0 && doPeriodo.length > 0 && <GrupoMes titulo="Este mês" />}
-          {doPeriodo.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
+          {doPeriodo.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "") ?? nomeCartao.get(l.cartao_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
         </div>
       )}
       {(busca || contaFiltro) && <p className="text-sm text-suave"><Link href={url({ q: "", conta: "" })} className="font-semibold text-marca-escura">Limpar filtros</Link></p>}

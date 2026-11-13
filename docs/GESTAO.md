@@ -135,4 +135,15 @@ guardar PDFs e fotos de documentos (até 10 MB cada) e a lista desses arquivos:
 - **Veículo › Documentos › Arquivos do veículo**: CRLV-e, apólice do seguro, guia do IPVA, notas fiscais e outros.
 Cada cliente só vê os arquivos dele; a empresa vê todos.
 
+### Atualização: cartões de crédito (arquivo 0015)
+
+Depois do 0014, rode **`supabase/migrations/0015_cartoes_credito.sql`**. Ele cria os cartões de crédito da empresa:
+- **Financeiro › Contas › Cartões de crédito**: cadastre o cartão (nome, final, dia do fechamento, dia do vencimento,
+  limite e a conta que paga a fatura). Cada cartão mostra a próxima fatura e o limite disponível.
+- **Compra no cartão**: em *Financeiro › + Adicionar*, escolha o cartão em "Pago com" (ou lance pela tela do cartão).
+  A compra entra na fatura certa pela data e pelo fechamento; parcelada, cada parcela vai para uma fatura.
+- **Pagar a fatura**: na tela do cartão, escolha a fatura e toque em "Pagar fatura". O dinheiro sai da conta só aí.
+- No resultado do mês (DRE), a compra conta como despesa no mês em que foi feita.
+- As vagas do pátio agora se editam pelo lápis no quadro do pátio, no Painel da Gestão.
+
 Projeto novo do zero? Dá para rodar `supabase/instalar_tudo.sql`, que já inclui tudo isso.
