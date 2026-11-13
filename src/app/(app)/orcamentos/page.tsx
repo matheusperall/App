@@ -14,10 +14,10 @@ import { Icone } from "@/components/gestao/Icones";
 export const metadata: Metadata = { title: "Orçamentos" };
 
 const FILTROS = {
-  responder: { rotulo: "A responder", situacoes: ["solicitado"] },
-  cliente: { rotulo: "Aguardando cliente", situacoes: ["respondido"] },
-  aprovados: { rotulo: "Aprovados", situacoes: ["aceito"] },
-  todos: { rotulo: "Todos", situacoes: [] as string[] },
+  responder: { rotulo: "A responder", situacoes: ["solicitado"], icone: "aviso" },
+  cliente: { rotulo: "Aguardando cliente", situacoes: ["respondido"], icone: "usuario" },
+  aprovados: { rotulo: "Aprovados", situacoes: ["aceito"], icone: "entrada" },
+  todos: { rotulo: "Todos", situacoes: [] as string[], icone: "orcamento" },
 } as const;
 
 const COR: Record<keyof typeof SITUACOES_ORCAMENTO, Cor> = { solicitado: "amarelo", respondido: "neutro", aceito: "verde", recusado: "vermelho", cancelado: "vermelho" };
@@ -50,7 +50,12 @@ export default async function OrcamentosPage({ searchParams }: PageProps<"/orcam
     const por = (s: string) => todos.filter((o) => o.situacao === s);
     return (
       <div className="space-y-4">
-        <Cabecalho icone="orcamento" titulo="Orçamentos" acao={{ href: "/orcamentos/novo", rotulo: "Orçamento" }} />
+        <Cabecalho
+          icone="orcamento"
+          titulo="Orçamentos"
+          acao={{ href: "/orcamentos/novo", rotulo: "Orçamento" }}
+          abas={Object.entries(FILTROS).map(([k, v]) => ({ href: `/orcamentos?f=${k}`, rotulo: v.rotulo, icone: v.icone, ativa: !busca && filtro === k }))}
+        />
 
         {/* Busca: número, placa, modelo, cliente, telefone ou pedido */}
         <section className="rounded-2xl border border-borda bg-white p-4">
@@ -70,15 +75,6 @@ export default async function OrcamentosPage({ searchParams }: PageProps<"/orcam
           )}
         </section>
 
-        {!busca && (
-          <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-white p-1">
-            {Object.entries(FILTROS).map(([k, v]) => (
-              <Link key={k} href={`/orcamentos?f=${k}`} className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold ${filtro === k ? "bg-tinta text-white" : "text-suave hover:text-texto"}`}>
-                {v.rotulo}
-              </Link>
-            ))}
-          </div>
-        )}
 
         <ResumoPeriodo
           titulo="Resumo dos últimos orçamentos"
