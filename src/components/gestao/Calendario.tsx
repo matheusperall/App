@@ -48,7 +48,7 @@ export function CalendarioMes({
               href={`/agendamentos?dia=${dia}#dia`}
               aria-current={ativo ? "date" : undefined}
               title={n ? `${n} ${n === 1 ? "agendamento" : "agendamentos"}` : undefined}
-              className={`flex flex-col items-center rounded-lg pt-1.5 pb-1 font-medium transition ${
+              className={`flex flex-col items-center rounded-lg pt-1.5 pb-0.5 font-medium transition ${
                 ativo
                   ? "bg-marca text-white"
                   : ehHoje
@@ -59,6 +59,8 @@ export function CalendarioMes({
               }`}
             >
               <span>{d}</span>
+              {/* Divisão entre o dia e o número de agendamentos */}
+              <span className={`mt-1 w-3/5 border-t ${ativo || ehHoje ? "border-white/50" : "border-tinta/15"}`} aria-hidden="true" />
               <span className={`h-3.5 text-[10px] leading-3.5 font-bold tabular-nums ${ativo || ehHoje ? "text-white" : "text-marca-escura"}`}>{n > 0 ? n : ""}</span>
             </Link>
           );
