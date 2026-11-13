@@ -178,6 +178,9 @@ export type Lancamento = {
   pago_em: string | null;
   os_id: string | null;
   fatura_id: string | null;
+  /** Compra no cartão de crédito: cartão e mês da fatura (AAAA-MM do vencimento) */
+  cartao_id?: string | null;
+  fatura_mes?: string | null;
   /** Série: lançamentos recorrentes ou parcelados (mesmo grupo_id) */
   grupo_id?: string | null;
   parcela?: number | null;
@@ -189,6 +192,58 @@ export type Lancamento = {
 export function rotuloSerie(l: Pick<Lancamento, "grupo_id" | "parcela" | "total_parcelas" | "recorrente">) {
   if (!l.grupo_id) return null;
   return l.recorrente ? `Recorrente · ${l.parcela}/${l.total_parcelas}` : `Parcela ${l.parcela}/${l.total_parcelas}`;
+}
+
+// ---------------------------------------------------------------------------
+// Cartões de crédito da empresa
+// ---------------------------------------------------------------------------
+export type Cartao = {
+  id: string;
+  nome: string;
+  final: string | null;
+  limite: number | null;
+  dia_fechamento: number;
+  dia_vencimento: number;
+  conta_pagamento_id: string | null;
+  ativo: boolean;
+  /** Soma das compras ainda não pagas (usa o limite) */
+  em_aberto: number;
+};
+
+const dataDoDia = (ano: number, mes1a12: number, dia: number) => {
+  const d = new Date(Date.UTC(ano, mes1a12 - 1, 1));
+  const ultimo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(dia, ultimo));
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Em qual fatura cai uma compra feita em `dataCompra` (parcela 0 = primeira).
+ * Compra no dia do fechamento ou depois vai para a fatura seguinte.
+ * Se o vencimento é num dia maior que o fechamento, vence no mesmo mês do fechamento; senão, no mês seguinte.
+ */
+export function faturaDaCompra(dataCompra: string, c: Pick<Cartao, "dia_fechamento" | "dia_vencimento">, parcela = 0) {
+  const [a, m, d] = dataCompra.split("-").map(Number);
+  const mesFechamento = m + (d >= c.dia_fechamento ? 1 : 0);
+  const mesVencimento = mesFechamento + (c.dia_vencimento > c.dia_fechamento ? 0 : 1) + parcela;
+  const vencimento = dataDoDia(a, mesVencimento, c.dia_vencimento);
+  return { fatura_mes: vencimento.slice(0, 7), vencimento };
+}
+
+/** Datas de fechamento e vencimento da fatura de um mês (AAAA-MM do vencimento). */
+export function datasDaFatura(faturaMes: string, c: Pick<Cartao, "dia_fechamento" | "dia_vencimento">) {
+  const [a, m] = faturaMes.split("-").map(Number);
+  const vencimento = dataDoDia(a, m, c.dia_vencimento);
+  const fechamento = dataDoDia(a, m - (c.dia_vencimento > c.dia_fechamento ? 0 : 1), c.dia_fechamento);
+  return { fechamento, vencimento };
+}
+
+export function situacaoFaturaCartao(faturaMes: string, c: Pick<Cartao, "dia_fechamento" | "dia_vencimento">, emAberto: number, hoje = hojeISO()) {
+  const { fechamento, vencimento } = datasDaFatura(faturaMes, c);
+  if (emAberto <= 0.001) return { chave: "paga" as const, rotulo: "Paga", classe: "bg-sucesso-claro text-sucesso" };
+  if (vencimento < hoje) return { chave: "vencida" as const, rotulo: "Vencida", classe: "bg-perigo-claro text-perigo" };
+  if (fechamento <= hoje) return { chave: "fechada" as const, rotulo: "Fechada", classe: "bg-alerta-claro text-[#8a5a00]" };
+  return { chave: "aberta" as const, rotulo: "Aberta", classe: "bg-marca-clara text-marca-escura" };
 }
 
 export type SituacaoFatura = "aberta" | "parcial" | "paga" | "cancelada";

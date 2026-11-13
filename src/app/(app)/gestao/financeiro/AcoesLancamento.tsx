@@ -21,7 +21,8 @@ export function AcoesLancamento({ l, contas, hoje }: { l: Lancamento; contas: { 
     <details ref={ref} className="relative">
       <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg text-xl leading-none text-suave hover:bg-fundo [&::-webkit-details-marker]:hidden" aria-label="Ações">⋮</summary>
       <div className="absolute right-0 z-20 mt-1 w-72 space-y-3 rounded-xl border border-borda bg-white p-3 text-left shadow-lg">
-        {!l.pago && (
+        {l.cartao_id && !l.pago && <p className="text-xs text-suave">Compra no cartão: é paga junto com a fatura (Financeiro › Contas › cartão).</p>}
+        {!l.pago && !l.cartao_id && (
           <FormAcao acao={marcarPago} campos={{ id: l.id }} botao={l.tipo === "saida" ? "Marcar como pago" : "Marcar como recebido"} pendente="…" classeBotao="botao-primario w-full py-2 text-sm" className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <select name="conta_id" defaultValue={l.conta_id ?? contas[0]?.id} className="campo px-2 py-2 text-sm" aria-label="Conta">

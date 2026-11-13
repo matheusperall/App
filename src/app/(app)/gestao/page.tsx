@@ -5,6 +5,7 @@ import { CalendarioMes } from "@/components/gestao/Calendario";
 import { GraficoDias } from "@/components/gestao/GraficoDias";
 import { GraficoFormas } from "@/components/gestao/GraficoFormas";
 import { Bloco, Contagem } from "@/components/gestao/Bloco";
+import { EditarVagas } from "@/components/gestao/EditarVagas";
 import { Icone } from "@/components/gestao/Icones";
 import { exigirAdmin, primeiroNome } from "@/lib/auth";
 import { formatarQuando, partesBrasilia } from "@/lib/agenda";
@@ -44,7 +45,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
   }
   const top = [...fichas].filter((f) => f.total_gasto > 0).sort((a, b) => b.total_gasto - a.total_gasto).slice(0, 5);
   const recebidoMes = r.porForma.reduce((t, f) => t + f.valor, 0);
-  const atencao = r.faturasAbertas.length + r.aPagar7dias.length + r.estoqueCritico.length;
+  const atencao = r.faturasAbertas.length + r.aPagar7dias.length + r.cartoes7dias.length + r.estoqueCritico.length;
   const agora = partesBrasilia(new Date());
   const dataExtenso = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", weekday: "long", timeZone: "America/Sao_Paulo" }).format(new Date());
 
@@ -115,7 +116,7 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
             <Contagem n={orcamentosSemOS.length} legenda="aceitos sem OS" cor={orcamentosSemOS.length ? "text-sucesso" : "text-suave"} />
           </div>
         </Bloco>
-        <Bloco icone="carro" titulo="Vagas no pátio hoje">
+        <Bloco icone="carro" titulo="Vagas no pátio hoje" direita={<EditarVagas vagas={r.vagas} />}>
           <div className="flex gap-6">
             <Contagem n={<>{r.patio.length}<span className="text-base text-suave"> / {r.vagas}</span></>} legenda="vagas ocupadas" cor={r.patio.length >= r.vagas ? "text-perigo" : "text-[#b07800]"} />
             <Contagem n={r.entreguesHoje} legenda="entregues hoje" cor="text-sucesso" />
@@ -127,14 +128,14 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
         <Bloco icone="faturas" titulo="Faturas e contas">
           <div className="flex gap-6">
             <Link href="/gestao/faturas"><Contagem n={r.faturasAbertas.length} legenda="faturas em aberto" cor={r.faturasAbertas.length ? "text-[#b07800]" : "text-suave"} /></Link>
-            <Link href="/gestao/financeiro"><Contagem n={r.aPagar7dias.length} legenda="contas a pagar em 7 dias" cor={r.aPagar7dias.length ? "text-perigo" : "text-suave"} /></Link>
+            <Link href="/gestao/financeiro"><Contagem n={r.aPagar7dias.length + r.cartoes7dias.length} legenda="contas e faturas de cartão a pagar em 7 dias" cor={r.aPagar7dias.length + r.cartoes7dias.length ? "text-perigo" : "text-suave"} /></Link>
           </div>
         </Bloco>
       </div>
 
       {/* Linha 3: pátio · agenda de hoje */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Bloco icone="carro" titulo={`No pátio · ${r.patio.length} de ${r.vagas}`} direita={<Link href="/gestao/os?f=patio" className="text-xs font-semibold text-marca-escura">Ver todos</Link>}>
+        <Bloco icone="carro" titulo={`No pátio · ${r.patio.length} de ${r.vagas}`} direita={<div className="flex items-center gap-2"><Link href="/gestao/os?f=patio" className="text-xs font-semibold text-marca-escura">Ver todos</Link><EditarVagas vagas={r.vagas} /></div>}>
           <div className="mb-3 flex gap-1.5" aria-hidden="true">
             {Array.from({ length: Math.max(r.vagas, r.patio.length) }, (_, i) => (
               <div key={i} className={`h-2.5 flex-1 rounded-full ${i < r.patio.length ? (i >= r.vagas ? "bg-perigo" : "bg-marca") : "bg-borda"}`} />
@@ -202,6 +203,21 @@ export default async function GestaoPage({ searchParams }: PageProps<"/gestao">)
                       <Link href={`/gestao/faturas/${f.id}`} className="flex items-center justify-between gap-3 py-2 text-sm">
                         <span className="min-w-0 truncate">#{f.numero} · {f.cliente?.nome} · vence {formatarData(f.vencimento)}</span>
                         <span className="flex shrink-0 items-center gap-2"><Dinheiro valor={f.total - f.valor_pago} /><SeloFatura f={f} /></span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {r.cartoes7dias.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold tracking-wide text-suave uppercase">Faturas de cartão</h3>
+                <ul className="divide-y divide-borda">
+                  {r.cartoes7dias.map((f) => (
+                    <li key={`${f.cartao.id}-${f.fatura_mes}`}>
+                      <Link href={`/gestao/financeiro/cartoes/${f.cartao.id}?fatura=${f.fatura_mes}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                        <span className="min-w-0 truncate">💳 {f.cartao.nome} · <span className={f.vencimento < hoje ? "font-semibold text-perigo" : ""}>vence {formatarData(f.vencimento)}</span></span>
+                        <Dinheiro valor={f.em_aberto} />
                       </Link>
                     </li>
                   ))}
