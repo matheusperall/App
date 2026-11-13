@@ -6,6 +6,8 @@ import { Icone, type NomeIcone } from "./Icones";
 
 const ABAS: { href: string; rotulo: string; icone: NomeIcone }[] = [
   { href: "/gestao", rotulo: "Painel", icone: "inicio" },
+  { href: "/agendamentos", rotulo: "Agenda", icone: "calendario" },
+  { href: "/orcamentos", rotulo: "Orçamentos", icone: "orcamento" },
   { href: "/gestao/os", rotulo: "Ordens de serviço", icone: "os" },
   { href: "/gestao/faturas", rotulo: "Faturas", icone: "faturas" },
   { href: "/gestao/financeiro", rotulo: "Financeiro", icone: "financeiro" },
@@ -15,7 +17,7 @@ const ABAS: { href: string; rotulo: string; icone: NomeIcone }[] = [
 ];
 
 /** Menu da Gestão: uma barra com ícones, logo abaixo do topo do app. */
-export function AbasGestao() {
+export function AbasGestao({ contadores = {} }: { contadores?: Record<string, number> }) {
   const path = usePathname();
   const ativa = (href: string) => (href === "/gestao" ? path === href : path === href || path.startsWith(`${href}/`));
   const links = ABAS.map((a) => (
@@ -29,6 +31,11 @@ export function AbasGestao() {
       >
         <Icone nome={a.icone} className="h-4 w-4" />
         {a.rotulo}
+        {(contadores[a.href] ?? 0) > 0 && (
+          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-perigo px-1 text-[10px] font-bold text-white">
+            {contadores[a.href] > 9 ? "9+" : contadores[a.href]}
+          </span>
+        )}
       </Link>
     </li>
   ));

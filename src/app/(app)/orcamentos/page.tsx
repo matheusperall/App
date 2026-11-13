@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MenuGestao } from "@/components/gestao/MenuGestao";
 import { Vazio } from "@/components/gestao";
 import { Cabecalho, CelulaStatus, ResumoPeriodo, type Cor } from "@/components/gestao/Cabecalho";
 import { ItemListaOrcamento } from "@/components/orcamento";
@@ -50,6 +51,7 @@ export default async function OrcamentosPage({ searchParams }: PageProps<"/orcam
     const por = (s: string) => todos.filter((o) => o.situacao === s);
     return (
       <div className="space-y-4">
+        <MenuGestao />
         <Cabecalho
           icone="orcamento"
           titulo="Orçamentos"

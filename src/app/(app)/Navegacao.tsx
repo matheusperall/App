@@ -17,17 +17,17 @@ export async function Navegacao({ local }: { local: "topo" | "barra" | "rodape" 
     admin ? contarAgendamentosAConfirmar() : 0,
   ]);
 
-  const principais: ItemNav[] = [
-    // A empresa começa pela Gestão; o cliente, pela garagem
-    ...(admin
-      ? ([
-          { href: "/gestao", rotulo: "Gestão", icone: "gestao" },
-          { href: "/painel", rotulo: "Atendimento", icone: "atendimento" },
-        ] satisfies ItemNav[])
-      : ([{ href: "/garagem", rotulo: "Garagem", icone: "garagem" }] satisfies ItemNav[])),
-    { href: "/agendamentos", rotulo: "Agenda", icone: "agenda", contador: aConfirmar },
-    { href: "/orcamentos", rotulo: "Orçamentos", icone: "orcamentos", contador: aResponder },
-  ];
+  // A empresa começa pela Gestão (Agenda e Orçamentos ficam dentro dela); o cliente, pela garagem
+  const principais: ItemNav[] = admin
+    ? [
+        { href: "/gestao", rotulo: "Gestão", icone: "gestao", contador: aConfirmar + aResponder, tambem: ["/agendamentos", "/orcamentos"] },
+        { href: "/painel", rotulo: "Atendimento", icone: "atendimento" },
+      ]
+    : [
+        { href: "/garagem", rotulo: "Garagem", icone: "garagem" },
+        { href: "/agendamentos", rotulo: "Agenda", icone: "agenda" },
+        { href: "/orcamentos", rotulo: "Orçamentos", icone: "orcamentos" },
+      ];
   const pessoais: ItemNav[] = [
     { href: "/notificacoes", rotulo: "Avisos", icone: "avisos", contador: naoLidas },
     { href: "/conta", rotulo: "Conta", icone: "conta" },
