@@ -7,6 +7,7 @@ import { listarVeiculos, obterVeiculo } from "@/lib/dados";
 import { hojeISO, nomeVeiculo, pastaFotos, somarDias } from "@/lib/garagem";
 import { FormPedido } from "./FormPedido";
 import { FormResposta } from "../[orcamentoId]/FormResposta";
+import { EscolherVeiculo } from "@/components/EscolherVeiculo";
 
 export const metadata: Metadata = { title: "Orçamento" };
 
@@ -28,6 +29,17 @@ export default async function NovoOrcamentoPage({ searchParams }: PageProps<"/or
         <Cartao>
           <FormResposta veiculoId={veiculo.id} validadePadrao={somarDias(hojeISO(), 15)} novo />
         </Cartao>
+      </div>
+    );
+  }
+
+  // Empresa sem veículo escolhido: primeiro escolhe o veículo do cliente
+  if (usuario.papel === "admin") {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <Voltar href="/orcamentos">Orçamentos</Voltar>
+        <h1 className="text-2xl font-bold">Novo orçamento</h1>
+        <EscolherVeiculo busca={typeof sp.q === "string" ? sp.q.trim() : ""} destino="/orcamentos/novo" />
       </div>
     );
   }

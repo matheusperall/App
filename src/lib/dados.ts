@@ -397,6 +397,31 @@ export async function agendaEmpresa(): Promise<{ aConfirmar: AgendamentoComVeicu
   };
 }
 
+/** Empresa: agendamentos com horário num intervalo de dias (inclusive), sem recusados/cancelados. */
+export async function agendamentosEntre(de: string, ate: string): Promise<AgendamentoComVeiculo[]> {
+  if (!isSupabaseConfigured) return (DEMO.agendamentos as AgendamentoComVeiculo[]).filter((a) => a.situacao !== "recusado" && a.situacao !== "cancelado");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agendamentos")
+    .select(AG_COM_VEICULO)
+    .in("situacao", ["solicitado", "confirmado", "concluido"])
+    .gte("inicio", new Date(`${de}T00:00:00-03:00`).toISOString())
+    .lt("inicio", new Date(`${somarDias(ate, 1)}T00:00:00-03:00`).toISOString())
+    .order("inicio")
+    .limit(500);
+  if (faltaTabela(error)) return [];
+  return (data as unknown as AgendamentoComVeiculo[] | null) ?? [];
+}
+
+/** Empresa: últimos agendamentos (para a busca da Agenda). */
+export async function ultimosAgendamentos(limite = 300): Promise<AgendamentoComVeiculo[]> {
+  if (!isSupabaseConfigured) return DEMO.agendamentos as AgendamentoComVeiculo[];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("agendamentos").select(AG_COM_VEICULO).order("criado_em", { ascending: false }).limit(limite);
+  if (faltaTabela(error)) return [];
+  return (data as unknown as AgendamentoComVeiculo[] | null) ?? [];
+}
+
 export async function obterAgendamento(id: string): Promise<AgendamentoComVeiculo | null> {
   if (!isSupabaseConfigured) return (DEMO.agendamentos.find((a) => a.id === id) as AgendamentoComVeiculo | undefined) ?? null;
   if (!ehUuid(id)) return null;

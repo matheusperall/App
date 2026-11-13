@@ -7,6 +7,7 @@ import { exigirUsuario } from "@/lib/auth";
 import { listarVeiculos, obterApontamento, obterOrcamento, obterVeiculo } from "@/lib/dados";
 import { hojeISO, nomeVeiculo } from "@/lib/garagem";
 import { FormAgendar } from "./FormAgendar";
+import { EscolherVeiculo } from "@/components/EscolherVeiculo";
 
 export const metadata: Metadata = { title: "Agendar" };
 
@@ -20,6 +21,17 @@ export default async function NovoAgendamentoPage({ searchParams }: PageProps<"/
     param("apontamento") ? obterApontamento(param("apontamento")) : null,
   ]);
   const origemVeiculo = orcamento?.veiculo_id ?? apontamento?.veiculo_id ?? "";
+
+  // Empresa sem veículo escolhido: primeiro escolhe o veículo do cliente
+  if (usuario.papel === "admin" && !origemVeiculo && !param("veiculo")) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <Voltar href="/agendamentos">Agenda</Voltar>
+        <h1 className="text-2xl font-bold">Novo agendamento</h1>
+        <EscolherVeiculo busca={param("q").trim()} destino="/agendamentos/novo" />
+      </div>
+    );
+  }
 
   const veiculos = await listarVeiculos(usuario.id);
   // A empresa pode agendar para o veículo de um cliente (ex.: pedido por telefone)
