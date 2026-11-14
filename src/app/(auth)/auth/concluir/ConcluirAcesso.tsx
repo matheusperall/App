@@ -6,7 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Aviso } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
-const caminhoSeguro = (s: string | null, padrao = "/inicio") => (s && s.startsWith("/") && !s.startsWith("//") ? s : padrao);
+const caminhoSeguro = (s: string | null, padrao = "/inicio") => (s && s.startsWith("/") && !s.startsWith("//") && !/[\\\u0000-\u001f]/.test(s) ? s : padrao);
 
 function mensagemErro(codigo: string, descricao: string) {
   const c = `${codigo} ${descricao}`.toLowerCase();

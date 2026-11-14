@@ -13,5 +13,6 @@ export async function getSiteUrl() {
 /** Evita redirecionar para outro site depois do login. */
 export function caminhoSeguro(next: unknown, padrao = "/inicio") {
   const s = typeof next === "string" ? next : "";
-  return s.startsWith("/") && !s.startsWith("//") ? s : padrao;
+  // Só caminhos do próprio app: "/algo". Barra invertida e caracteres de controle podem levar a outro site.
+  return s.startsWith("/") && !s.startsWith("//") && !/[\\\u0000-\u001f]/.test(s) ? s : padrao;
 }

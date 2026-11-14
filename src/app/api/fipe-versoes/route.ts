@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getUsuarioAtual } from "@/lib/auth";
 import { connection } from "next/server";
 import { lerAnoFipe, modeloBase, type AnoComVersoes, type ItemFipe } from "@/lib/fipe";
 import { consultarFipe, emParalelo } from "@/lib/fipe-servidor";
@@ -10,6 +11,8 @@ import { consultarFipe, emParalelo } from "@/lib/fipe-servidor";
  */
 export async function GET(request: NextRequest) {
   await connection();
+  // Só para quem entrou no app (evita que outros usem o app para gastar o limite da FIPE)
+  if (!(await getUsuarioAtual())) return NextResponse.json({ erro: "Entre no app para consultar" }, { status: 401 });
   const p = request.nextUrl.searchParams;
   const tipo = p.get("tipo") ?? "";
   const marca = p.get("marca") ?? "";
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
       .map((a) => ({ ...a, versoes: a.versoes.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")) }))
       .sort((a, b) => Number(b.zeroKm) - Number(a.zeroKm) || b.ano - a.ano);
     const incompleto = anosPorVersao.some((r) => r === null);
-    return NextResponse.json({ anos, incompleto }, { headers: { "cache-control": "public, max-age=3600" } });
+    return NextResponse.json({ anos, incompleto }, { headers: { "cache-control": "private, max-age=3600" } });
   } catch (e) {
     console.error("[fipe-versoes]", (e as Error).message);
     return NextResponse.json({ erro: "Tabela FIPE indisponível no momento" }, { status: 502 });
