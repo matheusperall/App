@@ -10,6 +10,7 @@ import { abasFinanceiro } from "../abas";
 import { FormCartao } from "../FormCartao";
 import { FormConta } from "../FormConta";
 import { BandeiraCartao } from "@/components/BandeiraCartao";
+import { Aviso } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Contas" };
 
@@ -73,6 +74,8 @@ export default async function ContasPage({ searchParams }: PageProps<"/gestao/fi
   return (
     <div className="space-y-4">
       <Cabecalho icone="financeiro" titulo="Financeiro" abas={abasFinanceiro("contas")} acao={{ href: "/gestao/financeiro/contas?nova=1#editar", rotulo: "Nova conta" }} />
+
+      {typeof sp.salvo === "string" && <Aviso tipo="sucesso">{sp.salvo}</Aviso>}
 
       <section className="space-y-3 rounded-2xl border border-borda bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Dinheiro, NavMes } from "@/components/gestao";
 import { Cabecalho } from "@/components/gestao/Cabecalho";
 import { abasFinanceiro } from "../abas";
@@ -30,7 +31,18 @@ export default async function ResultadoPage({ searchParams }: PageProps<"/gestao
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="financeiro" titulo="Financeiro" abas={abasFinanceiro("resultado", mes)} acao={{ href: "/gestao/financeiro/novo", rotulo: "Adicionar" }} />
+      <Cabecalho
+        icone="financeiro"
+        titulo="Financeiro"
+        abas={abasFinanceiro("resultado", mes)}
+        acao={{ href: "/gestao/financeiro/novo", rotulo: "Adicionar" }}
+        extra={
+          <Link href="/gestao/financeiro/categorias" className="flex items-center gap-1.5 rounded-full px-2 py-1.5 text-sm font-semibold text-suave hover:bg-fundo hover:text-texto sm:px-3" title="Editar categorias" aria-label="Editar categorias">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
+            <span className="hidden sm:inline">Categorias</span>
+          </Link>
+        }
+      />
       <div className="space-y-4">
       <h2 className="text-xl font-bold">Resultado do mês (DRE)</h2>
       <p className="text-sm text-suave">

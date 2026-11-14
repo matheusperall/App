@@ -1,98 +1,117 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { NavMes, Vazio } from "@/components/gestao";
+import { Vazio } from "@/components/gestao";
 import { Cabecalho, CelulaStatus, Etiqueta, GrupoMes, ResumoPeriodo, type Cor } from "@/components/gestao/Cabecalho";
 import { Icone } from "@/components/gestao/Icones";
 import { exigirAdmin } from "@/lib/auth";
 import { formatarData, formatarValor, hojeISO } from "@/lib/garagem";
-import { arred, combina, limitesMes, mesAtual, mesValido, rotuloSerie, type Lancamento } from "@/lib/gestao";
-import { contasAPagar, contasAReceberAvulsas, lancamentosDoMes, listarCartoes, listarCategorias, listarContas } from "@/lib/gestao-dados";
+import { arred, combina, limitesMes, mesAtual, mesValido } from "@/lib/gestao";
+import { montarMovimentos, type Mov } from "./movimentos";
+import { comprasNosCartoes, contasAPagar, contasAReceberAvulsas, lancamentosPeriodo, listarCartoes, listarCategorias, listarContas } from "@/lib/gestao-dados";
 import { abasFinanceiro } from "./abas";
 import { AcoesLancamento } from "./AcoesLancamento";
+import { FiltrosMovimentacoes, SITUACOES_FILTRO, TIPOS_FILTRO } from "./FiltrosMovimentacoes";
 
 export const metadata: Metadata = { title: "Financeiro" };
 
 const COLUNAS = "grid-cols-[7rem_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_8rem_8rem_2.75rem]";
+const ehDia = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
-/** Data que aparece na lista: quando foi pago, ou o vencimento (ou a competência). */
-const dataDe = (l: Lancamento) => (l.pago ? (l.pago_em ?? l.data) : (l.vencimento ?? l.data));
-
-function situacao(l: Lancamento, hoje: string): { texto: string; cor: Cor } {
-  if (l.pago) return { texto: l.tipo === "saida" ? "Pago" : "Recebido", cor: "verde" };
-  if (l.cartao_id) return { texto: "Na fatura", cor: dataDe(l) < hoje ? "vermelho" : "amarelo" };
-  if (dataDe(l) < hoje) return { texto: "Vencido", cor: "vermelho" };
-  return { texto: l.tipo === "saida" ? "A pagar" : "A receber", cor: "amarelo" };
+function situacao(m: Mov, hoje: string): { texto: string; cor: Cor } {
+  if (m.pago) return { texto: m.tipo === "saida" ? "Pago" : "Recebido", cor: "verde" };
+  if (m.data < hoje) return { texto: "Vencido", cor: "vermelho" };
+  return { texto: m.tipo === "saida" ? "A pagar" : "A receber", cor: "amarelo" };
 }
 
 export default async function FinanceiroPage({ searchParams }: PageProps<"/gestao/financeiro">) {
   const [, sp] = await Promise.all([exigirAdmin(), searchParams]);
-  const mes = mesValido(sp.mes) ? sp.mes : mesAtual();
-  const busca = typeof sp.q === "string" ? sp.q : "";
-  const contaFiltro = typeof sp.conta === "string" ? sp.conta : "";
   const hoje = hojeISO();
-  const [contas, categorias, doMes, aPagar, aReceber, cartoes] = await Promise.all([listarContas(), listarCategorias(), lancamentosDoMes(mes), contasAPagar(), contasAReceberAvulsas(), listarCartoes()]);
-  const cat = new Map(categorias.map((c) => [c.id, c]));
-  const nomeConta = new Map(contas.map((c) => [c.id, c.nome]));
-  const nomeCartao = new Map(cartoes.map((c) => [c.id, `💳 ${c.nome}`]));
+  // Período: de/até; ou o mês (?mes=) ; ou o mês atual
+  const mesBase = mesValido(sp.mes) ? sp.mes : mesAtual();
+  const doMes = limitesMes(mesBase);
+  const de = ehDia(sp.de) ? sp.de : doMes.inicio;
+  const ate = ehDia(sp.ate) && sp.ate >= de ? sp.ate : ehDia(sp.de) ? de : doMes.fim;
+  const busca = typeof sp.q === "string" ? sp.q : "";
+  const tipo = typeof sp.tipo === "string" && sp.tipo in TIPOS_FILTRO ? sp.tipo : "";
+  const filtroSituacao = typeof sp.situacao === "string" && sp.situacao in SITUACOES_FILTRO ? sp.situacao : "";
+
+  const [contas, categorias, doPeriodoBruto, aPagar, aReceber, cartoes, compras] = await Promise.all([
+    listarContas(),
+    listarCategorias(),
+    lancamentosPeriodo(de, ate),
+    contasAPagar(),
+    contasAReceberAvulsas(),
+    listarCartoes(),
+    comprasNosCartoes(),
+  ]);
+  const idsContas = new Set(contas.map((c) => c.id));
+  const contasFiltro = typeof sp.contas === "string" ? sp.contas.split(",").filter((id) => idsContas.has(id)) : [];
   const ativas = contas.filter((c) => c.ativa);
-  const { inicio } = limitesMes(mes);
+  const movs = montarMovimentos({ de, ate, lancamentos: doPeriodoBruto, pendentes: [...aPagar, ...aReceber], compras, cartoes, categorias, contas });
 
-  // Lançamentos do mês + atrasados de meses anteriores (ainda não pagos)
-  const mapa = new Map<string, Lancamento>();
-  for (const l of [...doMes.filter((l) => dataDe(l).startsWith(mes)), ...[...aPagar, ...aReceber].filter((l) => dataDe(l) < inicio)]) mapa.set(l.id, l);
-  let lista = [...mapa.values()];
-  if (contaFiltro) lista = lista.filter((l) => l.conta_id === contaFiltro);
-  if (busca.trim()) lista = lista.filter((l) => combina(`${l.descricao} ${cat.get(l.categoria_id ?? "")?.nome ?? ""}`, busca));
-  lista.sort((a, b) => dataDe(b).localeCompare(dataDe(a)));
-  const atrasados = lista.filter((l) => dataDe(l) < inicio);
-  const doPeriodo = lista.filter((l) => dataDe(l) >= inicio);
+  // 3) Filtros
+  let lista = movs;
+  if (contasFiltro.length) lista = lista.filter((m) => m.contaId && contasFiltro.includes(m.contaId));
+  if (tipo === "entradas") lista = lista.filter((m) => m.tipo === "entrada" && !m.transferencia);
+  if (tipo === "saidas") lista = lista.filter((m) => m.tipo === "saida" && !m.transferencia);
+  if (tipo === "transferencias") lista = lista.filter((m) => m.transferencia);
+  if (filtroSituacao === "recebidas") lista = lista.filter((m) => m.tipo === "entrada" && m.pago);
+  if (filtroSituacao === "a_receber") lista = lista.filter((m) => m.tipo === "entrada" && !m.pago);
+  if (filtroSituacao === "pagas") lista = lista.filter((m) => m.tipo === "saida" && m.pago);
+  if (filtroSituacao === "a_pagar") lista = lista.filter((m) => m.tipo === "saida" && !m.pago);
+  if (filtroSituacao === "vencidas") lista = lista.filter((m) => !m.pago && m.data < hoje);
+  if (busca.trim()) lista = lista.filter((m) => combina(`${m.descricao} ${m.categoria ?? ""} ${m.detalhe ?? ""}`, busca));
+  lista.sort((a, b) => b.data.localeCompare(a.data));
+  const atrasados = lista.filter((m) => m.data < de);
+  const doPeriodo = lista.filter((m) => m.data >= de);
 
-  const pagosMes = doMes.filter((l) => l.pago && (l.pago_em ?? l.data).startsWith(mes) && (!contaFiltro || l.conta_id === contaFiltro));
-  const recebidos = arred(pagosMes.filter((l) => l.tipo === "entrada").reduce((t, l) => t + l.valor, 0));
-  const pagos = arred(pagosMes.filter((l) => l.tipo === "saida").reduce((t, l) => t + l.valor, 0));
-  const taxas = arred(pagosMes.filter((l) => l.tipo === "saida" && cat.get(l.categoria_id ?? "")?.dre === "taxa").reduce((t, l) => t + l.valor, 0));
-  const saldo = arred((contaFiltro ? ativas.filter((c) => c.id === contaFiltro) : ativas).reduce((t, c) => t + c.saldo, 0));
-  const url = (extra: Record<string, string>) => {
-    const q = new URLSearchParams({ ...(mesValido(sp.mes) ? { mes } : {}), ...(busca ? { q: busca } : {}), ...(contaFiltro ? { conta: contaFiltro } : {}), ...extra });
-    for (const [k, v] of [...q]) if (!v) q.delete(k);
-    return `/gestao/financeiro${q.size ? `?${q}` : ""}`;
-  };
+  // 4) Resumo do período (dinheiro que entrou e saiu; transferências não contam)
+  const efetivos = doPeriodo.filter((m) => !m.transferencia);
+  const soma = (l: Mov[]) => arred(l.reduce((t, m) => t + m.valor, 0));
+  const recebidos = soma(efetivos.filter((m) => m.tipo === "entrada" && m.pago));
+  const pagos = soma(efetivos.filter((m) => m.tipo === "saida" && m.pago));
+  const aReceberPeriodo = soma(lista.filter((m) => m.tipo === "entrada" && !m.pago && !m.transferencia));
+  const aPagarPeriodo = soma(lista.filter((m) => m.tipo === "saida" && !m.pago && !m.transferencia));
+  const saldo = arred((contasFiltro.length ? ativas.filter((c) => contasFiltro.includes(c.id)) : ativas).reduce((t, c) => t + c.saldo, 0));
+  const filtrando = Boolean(busca || tipo || filtroSituacao || contasFiltro.length);
 
   return (
     <div className="space-y-4">
-      <Cabecalho icone="financeiro" titulo="Financeiro" abas={abasFinanceiro("movimentacoes", mesValido(sp.mes) ? mes : undefined)} acao={{ href: "/gestao/financeiro/novo", rotulo: "Adicionar" }} />
+      <Cabecalho
+        icone="financeiro"
+        titulo="Financeiro"
+        abas={abasFinanceiro("movimentacoes")}
+        acao={{ href: "/gestao/financeiro/novo", rotulo: "Adicionar" }}
+        extra={
+          <Link href="/gestao/financeiro/categorias" className="flex items-center gap-1.5 rounded-full px-2 py-1.5 text-sm font-semibold text-suave hover:bg-fundo hover:text-texto sm:px-3" title="Editar categorias" aria-label="Editar categorias">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></svg>
+            <span className="hidden sm:inline">Categorias</span>
+          </Link>
+        }
+      />
 
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="lg:w-72"><NavMes mes={mes} base="/gestao/financeiro" params={{ q: busca || undefined, conta: contaFiltro || undefined }} /></div>
-        <form className="flex flex-1 flex-col gap-2 sm:flex-row" role="search">
-          {mesValido(sp.mes) && <input type="hidden" name="mes" value={mes} />}
-          <select name="conta" defaultValue={contaFiltro} className="campo py-2.5 sm:w-56" aria-label="Conta">
-            <option value="">Todas as contas</option>
-            {contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
-          <div className="flex flex-1 items-center gap-2 rounded-xl border border-borda bg-white px-3">
-            <input name="q" defaultValue={busca} type="search" className="min-w-0 flex-1 bg-transparent py-2.5 text-base outline-none" placeholder="Buscar no período" aria-label="Buscar lançamentos" />
-            <button type="submit" className="text-sm font-semibold text-marca-escura">Buscar</button>
-          </div>
-        </form>
-      </div>
+      <FiltrosMovimentacoes
+        contas={contas.map((c) => ({ id: c.id, nome: c.nome }))}
+        valores={{ de, ate, contas: contasFiltro, tipo, situacao: filtroSituacao, q: busca }}
+        hoje={hoje}
+      />
 
       <ResumoPeriodo
-        titulo="Resumo do mês"
+        titulo={`Resumo de ${formatarData(de)} a ${formatarData(ate)}`}
         itens={[
           { rotulo: "Saldo atual", valor: saldo, cor: saldo < 0 ? "vermelho" : "verde" },
           { rotulo: "Recebidos", valor: recebidos, cor: "verde", sinal: true },
           { rotulo: "Pagos", valor: -pagos, cor: "vermelho" },
           { rotulo: "Geração de caixa", valor: arred(recebidos - pagos), cor: recebidos - pagos < 0 ? "vermelho" : "verde" },
-          { rotulo: "Taxas", valor: -taxas, cor: "vermelho" },
-          { rotulo: "Taxa efetiva", valor: recebidos > 0 ? arred((taxas / recebidos) * 100) : 0, formato: "porcento" },
+          { rotulo: "A receber", valor: aReceberPeriodo, cor: "amarelo" },
+          { rotulo: "A pagar", valor: -aPagarPeriodo, cor: "vermelho" },
         ]}
       />
 
       {lista.length === 0 ? (
         <div className="rounded-2xl border border-borda bg-white">
           <Vazio>
-            Nenhum lançamento neste mês. <Link href="/gestao/financeiro/novo" className="font-semibold text-marca-escura">Adicionar</Link>
+            Nenhum lançamento {filtrando ? "com esses filtros" : "neste período"}. <Link href="/gestao/financeiro/novo" className="font-semibold text-marca-escura">Adicionar</Link>
           </Vazio>
         </div>
       ) : (
@@ -106,65 +125,67 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
             <span className="px-4 py-3">Status</span>
             <span />
           </div>
-          {atrasados.length > 0 && <GrupoMes titulo="Atrasados de meses anteriores" />}
-          {atrasados.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "") ?? nomeCartao.get(l.cartao_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
-          {atrasados.length > 0 && doPeriodo.length > 0 && <GrupoMes titulo="Este mês" />}
-          {doPeriodo.map((l) => <Linha key={l.id} l={l} hoje={hoje} conta={nomeConta.get(l.conta_id ?? "") ?? nomeCartao.get(l.cartao_id ?? "")} categoria={cat.get(l.categoria_id ?? "")?.nome} contas={ativas} />)}
+          {atrasados.length > 0 && <GrupoMes titulo="Atrasados de antes do período" />}
+          {atrasados.map((m) => <Linha key={m.chave} m={m} hoje={hoje} contas={ativas} />)}
+          {atrasados.length > 0 && doPeriodo.length > 0 && <GrupoMes titulo="No período" />}
+          {doPeriodo.map((m) => <Linha key={m.chave} m={m} hoje={hoje} contas={ativas} />)}
         </div>
       )}
-      {(busca || contaFiltro) && <p className="text-sm text-suave"><Link href={url({ q: "", conta: "" })} className="font-semibold text-marca-escura">Limpar filtros</Link></p>}
+      {filtrando && <p className="text-sm text-suave"><Link href={`/gestao/financeiro?de=${de}&ate=${ate}`} className="font-semibold text-marca-escura">Limpar filtros</Link></p>}
     </div>
   );
 }
 
-function Linha({ l, hoje, conta, categoria, contas }: { l: Lancamento; hoje: string; conta?: string; categoria?: string; contas: { id: string; nome: string }[] }) {
-  const s = situacao(l, hoje);
-  const serie = rotuloSerie(l);
+function Linha({ m, hoje, contas }: { m: Mov; hoje: string; contas: { id: string; nome: string }[] }) {
+  const s = situacao(m, hoje);
+  const saida = m.tipo === "saida";
   const valor = (
-    <span className={`font-semibold tabular-nums ${l.tipo === "saida" ? "text-perigo" : "text-sucesso"}`}>
-      {l.tipo === "saida" ? "− " : "+ "}{formatarValor(l.valor)}
+    <span className={`font-semibold tabular-nums ${m.transferencia ? "text-suave" : saida ? "text-perigo" : "text-sucesso"}`}>
+      {saida ? "− " : "+ "}{formatarValor(m.valor)}
     </span>
   );
+  const icone = m.transferencia ? "financeiro" : m.href?.includes("/cartoes/") ? "cartao" : saida ? "saida" : "entrada";
   const transacao = (
     <span className="flex min-w-0 items-center gap-2.5">
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${l.tipo === "saida" ? "bg-perigo-claro text-perigo" : "bg-sucesso-claro text-sucesso"}`}>
-        <Icone nome={l.tipo === "saida" ? "saida" : "entrada"} className="h-4 w-4" />
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.transferencia ? "bg-fundo text-suave" : saida ? "bg-perigo-claro text-perigo" : "bg-sucesso-claro text-sucesso"}`}>
+        <Icone nome={icone} className="h-4 w-4" />
       </span>
       <span className="min-w-0">
-        {l.os_id || l.fatura_id ? (
-          <Link href={l.os_id ? `/gestao/os/${l.os_id}` : `/gestao/faturas/${l.fatura_id}`} className="block truncate font-medium hover:underline">{l.descricao}</Link>
+        {m.href ? (
+          <Link href={m.href} className="block truncate font-medium hover:underline">{m.descricao}</Link>
         ) : (
-          <span className="block truncate font-medium">{l.descricao}</span>
+          <span className="block truncate font-medium">{m.descricao}</span>
         )}
-        {serie && <span className="block text-xs text-suave">{serie}</span>}
+        {(m.detalhe || m.transferencia) && <span className="block text-xs text-suave">{m.transferencia ? "Transferência entre contas" : m.detalhe}</span>}
       </span>
     </span>
   );
+  const acoes = m.lancamento ? <AcoesLancamento l={m.lancamento} contas={contas} hoje={hoje} /> : <span className="w-9" />;
   return (
     <div className="rounded-xl border border-borda bg-white text-sm">
       {/* Computador */}
       <div className={`hidden ${COLUNAS} items-stretch lg:grid`}>
-        <span className="px-4 py-3 tabular-nums">{formatarData(dataDe(l))}</span>
+        <span className="px-4 py-3 tabular-nums">{formatarData(m.data)}</span>
         <span className="px-3 py-2">{transacao}</span>
-        <span className="truncate px-3 py-3 text-suave">{conta ?? "—"}</span>
-        <span className="px-3 py-3">{categoria ? <Etiqueta texto={categoria} /> : <span className="text-suave">—</span>}</span>
+        <span className="truncate px-3 py-3 text-suave">{m.conta ?? "—"}</span>
+        <span className="px-3 py-3">{m.categoria ? <Etiqueta texto={m.categoria} /> : <span className="text-suave">—</span>}</span>
         <span className="px-3 py-3 text-right">{valor}</span>
         <CelulaStatus texto={s.texto} cor={s.cor} />
-        <span className="flex items-center"><AcoesLancamento l={l} contas={contas} hoje={hoje} /></span>
+        <span className="flex items-center">{acoes}</span>
       </div>
       {/* Celular */}
       <div className="flex items-start gap-2 px-3 py-3 lg:hidden">
         <div className="min-w-0 flex-1 space-y-1">
           {transacao}
           <p className="pl-[2.6rem] text-xs text-suave">
-            {formatarData(dataDe(l))} · {conta ?? "—"}{categoria && ` · ${categoria}`}
+            {formatarData(m.data)} · {m.conta ?? "—"}{m.categoria && ` · ${m.categoria}`}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {valor}
           <span className={`text-xs font-semibold ${s.cor === "verde" ? "text-sucesso" : s.cor === "vermelho" ? "text-perigo" : "text-[#b07800]"}`}>{s.texto}</span>
         </div>
-        <AcoesLancamento l={l} contas={contas} hoje={hoje} />
+        {acoes}
       </div>
     </div>
   );

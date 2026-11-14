@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -56,7 +57,8 @@ export async function salvarCartao(_: EstadoForm, form: FormData): Promise<Estad
       .eq("id", salvo.id);
   }
   revalidatePath("/gestao", "layout");
-  return { sucesso: id ? "Cartão atualizado." : "Cartão cadastrado." };
+  // Salvou: fecha a janela de edição e volta para a lista
+  redirect(`/gestao/financeiro/contas?salvo=${encodeURIComponent(id ? "Cartão atualizado." : "Cartão cadastrado.")}#cartoes`);
 }
 
 /** Paga a fatura de um mês: as compras dela saem da conta escolhida, de uma vez. */
