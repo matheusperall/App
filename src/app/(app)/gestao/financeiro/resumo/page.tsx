@@ -106,7 +106,7 @@ export default async function ResumoFinanceiroPage({ searchParams }: PageProps<"
             <p className="font-semibold text-[#8a5a00]">⚠️ Você tem {venceHoje + vencidos} {venceHoje + vencidos === 1 ? "pendência" : "pendências"} para resolver</p>
             <p className="text-texto">{venceHoje} {venceHoje === 1 ? "vence" : "vencem"} hoje · {vencidos} {vencidos === 1 ? "vencida" : "vencidas"}</p>
           </div>
-          <Link href={`/gestao/financeiro?de=2020-01-01&ate=${hoje}&situacao=vencidas`} className="botao-primario rounded-full px-4 py-2 text-sm">Resolver pendências</Link>
+          <Link href={`/gestao/financeiro?de=2020-01-01&ate=${hoje}&situacao=vencidas,receber_vencidas`} className="botao-primario rounded-full px-4 py-2 text-sm">Resolver pendências</Link>
         </div>
       )}
 

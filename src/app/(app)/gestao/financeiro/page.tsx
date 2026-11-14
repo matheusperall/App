@@ -10,7 +10,8 @@ import { montarMovimentos, type Mov } from "./movimentos";
 import { comprasNosCartoes, contasAPagar, contasAReceberAvulsas, lancamentosPeriodo, listarCartoes, listarCategorias, listarContas } from "@/lib/gestao-dados";
 import { abasFinanceiro } from "./abas";
 import { AcoesLancamento } from "./AcoesLancamento";
-import { FiltrosMovimentacoes, SITUACOES_FILTRO, TIPOS_FILTRO } from "./FiltrosMovimentacoes";
+import { FiltrosMovimentacoes } from "./FiltrosMovimentacoes";
+import { lerLista } from "./filtros";
 
 export const metadata: Metadata = { title: "Financeiro" };
 
@@ -32,8 +33,9 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
   const de = ehDia(sp.de) ? sp.de : doMes.inicio;
   const ate = ehDia(sp.ate) && sp.ate >= de ? sp.ate : ehDia(sp.de) ? de : doMes.fim;
   const busca = typeof sp.q === "string" ? sp.q : "";
-  const tipo = typeof sp.tipo === "string" && sp.tipo in TIPOS_FILTRO ? sp.tipo : "";
-  const filtroSituacao = typeof sp.situacao === "string" && sp.situacao in SITUACOES_FILTRO ? sp.situacao : "";
+  const tipo = lerLista(sp.tipo, "tipo");
+  const filtroSituacao = lerLista(sp.situacao, "situacao");
+  const recorrencia = lerLista(sp.recorrencia, "recorrencia");
 
   const [contas, categorias, doPeriodoBruto, aPagar, aReceber, cartoes, compras] = await Promise.all([
     listarContas(),
@@ -52,14 +54,27 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
   // 3) Filtros
   let lista = movs;
   if (contasFiltro.length) lista = lista.filter((m) => m.contaId && contasFiltro.includes(m.contaId));
-  if (tipo === "entradas") lista = lista.filter((m) => m.tipo === "entrada" && !m.transferencia);
-  if (tipo === "saidas") lista = lista.filter((m) => m.tipo === "saida" && !m.transferencia);
-  if (tipo === "transferencias") lista = lista.filter((m) => m.transferencia);
-  if (filtroSituacao === "recebidas") lista = lista.filter((m) => m.tipo === "entrada" && m.pago);
-  if (filtroSituacao === "a_receber") lista = lista.filter((m) => m.tipo === "entrada" && !m.pago);
-  if (filtroSituacao === "pagas") lista = lista.filter((m) => m.tipo === "saida" && m.pago);
-  if (filtroSituacao === "a_pagar") lista = lista.filter((m) => m.tipo === "saida" && !m.pago);
-  if (filtroSituacao === "vencidas") lista = lista.filter((m) => !m.pago && m.data < hoje);
+  // Dentro de cada grupo vale "qualquer um marcado"; entre grupos, todos precisam valer
+  const ehTipo: Record<string, (m: Mov) => boolean> = {
+    entradas: (m) => m.tipo === "entrada" && !m.transferencia,
+    saidas: (m) => m.tipo === "saida" && !m.transferencia,
+    transferencias: (m) => m.transferencia,
+  };
+  const ehSituacao: Record<string, (m: Mov) => boolean> = {
+    recebidas: (m) => m.tipo === "entrada" && m.pago,
+    a_receber: (m) => m.tipo === "entrada" && !m.pago && m.data >= hoje,
+    receber_vencidas: (m) => m.tipo === "entrada" && !m.pago && m.data < hoje,
+    pagas: (m) => m.tipo === "saida" && m.pago,
+    a_pagar: (m) => m.tipo === "saida" && !m.pago && m.data >= hoje,
+    vencidas: (m) => m.tipo === "saida" && !m.pago && m.data < hoje,
+  };
+  const ehRecorrencia: Record<string, (m: Mov) => boolean> = {
+    fixas: (m) => Boolean(m.lancamento?.recorrente),
+    variaveis: (m) => !m.lancamento?.recorrente,
+  };
+  if (tipo.length) lista = lista.filter((m) => tipo.some((k) => ehTipo[k](m)));
+  if (filtroSituacao.length) lista = lista.filter((m) => filtroSituacao.some((k) => ehSituacao[k](m)));
+  if (recorrencia.length) lista = lista.filter((m) => recorrencia.some((k) => ehRecorrencia[k](m)));
   if (busca.trim()) lista = lista.filter((m) => combina(`${m.descricao} ${m.categoria ?? ""} ${m.detalhe ?? ""}`, busca));
   lista.sort((a, b) => b.data.localeCompare(a.data));
   const atrasados = lista.filter((m) => m.data < de);
@@ -73,7 +88,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
   const aReceberPeriodo = soma(lista.filter((m) => m.tipo === "entrada" && !m.pago && !m.transferencia));
   const aPagarPeriodo = soma(lista.filter((m) => m.tipo === "saida" && !m.pago && !m.transferencia));
   const saldo = arred((contasFiltro.length ? ativas.filter((c) => contasFiltro.includes(c.id)) : ativas).reduce((t, c) => t + c.saldo, 0));
-  const filtrando = Boolean(busca || tipo || filtroSituacao || contasFiltro.length);
+  const filtrando = Boolean(busca || tipo.length || filtroSituacao.length || recorrencia.length || contasFiltro.length);
 
   return (
     <div className="space-y-4">
@@ -92,7 +107,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
 
       <FiltrosMovimentacoes
         contas={contas.map((c) => ({ id: c.id, nome: c.nome }))}
-        valores={{ de, ate, contas: contasFiltro, tipo, situacao: filtroSituacao, q: busca }}
+        valores={{ de, ate, contas: contasFiltro, tipo, situacao: filtroSituacao, recorrencia, q: busca }}
         hoje={hoje}
       />
 
@@ -131,7 +146,6 @@ export default async function FinanceiroPage({ searchParams }: PageProps<"/gesta
           {doPeriodo.map((m) => <Linha key={m.chave} m={m} hoje={hoje} contas={ativas} />)}
         </div>
       )}
-      {filtrando && <p className="text-sm text-suave"><Link href={`/gestao/financeiro?de=${de}&ate=${ate}`} className="font-semibold text-marca-escura">Limpar filtros</Link></p>}
     </div>
   );
 }
