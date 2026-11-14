@@ -5,7 +5,7 @@ import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
 import { hojeISO } from "@/lib/garagem";
-import { lerDinheiro } from "@/lib/gestao";
+import { lerDinheiro, BANDEIRAS } from "@/lib/gestao";
 import { createClient } from "@/lib/supabase/server";
 
 const DEMO: EstadoForm = { erro: "Modo demonstração: conecte o banco de dados para salvar." };
@@ -38,11 +38,22 @@ export async function salvarCartao(_: EstadoForm, form: FormData): Promise<Estad
     ...(id ? { ativo: form.get("ativo") === "on" } : {}),
   };
   const supabase = await createClient();
-  const { error } = id ? await supabase.from("cartoes").update(dados).eq("id", id) : await supabase.from("cartoes").insert(dados);
+  const { data: salvo, error } = id
+    ? await supabase.from("cartoes").update(dados).eq("id", id).select("id").single()
+    : await supabase.from("cartoes").insert(dados).select("id").single();
   if (error) {
     console.error("[cartoes]", error);
     if (error.code === "42P01" || error.code === "PGRST205") return { erro: "Falta atualizar o banco: rode o arquivo 0015_cartoes_credito.sql no Supabase." };
     return { erro: "Não foi possível salvar o cartão." };
+  }
+  // Cor e bandeira (0021); sem a migração, não faz nada
+  const cor = texto(form, "cor");
+  const bandeira = texto(form, "bandeira");
+  if (salvo?.id) {
+    await supabase
+      .from("cartoes")
+      .update({ cor: /^#[0-9a-fA-F]{6}$/.test(cor) ? cor : null, bandeira: bandeira in BANDEIRAS ? bandeira : null })
+      .eq("id", salvo.id);
   }
   revalidatePath("/gestao", "layout");
   return { sucesso: id ? "Cartão atualizado." : "Cartão cadastrado." };

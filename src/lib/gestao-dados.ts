@@ -351,14 +351,18 @@ export type FaturaCartao = { cartao: Cartao; fatura_mes: string; vencimento: str
 export const listarCartoes = cache(async function listarCartoes(): Promise<Cartao[]> {
   if (!isSupabaseConfigured) return DEMO.cartoes;
   const supabase = await createClient();
-  const [{ data, error }, { data: abertos }] = await Promise.all([
-    supabase.from("cartoes").select("id, nome, final, limite, dia_fechamento, dia_vencimento, conta_pagamento_id, ativo").order("criado_em"),
+  const consulta = (extra: string) =>
+    supabase.from("cartoes").select(`id, nome, final, limite, dia_fechamento, dia_vencimento, conta_pagamento_id, ativo${extra}`).order("criado_em");
+  const [comVisual, { data: abertos }] = await Promise.all([
+    consulta(", cor, bandeira"),
     supabase.from("lancamentos").select("cartao_id, valor").eq("pago", false).not("cartao_id", "is", null).limit(5000),
   ]);
+  // Sem a migração 0021, consulta sem cor e bandeira
+  const { data, error } = comVisual.error ? await consulta("") : comVisual;
   if (error) return [];
   const soma = new Map<string, number>();
   for (const l of (abertos ?? []) as { cartao_id: string; valor: number }[]) soma.set(l.cartao_id, (soma.get(l.cartao_id) ?? 0) + n(l.valor));
-  return ((data ?? []) as Cartao[]).map((c) => ({ ...c, limite: c.limite == null ? null : n(c.limite), em_aberto: arred(soma.get(c.id) ?? 0) }));
+  return ((data ?? []) as unknown as Cartao[]).map((c) => ({ ...c, limite: c.limite == null ? null : n(c.limite), em_aberto: arred(soma.get(c.id) ?? 0) }));
 });
 
 /** Todas as compras de um cartão (para montar as faturas). */
@@ -638,10 +642,10 @@ const DEMO = {
   contas: [
     { id: "demo-k1", nome: "Caixa da loja", tipo: "caixa", saldo_inicial: 0, ativa: true, saldo: 350, formas: ["dinheiro"], taxa_pix: 0, taxa_debito: 0, taxa_credito: 0, taxas_parcelado: {} },
     { id: "demo-k2", nome: "Banco", tipo: "banco", saldo_inicial: 1000, ativa: true, saldo: 1600, formas: ["pix", "transferencia"], taxa_pix: 0, taxa_debito: 0, taxa_credito: 0, taxas_parcelado: {} },
-    { id: "demo-k3", nome: "Maquininha", tipo: "outro", saldo_inicial: 0, ativa: true, saldo: 0, formas: ["debito", "credito", "pix"], taxa_pix: 0.99, taxa_debito: 1.99, taxa_credito: 3.49, taxas_parcelado: { "2": 5.39, "3": 6.19, "6": 8.49 } },
+    { id: "demo-k3", nome: "Maquininha", tipo: "maquininha", saldo_inicial: 0, ativa: true, saldo: 0, formas: ["debito", "credito", "pix"], taxa_pix: 0.99, taxa_debito: 1.99, taxa_credito: 3.49, taxas_parcelado: { "2": 5.39, "3": 6.19, "6": 8.49 } },
   ] as Conta[],
   cartoes: [
-    { id: "demo-cc1", nome: "Cartão empresa", final: "4321", limite: 8000, dia_fechamento: 5, dia_vencimento: 12, conta_pagamento_id: "demo-k2", ativo: true, em_aberto: 1250 },
+    { id: "demo-cc1", nome: "Cartão empresa", final: "4321", limite: 8000, dia_fechamento: 5, dia_vencimento: 12, conta_pagamento_id: "demo-k2", ativo: true, em_aberto: 1250, cor: "#5b21b6", bandeira: "mastercard" },
   ] as Cartao[],
   categorias: [
     { id: "demo-cat1", nome: "Serviços (OS)", tipo: "entrada", dre: "receita", sistema: "os", ativa: true },

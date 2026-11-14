@@ -198,6 +198,13 @@ Depois do 0019 (e da importação da CERA), rode **`supabase/migrations/0020_tam
 - preenche o tamanho dos carros pelo histórico (a Limpeza padrão mais recente, de julho/2026 em diante).
 Na Nova OS e no orçamento, o preço do serviço vem pelo tamanho do carro escolhido. Preço digitado à mão não muda.
 
+### Atualização: maquininha nas contas; cor e bandeira nos cartões (arquivo 0021)
+
+Depois do 0020, rode **`supabase/migrations/0021_contas_cartoes_visual.sql`**. Ele:
+- cria o tipo de conta **Maquininha de cartão** (e marca InfinitePay e Mercado Pago como maquininha);
+- guarda a **cor** e a **bandeira** (Visa, Mastercard, Elo, Amex, Hipercard) de cada cartão.
+Em *Financeiro › Contas*, cada conta e cada cartão tem um **lápis** para editar; o formulário abre acima da lista.
+
 ### Limpar os dados de teste (antes de importar a CERA)
 
 O arquivo **`supabase/manutencao/limpar_testes.sql`** apaga todo o movimento de teste e deixa o sistema pronto para os dados reais.
