@@ -127,7 +127,7 @@ export type OrdemServico = {
 export type Conta = {
   id: string;
   nome: string;
-  tipo: "banco" | "caixa" | "digital" | "outro";
+  tipo: keyof typeof TIPOS_CONTA;
   saldo_inicial: number;
   ativa: boolean;
   saldo: number;
@@ -156,7 +156,7 @@ export function taxaPercentual(c: Pick<Conta, "taxa_pix" | "taxa_debito" | "taxa
   return 0;
 }
 
-export const TIPOS_CONTA = { banco: "Banco", caixa: "Caixa", digital: "Conta digital", outro: "Outra" } as const;
+export const TIPOS_CONTA = { banco: "Banco", caixa: "Caixa (dinheiro)", maquininha: "Maquininha de cartão", digital: "Conta digital", outro: "Outra" } as const;
 
 export type CategoriaFinanceira = {
   id: string;
@@ -199,6 +199,11 @@ export function rotuloSerie(l: Pick<Lancamento, "grupo_id" | "parcela" | "total_
 // ---------------------------------------------------------------------------
 // Cartões de crédito da empresa
 // ---------------------------------------------------------------------------
+export const BANDEIRAS = { visa: "Visa", mastercard: "Mastercard", elo: "Elo", amex: "American Express", hipercard: "Hipercard" } as const;
+export type Bandeira = keyof typeof BANDEIRAS;
+/** Cores para escolher no cartão */
+export const CORES_CARTAO = ["#0b1220", "#5b21b6", "#ec7000", "#e11d48", "#12b5b0", "#2563eb", "#16a34a", "#a16207", "#6b7280"] as const;
+
 export type Cartao = {
   id: string;
   nome: string;
@@ -208,6 +213,10 @@ export type Cartao = {
   dia_vencimento: number;
   conta_pagamento_id: string | null;
   ativo: boolean;
+  /** Cor escolhida para o cartão (0021) */
+  cor?: string | null;
+  /** Bandeira escolhida (0021) */
+  bandeira?: Bandeira | null;
   /** Soma das compras ainda não pagas (usa o limite) */
   em_aberto: number;
 };

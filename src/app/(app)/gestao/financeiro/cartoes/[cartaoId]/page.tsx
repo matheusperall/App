@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BandeiraCartao } from "@/components/BandeiraCartao";
+import { Icone } from "@/components/gestao/Icones";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Voltar } from "@/components/garagem";
@@ -46,7 +48,11 @@ export default async function CartaoPage({ params, searchParams }: PageProps<"/g
 
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-borda bg-white p-4 sm:p-5">
         <div>
-          <h1 className="text-xl font-bold sm:text-2xl">💳 {cartao.nome}{cartao.final && <span className="font-normal text-suave"> •••• {cartao.final}</span>}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-bold sm:text-2xl">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: cartao.cor ?? "#0b1220" }}><Icone nome="cartao" className="h-5 w-5" /></span>
+            {cartao.nome}{cartao.final && <span className="font-normal text-suave"> •••• {cartao.final}</span>}
+            <BandeiraCartao bandeira={cartao.bandeira} className="h-7 w-10" />
+          </h1>
           <p className="text-sm text-suave">Fecha dia {cartao.dia_fechamento} · vence dia {cartao.dia_vencimento}</p>
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:flex">

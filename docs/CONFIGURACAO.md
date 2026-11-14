@@ -34,6 +34,7 @@ aparecem, mas login e cadastro não funcionam.
    18. `0018_modelos_mensagens.sql` — modelos editáveis das mensagens de WhatsApp
    19. `0019_voltar_etapa_os.sql` — voltar etapa da OS sem contar o estoque em dobro
    20. `0020_tamanho_veiculo.sql` — tamanho do veículo e preço dos serviços por tamanho
+   21. `0021_contas_cartoes_visual.sql` — tipo maquininha nas contas; cor e bandeira nos cartões
 
    (Para um projeto novo, dá para rodar `supabase/instalar_tudo.sql`, que junta todos.)
 
