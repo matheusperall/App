@@ -334,6 +334,25 @@ export async function lancamentosDoMes(mes: string): Promise<Lancamento[]> {
   );
 }
 
+/** Lançamentos de um período (de/até): pela competência, pelo pagamento ou pelo vencimento. */
+export async function lancamentosPeriodo(de: string, ate: string): Promise<Lancamento[]> {
+  if (!isSupabaseConfigured) return DEMO.lancamentos;
+  return consultarLancamentos((supabase, campos) =>
+    supabase
+      .from("lancamentos")
+      .select(campos)
+      .or(`and(data.gte.${de},data.lte.${ate}),and(pago_em.gte.${de},pago_em.lte.${ate}),and(vencimento.gte.${de},vencimento.lte.${ate})`)
+      .order("data", { ascending: false })
+      .limit(5000),
+  );
+}
+
+/** Todas as compras nos cartões (para montar o valor de cada fatura). */
+export async function comprasNosCartoes(): Promise<Lancamento[]> {
+  if (!isSupabaseConfigured) return DEMO.lancamentos.filter((l) => l.cartao_id);
+  return consultarLancamentos((supabase, campos) => supabase.from("lancamentos").select(campos).not("cartao_id", "is", null).limit(5000));
+}
+
 /** Contas a pagar (saídas ainda não pagas), da mais antiga para a mais nova. */
 /** Contas a pagar (saídas não pagas). Compras no cartão ficam de fora: entram pela fatura do cartão. */
 export async function contasAPagar(): Promise<Lancamento[]> {

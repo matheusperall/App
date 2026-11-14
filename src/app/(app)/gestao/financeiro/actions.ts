@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { EstadoForm } from "@/app/(auth)/actions";
 import { exigirAdmin } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -50,7 +51,8 @@ export async function salvarConta(_: EstadoForm, form: FormData): Promise<Estado
   }
   if (error) return { erro: "Não foi possível salvar a conta." };
   revalidatePath("/gestao", "layout");
-  return { sucesso: (id ? "Conta atualizada." : "Conta criada.") + aviso };
+  // Salvou: fecha a janela de edição e volta para a lista de contas
+  redirect(`/gestao/financeiro/contas?salvo=${encodeURIComponent((id ? "Conta atualizada." : "Conta criada.") + aviso)}`);
 }
 
 export async function salvarLancamento(_: EstadoForm, form: FormData): Promise<EstadoForm> {
